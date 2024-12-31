@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
+import { Schema as _Schema, model } from 'mongoose';
+const Schema = _Schema;
 
 const ttsIntegrationSchema = new Schema({
   tts_id: {
@@ -33,6 +33,6 @@ const ttsIntegrationSchema = new Schema({
   },
 });
 
-const TTSIntegration = mongoose.model('TTSIntegration', ttsIntegrationSchema, 'TTS_INTEGRATION');
+const TTSIntegration = model('TTSIntegration', ttsIntegrationSchema, 'TTS_INTEGRATION');
 
-module.exports = TTSIntegration;
+export default TTSIntegration;

@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
+import { Schema as _Schema, model } from 'mongoose';
+const Schema = _Schema;
 
 const symbolCategorySchema = new Schema({
   category_id: {
@@ -21,6 +21,6 @@ const symbolCategorySchema = new Schema({
   },
 });
 
-const SymbolCategory = mongoose.model('SymbolCategory', symbolCategorySchema, 'SYMBOL_CATEGORIES');
+const SymbolCategory = model('SymbolCategory', symbolCategorySchema, 'SYMBOL_CATEGORIES');
 
-module.exports = SymbolCategory;
+export default SymbolCategory;

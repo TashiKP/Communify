@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
+import { Schema as _Schema, model } from 'mongoose';
+const Schema = _Schema;
 
 const symbolUsageSchema = new Schema({
   usage_id: {
@@ -31,6 +31,6 @@ const symbolUsageSchema = new Schema({
   },
 });
 
-const SymbolUsage = mongoose.model('SymbolUsage', symbolUsageSchema, 'SYMBOL_USAGE');
+const SymbolUsage = model('SymbolUsage', symbolUsageSchema, 'SYMBOL_USAGE');
 
-module.exports = SymbolUsage;
+export default SymbolUsage;

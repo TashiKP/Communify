@@ -37,34 +37,29 @@ npm run ios
 
 # OR using Yarn
 yarn ios
-This will launch the app in the Android Emulator or iOS Simulator, assuming the emulator/simulator is set up correctly.
 
-Alternatively, you can run the app via Android Studio or Xcode.
 
-Step 3: Modify Your App
-Open App.tsx in your editor and make changes.
-Use the following shortcuts to reload:
+**Step 3: Modify Your App**
+*Open App.tsx in your editor and make changes.
+*Use the following shortcuts to reload:
+
 Android: Press R twice or open the Developer Menu (<kbd>Ctrl</kbd> + <kbd>M</kbd> or <kbd>Cmd</kbd> + <kbd>M</kbd>) and select "Reload".
 iOS: Press <kbd>Cmd ⌘</kbd> + <kbd>R</kbd> in the iOS Simulator.
-## Features
 
-- **Bilingual Support**: Text-to-Speech functionality in both English and Dzongkha.
-- **Culturally Relevant Symbols**: Includes symbols representing Bhutanese traditions, festivals, and cultural heritage.
-- **Accessibility Features**: High-contrast text, large buttons, and customizable symbol grids to cater to diverse user needs.
-- **AI Integration**: Adapts to user behavior with machine learning, offering personalized symbol suggestions for efficient communication.
-- **Secure Data Handling**: Advanced encryption and parental control options ensure data privacy and user safety.
+**Features**
+*Bilingual Support: Text-to-Speech functionality in both English and Dzongkha.
+*Culturally Relevant Symbols: Includes symbols representing Bhutanese traditions, festivals, and cultural heritage.
+*Accessibility Features: High-contrast text, large buttons, and customizable symbol grids to cater to diverse user needs.
+*AI Integration: Adapts to user behavior with machine learning, offering personalized symbol suggestions for efficient communication.
+*Secure Data Handling: Advanced encryption and parental control options ensure data privacy and user safety.
 
-## Next Steps
+**Next Steps**
+*Refer to the Integration Guide for adding this project to an existing application.
+*Learn more about React Native by exploring the React Native Docs.
 
-- Refer to the [Integration Guide](https://reactnative.dev/docs/integration-with-existing-apps) for adding this project to an existing application.
-- Learn more about React Native by exploring the [React Native Docs](https://reactnative.dev/docs/getting-started).
-
-## Troubleshooting
-
-- Consult the [Troubleshooting Guide](https://reactnative.dev/docs/troubleshooting) for solutions to common issues.
-
-## Additional Resources
-
-- [React Native Website](https://reactnative.dev)
-- [React Native Blog](https://reactnative.dev/blog)
-- [GitHub Repository](https://github.com/facebook/react-native)
+**Troubleshooting**
+*Consult the Troubleshooting Guide for solutions to common issues.
+*Additional Resources
+*React Native Website
+*React Native Blog
+*GitHub Repository

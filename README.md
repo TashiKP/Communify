@@ -46,23 +46,25 @@ Open App.tsx in your editor and make changes.
 Use the following shortcuts to reload:
 Android: Press R twice or open the Developer Menu (<kbd>Ctrl</kbd> + <kbd>M</kbd> or <kbd>Cmd</kbd> + <kbd>M</kbd>) and select "Reload".
 iOS: Press <kbd>Cmd ⌘</kbd> + <kbd>R</kbd> in the iOS Simulator.
-Features
+## Features
 
-Bilingual Support: English and Dzongkha Text-to-Speech functionality.
-Culturally Relevant Symbols: Incorporates Bhutanese traditions, festivals, and symbols.
-Accessibility Features: High-contrast text, large buttons, and customizable symbol grids.
-AI Integration: Learns user behavior for symbol suggestions and improved communication efficiency.
-Secure Data Handling: Advanced encryption and parental control features for privacy and safety.
-Next Steps
+- **Bilingual Support**: Text-to-Speech functionality in both English and Dzongkha.
+- **Culturally Relevant Symbols**: Includes symbols representing Bhutanese traditions, festivals, and cultural heritage.
+- **Accessibility Features**: High-contrast text, large buttons, and customizable symbol grids to cater to diverse user needs.
+- **AI Integration**: Adapts to user behavior with machine learning, offering personalized symbol suggestions for efficient communication.
+- **Secure Data Handling**: Advanced encryption and parental control options ensure data privacy and user safety.
 
-To integrate this code into an existing app, check out the Integration Guide.
-For more on React Native, explore the React Native Docs.
-Troubleshooting
+## Next Steps
 
-Refer to the Troubleshooting Guide if you encounter issues.
+- Refer to the [Integration Guide](https://reactnative.dev/docs/integration-with-existing-apps) for adding this project to an existing application.
+- Learn more about React Native by exploring the [React Native Docs](https://reactnative.dev/docs/getting-started).
 
-Additional Resources
+## Troubleshooting
 
-React Native Website
-React Native Blog
-GitHub Repository
+- Consult the [Troubleshooting Guide](https://reactnative.dev/docs/troubleshooting) for solutions to common issues.
+
+## Additional Resources
+
+- [React Native Website](https://reactnative.dev)
+- [React Native Blog](https://reactnative.dev/blog)
+- [GitHub Repository](https://github.com/facebook/react-native)

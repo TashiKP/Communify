@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
+import { Schema as _Schema, model } from 'mongoose';
+const Schema = _Schema;
 
 const privacySettingsSchema = new Schema({
   user_id: {
@@ -25,6 +25,6 @@ const privacySettingsSchema = new Schema({
   },
 });
 
-const PrivacySettings = mongoose.model('PrivacySettings', privacySettingsSchema, 'PRIVACY_SETTINGS');
+const PrivacySettings = model('PrivacySettings', privacySettingsSchema, 'PRIVACY_SETTINGS');
 
-module.exports = PrivacySettings;
+export default PrivacySettings;

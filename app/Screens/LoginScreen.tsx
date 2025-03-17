@@ -2,6 +2,7 @@
 import React from 'react';
 
 import { View, Text } from 'react-native';
+import Navbar from '../components/navbar';
 
 
 
@@ -12,6 +13,7 @@ const LoginScreen = () => {
     <View>
 
       <Text>Login Screen</Text>
+      <Navbar /> 
 
     </View>
 

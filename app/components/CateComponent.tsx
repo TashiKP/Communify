@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import axios from 'axios';
 
-interface SquareComponentProps {
+interface CateComponentProps {
   keyword: string;
   language: string;
 }
 
-const SquareComponent: React.FC<SquareComponentProps> = ({ keyword, language }) => {
+const CateComponent: React.FC<CateComponentProps> = ({ keyword, language }) => {
   const [pictogramUrl, setPictogramUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +47,7 @@ const SquareComponent: React.FC<SquareComponentProps> = ({ keyword, language }) 
   }, [keyword, language]);
 
   return (
-    <View style={styles.square}>
+    <View style={styles.cateComponent}>
       {/* Top Bar with random color */}
       <View style={[styles.topBar, { backgroundColor: topBarColor }]} />
 
@@ -65,11 +65,11 @@ const SquareComponent: React.FC<SquareComponentProps> = ({ keyword, language }) 
 };
 
 const styles = StyleSheet.create({
-  square: {
+  cateComponent: {
     width: 75,
     height: 75,
     backgroundColor: '#fff',
-    borderRadius: 10,
+    borderRadius: 0,  // Set to zero for square corners
     borderWidth: 1,
     borderColor: '#000',
     overflow: 'hidden',
@@ -79,7 +79,6 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     alignItems: 'center',
     justifyContent: 'center',
-    borderTopRightRadius: 0,
   },
   topBar: {
     height: 7,
@@ -105,4 +104,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SquareComponent;
+export default CateComponent;

@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, FlatList, Text } from 'react-native';
-import SquareComponent from './SquareComponent';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { View, StyleSheet, FlatList, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
 import axios from 'axios';
+import SquareComponent from './SquareComponent';
+import CateComponent from './CateComponent'; // Import the CateComponent
 
 interface SquareData {
   id: string;
@@ -9,70 +10,122 @@ interface SquareData {
 }
 
 const NavBarComponent = () => {
-  const language = 'en'; // Language setting
+  const language = 'en';
+  const [data, setData] = useState<SquareData[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [fetchingKeywords, setFetchingKeywords] = useState<boolean>(true);
 
-  const [squareData, setSquareData] = useState<SquareData[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const flatListRefLeft = useRef<FlatList<SquareData>>(null);
+  const flatListRefRight = useRef<FlatList<SquareData>>(null);
 
-  useEffect(() => {
-    const fetchSquareData = async () => {
-      try {
-        const response = await axios.get(`https://api.arasaac.org/v1/keywords/${language}`);
-    
-        // Log the entire response to inspect the structure
-        console.log('API Response:', response.data);
-    
-        // Ensure the response has the expected data format
-        const keywords = response.data.keywords || [];  // Assuming 'keywords' holds the actual list
-    
-        if (!keywords.length) {
-          setError('No keywords found');
-          setLoading(false);
-          return;
-        }
-    
-        // Select the first 6 keywords to fill at least two rows
-        const selectedKeywords = keywords.slice(0, 6);
-        const squareDataWithKeywords = selectedKeywords.map((keyword: string, index: number) => ({
+  const loadKeywords = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`https://api.arasaac.org/v1/keywords/${language}`);
+      if (response.data && response.data.words) {
+        const newData = response.data.words.map((keyword: string, index: number) => ({
           id: (index + 1).toString(),
-          keyword: keyword,
+          keyword,
         }));
-    
-        setSquareData(squareDataWithKeywords);
-        setLoading(false);
-      } catch (err) {
-        console.error('Error fetching data:', err);
-        setError('Error fetching data');
-        setLoading(false);
+        setData(newData);
       }
-    };
-
-    fetchSquareData();
+    } catch (err) {
+      console.error("Error fetching keywords:", err);
+    } finally {
+      setLoading(false);
+      setFetchingKeywords(false);
+    }
   }, [language]);
 
-  const renderItem = ({ item }: { item: SquareData }) => (
+  useEffect(() => {
+    loadKeywords();
+  }, [loadKeywords]);
+
+  const loadMoreData = useCallback(() => {
+    if (loading) return;
+    setLoading(true);
+
+    setTimeout(() => {
+      const newData = data.map((item, index) => ({
+        id: (data.length + index + 1).toString(),
+        keyword: item.keyword,
+      }));
+      setData(prevData => [...prevData, ...newData]);
+      setLoading(false);
+    }, 1000);
+  }, [data, loading]);
+
+  const renderLeftItem = ({ item }: { item: SquareData }) => (
     <SquareComponent keyword={item.keyword} language={language} />
   );
+
+  const renderRightItem = ({ item }: { item: SquareData }) => (
+    <View style={styles.rightItem}>
+      <CateComponent keyword={item.keyword} language={language} />
+    </View>
+  );
+
+  const scrollToLeft = () => {
+    if (flatListRefLeft.current) {
+      flatListRefLeft.current.scrollToOffset({ animated: true, offset: 0 });
+    }
+  };
+
+  const scrollToRight = () => {
+    if (flatListRefRight.current) {
+      flatListRefRight.current.scrollToEnd({ animated: true });
+    }
+  };
 
   return (
     <View style={styles.container}>
       <View style={styles.navBar} />
-      <View style={styles.divider} />
       <View style={styles.content}>
         <View style={styles.leftSide}>
-          {loading && <Text>Loading...</Text>}
-          {error && <Text>{error}</Text>}
+          <TouchableOpacity style={styles.scrollButton} onPress={scrollToLeft}>
+            <Text style={styles.scrollButtonText}>{'<'}</Text>
+          </TouchableOpacity>
+
+          {fetchingKeywords ? (
+            <ActivityIndicator size="large" color="#0077b6" />
+          ) : (
+            <FlatList
+              ref={flatListRefLeft}
+              data={data}
+              renderItem={renderLeftItem}
+              keyExtractor={item => item.id}
+              numColumns={8}
+              columnWrapperStyle={styles.row}
+              onEndReached={loadMoreData}
+              onEndReachedThreshold={0.5}
+              ListFooterComponent={
+                loading ? <ActivityIndicator size="large" color="#0077b6" /> : null
+              }
+            />
+          )}
+
+          <TouchableOpacity style={styles.scrollButtonRight} onPress={scrollToRight}>
+            <Text style={styles.scrollButtonText}>{'>'}</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.verticalDivider} />
+
+        <View style={styles.rightSide}>
+          {/* FlatList for CateComponent */}
           <FlatList
-            data={squareData}
-            renderItem={renderItem}
+            ref={flatListRefRight}
+            data={data}
+            renderItem={renderRightItem}
             keyExtractor={item => item.id}
-            numColumns={3}  // Three items per row
-            columnWrapperStyle={styles.row}
+            numColumns={1} // Single column for CateComponent
+            onEndReached={loadMoreData}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={
+              loading ? <ActivityIndicator size="large" color="#0077b6" /> : null
+            }
           />
         </View>
-        <View style={styles.verticalDivider} />
-        <View style={styles.rightSide} />
       </View>
     </View>
   );
@@ -84,16 +137,10 @@ const styles = StyleSheet.create({
   },
   navBar: {
     backgroundColor: '#0077b6',
-    height: 30,
+    height: 25,
     width: '100%',
     borderTopWidth: 0.5,
-    borderBottomWidth: 0.5,
-    borderColor: 'black',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: 'black',
-    width: '100%',
+    borderTopColor: '#000',
   },
   content: {
     flexDirection: 'row',
@@ -101,20 +148,55 @@ const styles = StyleSheet.create({
   },
   leftSide: {
     flex: 8.5,
-    backgroundColor: '#f0f0f0',
-    padding: 10,
+    backgroundColor: '#fff',
+    paddingLeft: 35,
+    paddingRight: 35,
+    padding: 5,
+    position: 'relative',
   },
   rightSide: {
-    flex: 1.5,
-    backgroundColor: '#d3d3d3',
+    flex: 1, // Make rightSide fill the remaining space
+    backgroundColor: '#fff',
+    padding: 3,
+    paddingLeft: 6,
   },
   verticalDivider: {
     width: 1,
-    backgroundColor: 'black',
+    backgroundColor: '#000',
   },
   row: {
     justifyContent: 'space-between',
-    marginBottom: 10,  // Add spacing between rows if needed
+    marginBottom: 5,
+  },
+  scrollButton: {
+    position: 'absolute',
+    top: '50%',
+    transform: [{ translateY: -40 }],
+    left: 0,
+    width: 30,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  scrollButtonRight: {
+    position: 'absolute',
+    top: '50%',
+    transform: [{ translateY: -40 }],
+    right: 0,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  scrollButtonText: {
+    color: 'black',
+    fontSize: 20,
+  },
+  rightItem: {
+    paddingTop: 2,  // Top padding for CateComponent
+    paddingBottom: 5, // Bottom padding for CateComponent
   },
 });
 

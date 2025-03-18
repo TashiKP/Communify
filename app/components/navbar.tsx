@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
+import { faUserCircle } from '@fortawesome/free-solid-svg-icons';
 
 const Navbar = () => {
   const [isEnglish, setIsEnglish] = useState(true); // true for English, false for Dzongkha
@@ -27,10 +29,12 @@ const Navbar = () => {
       
       <Text style={styles.navbarTitle}>Communify</Text>
       
-      <TouchableOpacity style={styles.profileCircle}>
-        <Image
-          source={{ uri: 'https://via.placeholder.com/40' }}
-          style={styles.profileImage}
+      <TouchableOpacity>
+        <FontAwesomeIcon
+          icon={faUserCircle}
+          size={35}
+          color="white"
+          style={styles.profileIcon}
         />
       </TouchableOpacity>
     </View>
@@ -56,20 +60,25 @@ const styles = StyleSheet.create({
   },
   
   toggleButton: {
-    width: 80,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    width: 70,  // Reduced width to make it thinner
+    height: 30,  // Reduced height for a thinner look
+    borderRadius: 14,
+    backgroundColor: 'rgb(255, 255, 255)',
     flexDirection: 'row',
     position: 'relative',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 3,
   },
   toggleSlider: {
-    width: 40,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#fff',
+    width: 35, // Adjusted to fit the new toggle button width
+    height: 25,  // Adjusted to fit the new toggle button height
+    borderRadius: 10,
+    backgroundColor: '#0077b6',
     position: 'absolute',
     justifyContent: 'center',
     alignItems: 'center',
@@ -86,7 +95,7 @@ const styles = StyleSheet.create({
     right: 4,
   },
   toggleActiveText: {
-    color: '#0077b6',
+    color: '#fff',
     fontSize: 14,
     fontWeight: 'bold',
   },
@@ -96,18 +105,17 @@ const styles = StyleSheet.create({
     fontSize: 30,
     color: '#fff',
     fontWeight: 'bold',
+    marginLeft: -25, // Slightly move title to the left
+    textShadowColor: '#000', // Adding shadow to the text
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
-  profileCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  profileImage: {
-    width: '100%',
-    height: '100%',
+  profileIcon: {
+    shadowColor: '#000', // Shadow effect for the profile icon
+    shadowOffset: { width: 1, height: 1 },
+    shadowOpacity: 0.5,
+    shadowRadius: 3,
+    elevation: 4,
   },
 });
 

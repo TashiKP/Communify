@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, StyleSheet, FlatList, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, FlatList, Text, ActivityIndicator } from 'react-native';
 import axios from 'axios';
 import SquareComponent from './SquareComponent';
-import CateComponent from './CateComponent'; // Import the CateComponent
+import CateComponent from './CateComponent';
 
 interface SquareData {
   id: string;
@@ -65,27 +65,13 @@ const NavBarComponent = () => {
     </View>
   );
 
-  const scrollToLeft = () => {
-    if (flatListRefLeft.current) {
-      flatListRefLeft.current.scrollToOffset({ animated: true, offset: 0 });
-    }
-  };
-
-  const scrollToRight = () => {
-    if (flatListRefRight.current) {
-      flatListRefRight.current.scrollToEnd({ animated: true });
-    }
-  };
-
   return (
     <View style={styles.container}>
-      <View style={styles.navBar} />
+      <View style={styles.navBar}>
+        <Text style={styles.navBarTitle}>Symbols (All)</Text>
+      </View>
       <View style={styles.content}>
         <View style={styles.leftSide}>
-          <TouchableOpacity style={styles.scrollButton} onPress={scrollToLeft}>
-            <Text style={styles.scrollButtonText}>{'<'}</Text>
-          </TouchableOpacity>
-
           {fetchingKeywords ? (
             <ActivityIndicator size="large" color="#0077b6" />
           ) : (
@@ -103,22 +89,17 @@ const NavBarComponent = () => {
               }
             />
           )}
-
-          <TouchableOpacity style={styles.scrollButtonRight} onPress={scrollToRight}>
-            <Text style={styles.scrollButtonText}>{'>'}</Text>
-          </TouchableOpacity>
         </View>
 
         <View style={styles.verticalDivider} />
 
         <View style={styles.rightSide}>
-          {/* FlatList for CateComponent */}
           <FlatList
             ref={flatListRefRight}
             data={data}
             renderItem={renderRightItem}
             keyExtractor={item => item.id}
-            numColumns={1} // Single column for CateComponent
+            numColumns={1}
             onEndReached={loadMoreData}
             onEndReachedThreshold={0.5}
             ListFooterComponent={
@@ -141,6 +122,13 @@ const styles = StyleSheet.create({
     width: '100%',
     borderTopWidth: 0.5,
     borderTopColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  navBarTitle: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: 'bold',
   },
   content: {
     flexDirection: 'row',
@@ -149,16 +137,16 @@ const styles = StyleSheet.create({
   leftSide: {
     flex: 8.5,
     backgroundColor: '#fff',
-    paddingLeft: 35,
-    paddingRight: 35,
+    paddingLeft: 26,
+    paddingRight: 26,
     padding: 5,
     position: 'relative',
   },
   rightSide: {
-    flex: 1, // Make rightSide fill the remaining space
+    flex: 1.1,
     backgroundColor: '#fff',
     padding: 3,
-    paddingLeft: 6,
+    paddingLeft: 23,
   },
   verticalDivider: {
     width: 1,
@@ -168,35 +156,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 5,
   },
-  scrollButton: {
-    position: 'absolute',
-    top: '50%',
-    transform: [{ translateY: -40 }],
-    left: 0,
-    width: 30,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1,
-  },
-  scrollButtonRight: {
-    position: 'absolute',
-    top: '50%',
-    transform: [{ translateY: -40 }],
-    right: 0,
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1,
-  },
-  scrollButtonText: {
-    color: 'black',
-    fontSize: 20,
-  },
   rightItem: {
-    paddingTop: 2,  // Top padding for CateComponent
-    paddingBottom: 5, // Bottom padding for CateComponent
+    paddingTop: 2,
+    paddingBottom: 5,
   },
 });
 

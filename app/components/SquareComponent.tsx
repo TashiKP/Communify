@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import React, {useState, useEffect} from 'react';
+import {View, Text, Image, StyleSheet} from 'react-native';
 import axios from 'axios';
 
 interface SquareComponentProps {
@@ -7,7 +7,10 @@ interface SquareComponentProps {
   language: string;
 }
 
-const SquareComponent: React.FC<SquareComponentProps> = ({ keyword, language }) => {
+const SquareComponent: React.FC<SquareComponentProps> = ({
+  keyword,
+  language,
+}) => {
   const [pictogramUrl, setPictogramUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -16,7 +19,9 @@ const SquareComponent: React.FC<SquareComponentProps> = ({ keyword, language }) 
   useEffect(() => {
     const fetchPictogram = async () => {
       try {
-        const searchUrl = `https://api.arasaac.org/api/pictograms/${language}/search/${encodeURIComponent(keyword)}`;
+        const searchUrl = `https://api.arasaac.org/api/pictograms/${language}/search/${encodeURIComponent(
+          keyword,
+        )}`;
         const response = await axios.get(searchUrl);
 
         if (!response.data || response.data.length === 0) {
@@ -27,7 +32,7 @@ const SquareComponent: React.FC<SquareComponentProps> = ({ keyword, language }) 
 
         const pictogramId = response.data[0]._id;
         const generatedUrl = `https://static.arasaac.org/pictograms/${pictogramId}/${pictogramId}_500.png`;
-        
+
         setPictogramUrl(generatedUrl);
         setLoading(false);
       } catch (err) {
@@ -36,26 +41,29 @@ const SquareComponent: React.FC<SquareComponentProps> = ({ keyword, language }) 
       }
     };
 
-    // Generate a random color for the top bar
     const generateRandomColor = () => {
-      const randomColor = `#${Math.floor(Math.random() * 16777215).toString(16)}`;
+      const randomColor = `#${Math.floor(Math.random() * 16777215).toString(
+        16,
+      )}`;
       return randomColor;
     };
 
-    setTopBarColor(generateRandomColor());  // Set the random color
+    setTopBarColor(generateRandomColor());
     fetchPictogram();
   }, [keyword, language]);
 
   return (
     <View style={styles.square}>
       {/* Top Bar with random color */}
-      <View style={[styles.topBar, { backgroundColor: topBarColor }]} />
+      <View style={[styles.topBar, {backgroundColor: topBarColor}]} />
 
       {/* Pictogram */}
       <View style={styles.imageContainer}>
         {loading && <Text>Loading...</Text>}
         {error && <Text>{error}</Text>}
-        {pictogramUrl && <Image source={{ uri: pictogramUrl }} style={styles.symbolImage} />}
+        {pictogramUrl && (
+          <Image source={{uri: pictogramUrl}} style={styles.symbolImage} />
+        )}
       </View>
 
       {/* Keyword */}
@@ -74,7 +82,7 @@ const styles = StyleSheet.create({
     borderColor: '#000',
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 1, height: 1 },
+    shadowOffset: {width: 1, height: 1},
     shadowOpacity: 0.1,
     shadowRadius: 3,
     alignItems: 'center',

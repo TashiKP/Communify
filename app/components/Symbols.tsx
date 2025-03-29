@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
   },
   leftSide: {
     flex: 8.5,
-    backgroundColor: '#fff',
+    backgroundColor: '#f0f9ff',
     paddingLeft: 26,
     paddingRight: 26,
     padding: 5,
@@ -144,12 +144,12 @@ const styles = StyleSheet.create({
   },
   rightSide: {
     flex: 1.1,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgb(239, 239, 239)',
     padding: 3,
     paddingLeft: 23,
   },
   verticalDivider: {
-    width: 1,
+    width: 0.8,
     backgroundColor: '#000',
   },
   row: {

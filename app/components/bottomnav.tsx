@@ -5,20 +5,58 @@ import {
   faSearch, faPlus, faBoxes, faHome, 
   faKeyboard, faCog 
 } from '@fortawesome/free-solid-svg-icons';
-import Menu from '../components/menu' ;
+import Menu from '../components/menu';
+import SearchBar from '../components/SearchBar';
 
 const BottomBar = React.memo(() => {
   const [isMenuVisible, setMenuVisible] = useState(false);
-  const [slideAnim] = useState(new Animated.Value(500)); // Start from off-screen
-  const [overlayAnim] = useState(new Animated.Value(0)); // Overlay opacity
+  const [isSearchVisible, setSearchVisible] = useState(false);
 
+  // Animation values
+  const [slideAnim] = useState(new Animated.Value(500)); 
+  const [overlayAnim] = useState(new Animated.Value(0)); 
+  const [searchAnim] = useState(new Animated.Value(100)); // Start below screen
+
+  // Open Settings Menu
   const handleSettingsPress = useCallback(() => {
     setMenuVisible(true);
     Animated.parallel([
       Animated.spring(slideAnim, {
-        toValue: 0, // Slide in to position 0 (fully visible)
+        toValue: 0,
         useNativeDriver: true,
-        overshootClamping: true, // Prevents overshooting and adjusts immediately
+        overshootClamping: true,
+      }),
+      Animated.timing(overlayAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [slideAnim, overlayAnim]);
+
+  // Close Settings Menu
+  const closeMenu = useCallback(() => {
+    Animated.parallel([
+      Animated.spring(slideAnim, {
+        toValue: 500,
+        useNativeDriver: true,
+        overshootClamping: true,
+      }),
+      Animated.timing(overlayAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => setMenuVisible(false));
+  }, [slideAnim, overlayAnim]);
+
+  // Open Search Bar
+  const handleSearchPress = useCallback(() => {
+    setSearchVisible(true);
+    Animated.parallel([
+      Animated.spring(searchAnim, {
+        toValue: 0, // Move to the center
+        useNativeDriver: true,
       }),
       Animated.timing(overlayAnim, {
         toValue: 1, // Show overlay
@@ -26,27 +64,27 @@ const BottomBar = React.memo(() => {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [slideAnim, overlayAnim]);
+  }, [searchAnim, overlayAnim]);
 
-  const closeMenu = useCallback(() => {
+  // Close Search Bar
+  const closeSearch = useCallback(() => {
     Animated.parallel([
-      Animated.spring(slideAnim, {
-        toValue: 500, // Slide out to off-screen position
+      Animated.spring(searchAnim, {
+        toValue: 1, // Move off-screen
         useNativeDriver: true,
-        overshootClamping: true, // Prevents overshooting
       }),
       Animated.timing(overlayAnim, {
         toValue: 0, // Hide overlay
         duration: 200,
         useNativeDriver: true,
       }),
-    ]).start(() => setMenuVisible(false));
-  }, [slideAnim, overlayAnim]);
+    ]).start(() => setSearchVisible(false));
+  }, [searchAnim, overlayAnim]);
 
   return (
     <View style={styles.container}>
       <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.button}>
+        <TouchableOpacity style={styles.button} onPress={handleSearchPress}>
           <FontAwesomeIcon icon={faSearch} size={28} color="#fff" />
         </TouchableOpacity>
 
@@ -81,14 +119,15 @@ const BottomBar = React.memo(() => {
         </TouchableOpacity>
       </View>
 
-      <Modal
-        visible={isMenuVisible}
-        transparent={true}
-        animationType="none"
-        onRequestClose={closeMenu}
-      >
+      {/* Settings Menu */}
+      <Modal visible={isMenuVisible} transparent={true} animationType="none" onRequestClose={closeMenu}>
         <Menu slideAnim={slideAnim} overlayAnim={overlayAnim} closeMenu={closeMenu} />
       </Modal>
+
+      {/* Search Bar */}
+      {isSearchVisible && (
+        <SearchBar searchAnim={searchAnim} overlayAnim={overlayAnim} closeSearch={closeSearch} />
+      )}
     </View>
   );
 });
@@ -116,7 +155,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     width: 1,
-    height: '50%',
+    height: '100%',
     backgroundColor: 'rgba(255, 255, 255, 0.5)',
   },
 });

@@ -14,9 +14,10 @@ import { RootStackParamList } from '../navigation/types';
 // Type for props
 type BottomBarProps = {
   handlePlusPress: () => void;
+  handleHomePress: () => void;  // Add handleHomePress prop
 };
 
-const BottomBar: React.FC<BottomBarProps> = React.memo(({ handlePlusPress }) => {
+const BottomBar: React.FC<BottomBarProps> = React.memo(({ handlePlusPress, handleHomePress }) => {
   const [isMenuVisible, setMenuVisible] = useState(false);
   const [isSearchVisible, setSearchVisible] = useState(false);
 
@@ -24,9 +25,6 @@ const BottomBar: React.FC<BottomBarProps> = React.memo(({ handlePlusPress }) => 
   const [slideAnim] = useState(new Animated.Value(500)); 
   const [overlayAnim] = useState(new Animated.Value(0)); 
   const [searchAnim] = useState(new Animated.Value(100)); // Start below screen
-
-  // Type the navigation hook with NativeStackNavigationProp
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   // Open Settings Menu
   const handleSettingsPress = useCallback(() => {
@@ -113,7 +111,7 @@ const BottomBar: React.FC<BottomBarProps> = React.memo(({ handlePlusPress }) => 
 
         <View style={styles.divider} />
 
-        <TouchableOpacity style={styles.button}>
+        <TouchableOpacity style={styles.button} onPress={handleHomePress}>  {/* Handle Home press */}
           <FontAwesomeIcon icon={faHome} size={28} color="#fff" />
         </TouchableOpacity>
 

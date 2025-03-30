@@ -14,7 +14,11 @@ const HomeScreen = () => {
   };
 
   const handleBackPress = () => {
-    setIsCustomPage(false);  // Go back to the NavBarComponent
+    setIsCustomPage(false);  // Go back to the original state
+  };
+
+  const handleHomePress = () => {
+    setIsCustomPage(false);  // Go back to the original state when home button is pressed
   };
 
   return (
@@ -27,7 +31,7 @@ const HomeScreen = () => {
       ) : (
         <NavBarComponent />  // Show NavBarComponent by default
       )}
-      <BottomBar handlePlusPress={handlePlusPress} />  {/* Pass handlePlusPress to BottomBar */}
+      <BottomBar handlePlusPress={handlePlusPress} handleHomePress={handleHomePress} />  {/* Pass handleHomePress to BottomBar */}
     </View>
   );
 };

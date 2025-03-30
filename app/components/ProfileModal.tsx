@@ -257,12 +257,9 @@ const styles = StyleSheet.create({
     color: 'white',
   },
   closeButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 12,
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: '#ff4d4d',
+    borderRadius: 8,
+    padding: 5,
   },
   contentContainer: {
     padding: 20,
@@ -370,8 +367,8 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   logoutButton: {
-    backgroundColor: '#ff4d4d',
-    padding: 12,
+    backgroundColor: '#0077b6',
+    padding: 10,
     borderRadius: 12,
     flexDirection: 'row',
     justifyContent: 'center',
@@ -384,7 +381,7 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     color: 'white',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
     marginLeft: 8,
   },

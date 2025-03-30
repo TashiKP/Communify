@@ -19,7 +19,11 @@ const Stack = createNativeStackNavigator<RootStackParamList>();  // Type the nav
 export default function AppNavigator() {
   return (
     <Stack.Navigator initialRouteName="Home">
-      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen
+        name="Login"
+        component={LoginScreen}
+        options={{ headerShown: false }} // Hide the header for LoginScreen
+      />
       <Stack.Screen
         name="Home"
         component={HomeScreen}

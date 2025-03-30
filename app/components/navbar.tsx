@@ -1,24 +1,25 @@
-import React, {useState} from 'react';
-import {View, Text, StyleSheet, TouchableOpacity} from 'react-native';
-import {FontAwesomeIcon} from '@fortawesome/react-native-fontawesome';
-import {faUserCircle} from '@fortawesome/free-solid-svg-icons';
-import ProfileModal from './ProfileModal'; 
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
+import { faUserCircle } from '@fortawesome/free-solid-svg-icons';
+import ProfileModal from './ProfileModal';
+import { useNavigation } from '@react-navigation/native'; // Import useNavigation
 
 const Navbar = () => {
-  const [isEnglish, setIsEnglish] = useState(true); // true for English, false for Dzongkha
-  const [profileModalVisible, setProfileModalVisible] = useState(false); // State to control modal visibility
-  
+  const [isEnglish, setIsEnglish] = useState(true);
+  const [profileModalVisible, setProfileModalVisible] = useState(false);
+  const navigation = useNavigation(); // Get the navigation object
+
   const toggleLanguage = () => {
     setIsEnglish(previous => !previous);
   };
-  
-  // Handle logout function to pass to ProfileModal
+
   const handleLogout = () => {
     console.log('User logged out');
     // Add your logout logic here
     setProfileModalVisible(false);
   };
-  
+
   return (
     <>
       <View style={styles.navbar}>
@@ -46,9 +47,8 @@ const Navbar = () => {
           />
         </TouchableOpacity>
       </View>
-      
-      {/* Import and use ProfileModal */}
-      <ProfileModal 
+
+      <ProfileModal
         visible={profileModalVisible}
         onClose={() => setProfileModalVisible(false)}
         onLogout={handleLogout}
@@ -57,6 +57,7 @@ const Navbar = () => {
           email: 'jane.doe@example.com',
           avatar: 'https://via.placeholder.com/150',
         }}
+        navigation={navigation} // Pass the navigation object
       />
     </>
   );
@@ -71,7 +72,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 15,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 4},
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
     elevation: 5,
@@ -89,7 +90,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.3,
     shadowRadius: 3,
     elevation: 3,
@@ -103,7 +104,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 1,
     elevation: 2,
@@ -127,12 +128,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: -25,
     textShadowColor: '#000',
-    textShadowOffset: {width: 1, height: 1},
+    textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
   },
   profileIcon: {
     shadowColor: '#000',
-    shadowOffset: {width: 1, height: 1},
+    shadowOffset: { width: 1, height: 1 },
     shadowOpacity: 0.5,
     shadowRadius: 3,
     elevation: 4,

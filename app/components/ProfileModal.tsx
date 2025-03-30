@@ -21,6 +21,7 @@ import {
   faCheck,
   faCamera
 } from '@fortawesome/free-solid-svg-icons';
+import { useNavigation } from '@react-navigation/native';
 
 const AVATAR_LIBRARY = [
   { id: 'avatar1', uri: 'https://ui-avatars.com/api/?name=John+Doe&background=0D8ABC&color=fff' },
@@ -37,6 +38,7 @@ interface ProfileModalProps {
   };
   onLogout?: () => void;
   onSave?: (name: string) => void;
+  navigation: any;
 }
 
 const ProfileModal: React.FC<ProfileModalProps> = ({ 
@@ -44,7 +46,8 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
   onClose, 
   userProfile, 
   onLogout, 
-  onSave 
+  onSave,
+  navigation 
 }) => {
   const profile = userProfile || {
     name: 'John Doe',
@@ -57,7 +60,6 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
   const [isSaving, setSaving] = useState(false);
   const [showAvatarOptions, setShowAvatarOptions] = useState(false);
   
-  // Reset state when modal opens with new profile
   useEffect(() => {
     if (visible) {
       setName(profile.name);
@@ -70,7 +72,6 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
     if (name.trim() === '') return;
     
     setSaving(true);
-    // Simulate save operation
     setTimeout(() => {
       if (onSave) onSave(name);
       setSaving(false);
@@ -82,8 +83,13 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
     Keyboard.dismiss();
     if (isEditingName) {
       setIsEditingName(false);
-      setName(profile.name); // Reset to original if not saved
+      setName(profile.name);
     }
+  };
+
+  const handleLogout = () => {
+    if (onLogout) onLogout();
+    navigation.navigate('Login');
   };
 
   return (
@@ -91,7 +97,6 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
       <TouchableWithoutFeedback onPress={dismissKeyboard}>
         <SafeAreaView style={styles.modalBackground}>
           <View style={styles.modalContainer}>
-            {/* Header */}
             <View style={styles.header}>
               <Text style={styles.title}>User Profile</Text>
               <TouchableOpacity 
@@ -102,10 +107,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                 <FontAwesomeIcon icon={faTimes} size={20} color="white" />
               </TouchableOpacity>
             </View>
-            
-            {/* Content */}
             <View style={styles.contentContainer}>
-              {/* Profile Card */}
               <View style={styles.profileCard}>
                 <TouchableOpacity 
                   style={styles.avatarContainer} 
@@ -117,7 +119,6 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                     <FontAwesomeIcon icon={faCamera} size={12} color="white" />
                   </View>
                 </TouchableOpacity>
-                
                 <View style={styles.profileInfo}>
                   <View style={styles.nameContainer}>
                     {isEditingName ? (
@@ -150,8 +151,6 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                   <Text style={styles.email}>{profile.email}</Text>
                 </View>
               </View>
-              
-              {/* Buttons */}
               <View style={styles.buttonContainer}>
                 {isEditingName && (
                   <TouchableOpacity 
@@ -170,10 +169,9 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                     )}
                   </TouchableOpacity>
                 )}
-                
                 <TouchableOpacity 
                   style={styles.logoutButton} 
-                  onPress={onLogout}
+                  onPress={handleLogout}
                   activeOpacity={0.8}
                 >
                   <FontAwesomeIcon icon={faSignOutAlt} size={16} color="white" />
@@ -182,8 +180,6 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
               </View>
             </View>
           </View>
-          
-          {/* Avatar options modal - simple overlay */}
           {showAvatarOptions && (
             <TouchableWithoutFeedback onPress={() => setShowAvatarOptions(false)}>
               <View style={styles.avatarOptionsOverlay}>
@@ -222,7 +218,6 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
   );
 };
 
-// Get screen dimensions
 const { width } = Dimensions.get('window');
 const modalWidth = Math.min(width * 0.85, 360);
 
@@ -385,7 +380,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 8,
   },
-  // Avatar options styles
   avatarOptionsOverlay: {
     position: 'absolute',
     top: 0,

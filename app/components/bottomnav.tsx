@@ -7,8 +7,16 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import Menu from '../components/menu';
 import SearchBar from '../components/SearchBar';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/types';
 
-const BottomBar = React.memo(() => {
+// Type for props
+type BottomBarProps = {
+  handlePlusPress: () => void;
+};
+
+const BottomBar: React.FC<BottomBarProps> = React.memo(({ handlePlusPress }) => {
   const [isMenuVisible, setMenuVisible] = useState(false);
   const [isSearchVisible, setSearchVisible] = useState(false);
 
@@ -16,6 +24,9 @@ const BottomBar = React.memo(() => {
   const [slideAnim] = useState(new Animated.Value(500)); 
   const [overlayAnim] = useState(new Animated.Value(0)); 
   const [searchAnim] = useState(new Animated.Value(100)); // Start below screen
+
+  // Type the navigation hook with NativeStackNavigationProp
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   // Open Settings Menu
   const handleSettingsPress = useCallback(() => {
@@ -90,7 +101,7 @@ const BottomBar = React.memo(() => {
 
         <View style={styles.divider} />
 
-        <TouchableOpacity style={styles.button}>
+        <TouchableOpacity style={styles.button} onPress={handlePlusPress}>  {/* Handle Plus press */}
           <FontAwesomeIcon icon={faPlus} size={28} color="#fff" />
         </TouchableOpacity>
 

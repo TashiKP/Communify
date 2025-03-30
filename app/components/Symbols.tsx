@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
   },
   rightSide: {
     flex: 1.1,
-    backgroundColor: 'rgb(239, 239, 239)',
+    backgroundColor: 'rgb(232, 232, 232)',
     padding: 3,
     paddingLeft: 23,
   },

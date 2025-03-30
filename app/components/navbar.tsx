@@ -2,42 +2,63 @@ import React, {useState} from 'react';
 import {View, Text, StyleSheet, TouchableOpacity} from 'react-native';
 import {FontAwesomeIcon} from '@fortawesome/react-native-fontawesome';
 import {faUserCircle} from '@fortawesome/free-solid-svg-icons';
+import ProfileModal from './ProfileModal'; 
 
 const Navbar = () => {
   const [isEnglish, setIsEnglish] = useState(true); // true for English, false for Dzongkha
-
+  const [profileModalVisible, setProfileModalVisible] = useState(false); // State to control modal visibility
+  
   const toggleLanguage = () => {
     setIsEnglish(previous => !previous);
   };
-
+  
+  // Handle logout function to pass to ProfileModal
+  const handleLogout = () => {
+    console.log('User logged out');
+    // Add your logout logic here
+    setProfileModalVisible(false);
+  };
+  
   return (
-    <View style={styles.navbar}>
-      <TouchableOpacity
-        style={styles.toggleButton}
-        onPress={toggleLanguage}
-        activeOpacity={0.8}>
-        <View
-          style={[
-            styles.toggleSlider,
-            isEnglish ? styles.toggleSliderLeft : styles.toggleSliderRight,
-          ]}>
-          <Text style={styles.toggleActiveText}>
-            {isEnglish ? 'Eng' : 'Dzo'}
-          </Text>
-        </View>
-      </TouchableOpacity>
-
-      <Text style={styles.navbarTitle}>Communify</Text>
-
-      <TouchableOpacity>
-        <FontAwesomeIcon
-          icon={faUserCircle}
-          size={35}
-          color="white"
-          style={styles.profileIcon}
-        />
-      </TouchableOpacity>
-    </View>
+    <>
+      <View style={styles.navbar}>
+        <TouchableOpacity
+          style={styles.toggleButton}
+          onPress={toggleLanguage}
+          activeOpacity={0.8}>
+          <View
+            style={[
+              styles.toggleSlider,
+              isEnglish ? styles.toggleSliderLeft : styles.toggleSliderRight,
+            ]}>
+            <Text style={styles.toggleActiveText}>
+              {isEnglish ? 'Eng' : 'Dzo'}
+            </Text>
+          </View>
+        </TouchableOpacity>
+        <Text style={styles.navbarTitle}>Communify</Text>
+        <TouchableOpacity onPress={() => setProfileModalVisible(true)}>
+          <FontAwesomeIcon
+            icon={faUserCircle}
+            size={35}
+            color="white"
+            style={styles.profileIcon}
+          />
+        </TouchableOpacity>
+      </View>
+      
+      {/* Import and use ProfileModal */}
+      <ProfileModal 
+        visible={profileModalVisible}
+        onClose={() => setProfileModalVisible(false)}
+        onLogout={handleLogout}
+        userProfile={{
+          name: 'Jane Doe',
+          email: 'jane.doe@example.com',
+          avatar: 'https://via.placeholder.com/150',
+        }}
+      />
+    </>
   );
 };
 
@@ -58,7 +79,6 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(0, 0, 0, 0.3)',
     overflow: 'hidden',
   },
-
   toggleButton: {
     width: 70,
     height: 30,

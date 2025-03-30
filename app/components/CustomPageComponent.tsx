@@ -12,6 +12,12 @@ const CustomPageComponent: React.FC<CustomPageComponentProps> = ({ onBackPress }
       <View style={styles.navBar}>
         <Text style={styles.navBarTitle}>Your Symbols</Text>
       </View>
+      {/* Optionally render back button */}
+      {onBackPress && (
+        <TouchableOpacity onPress={onBackPress}>
+          <Text>Back</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -19,6 +25,7 @@ const CustomPageComponent: React.FC<CustomPageComponentProps> = ({ onBackPress }
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f0f9ff',
   },
   navBar: {
     justifyContent: 'center',
@@ -41,6 +48,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#f0f9ff'
   },
 });
 

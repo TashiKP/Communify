@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
 
-// Define the type for the props
 interface CustomPageComponentProps {
   onBackPress: () => void;
 }

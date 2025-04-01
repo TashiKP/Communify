@@ -9,20 +9,21 @@ interface SquareData {
   keyword: string;
 }
 
+const MemoizedSquareComponent = React.memo(SquareComponent);
+const MemoizedCateComponent = React.memo(CateComponent);
+
 const NavBarComponent = () => {
-  const language = 'en';
   const [data, setData] = useState<SquareData[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [fetchingKeywords, setFetchingKeywords] = useState<boolean>(true);
-
   const flatListRefLeft = useRef<FlatList<SquareData>>(null);
   const flatListRefRight = useRef<FlatList<SquareData>>(null);
 
   const loadKeywords = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`https://api.arasaac.org/v1/keywords/${language}`);
-      if (response.data && response.data.words) {
+      const response = await axios.get(`https://api.arasaac.org/v1/keywords/en`);
+      if (response.data?.words) {
         const newData = response.data.words.map((keyword: string, index: number) => ({
           id: (index + 1).toString(),
           keyword,
@@ -35,7 +36,7 @@ const NavBarComponent = () => {
       setLoading(false);
       setFetchingKeywords(false);
     }
-  }, [language]);
+  }, []);
 
   useEffect(() => {
     loadKeywords();
@@ -46,24 +47,26 @@ const NavBarComponent = () => {
     setLoading(true);
 
     setTimeout(() => {
-      const newData = data.map((item, index) => ({
-        id: (data.length + index + 1).toString(),
-        keyword: item.keyword,
-      }));
-      setData(prevData => [...prevData, ...newData]);
+      setData(prevData => [
+        ...prevData,
+        ...prevData.map((item, index) => ({
+          id: (prevData.length + index + 1).toString(),
+          keyword: item.keyword,
+        })),
+      ]);
       setLoading(false);
     }, 1000);
-  }, [data, loading]);
+  }, [loading]);
 
-  const renderLeftItem = ({ item }: { item: SquareData }) => (
-    <SquareComponent keyword={item.keyword} language={language} />
-  );
+  const renderLeftItem = useCallback(({ item }: { item: SquareData }) => (
+    <MemoizedSquareComponent keyword={item.keyword} language="en" />
+  ), []);
 
-  const renderRightItem = ({ item }: { item: SquareData }) => (
+  const renderRightItem = useCallback(({ item }: { item: SquareData }) => (
     <View style={styles.rightItem}>
-      <CateComponent keyword={item.keyword} language={language} />
+      <MemoizedCateComponent keyword={item.keyword} language="en" />
     </View>
-  );
+  ), []);
 
   return (
     <View style={styles.container}>
@@ -84,9 +87,7 @@ const NavBarComponent = () => {
               columnWrapperStyle={styles.row}
               onEndReached={loadMoreData}
               onEndReachedThreshold={0.5}
-              ListFooterComponent={
-                loading ? <ActivityIndicator size="large" color="#0077b6" /> : null
-              }
+              ListFooterComponent={loading ? <ActivityIndicator size="large" color="#0077b6" /> : null}
             />
           )}
         </View>
@@ -102,9 +103,7 @@ const NavBarComponent = () => {
             numColumns={1}
             onEndReached={loadMoreData}
             onEndReachedThreshold={0.5}
-            ListFooterComponent={
-              loading ? <ActivityIndicator size="large" color="#0077b6" /> : null
-            }
+            ListFooterComponent={loading ? <ActivityIndicator size="large" color="#0077b6" /> : null}
           />
         </View>
       </View>

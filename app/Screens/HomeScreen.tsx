@@ -2,36 +2,35 @@ import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import IconInputComponent from '../components/input';
 import Navbar from '../components/navbar';
-import NavBarComponent from '../components/Symbols';  // Your existing NavBarComponent
+import NavBarComponent from '../components/Symbols';  
 import BottomBar from '../components/bottomnav';
-import CustomPageComponent from '../components/CustomPageComponent';  // Custom Page
+import CustomPageComponent from '../components/CustomPageComponent';  
 
 const HomeScreen = () => {
-  const [isCustomPage, setIsCustomPage] = useState(false);  // State to toggle between components
+  const [isCustomPage, setIsCustomPage] = useState(false);  
 
   const handlePlusPress = () => {
-    setIsCustomPage(true);  // Switch to CustomPage
+    setIsCustomPage(true);  
   };
 
   const handleBackPress = () => {
-    setIsCustomPage(false);  // Go back to the original state
+    setIsCustomPage(false);  
   };
 
   const handleHomePress = () => {
-    setIsCustomPage(false);  // Go back to the original state when home button is pressed
+    setIsCustomPage(false);  
   };
 
   return (
     <View style={styles.container}>
       <Navbar />
       <IconInputComponent />
-      {/* Conditionally render based on isCustomPage state */}
       {isCustomPage ? (
-        <CustomPageComponent onBackPress={handleBackPress} />  // Show custom page
+        <CustomPageComponent onBackPress={handleBackPress} />  
       ) : (
-        <NavBarComponent />  // Show NavBarComponent by default
+        <NavBarComponent />  
       )}
-      <BottomBar handlePlusPress={handlePlusPress} handleHomePress={handleHomePress} />  {/* Pass handleHomePress to BottomBar */}
+      <BottomBar handlePlusPress={handlePlusPress} handleHomePress={handleHomePress} /> 
     </View>
   );
 };

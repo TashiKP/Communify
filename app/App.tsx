@@ -1,8 +1,7 @@
 import React, { useEffect } from 'react';
 import { SafeAreaView, StyleSheet } from 'react-native';
 import Orientation from 'react-native-orientation-locker';
-import AppNavigator from './Navigation/AppNavigator'; // Import your AppNavigator component
-
+import AppNavigator from './Navigation/AppNavigator'; 
 export default function App() {
   useEffect(() => {
     Orientation.lockToLandscape(); 

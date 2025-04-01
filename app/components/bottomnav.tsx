@@ -1,25 +1,21 @@
 import React, { useState, useCallback } from 'react';
 import { View, TouchableOpacity, StyleSheet, Modal, Animated } from 'react-native';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
-import { 
-  faSearch, faPlus, faBoxes, faHome, 
-  faKeyboard, faCog 
-} from '@fortawesome/free-solid-svg-icons';
+import { faSearch, faPlus, faBoxes, faHome, faKeyboard, faCog } from '@fortawesome/free-solid-svg-icons';
 import Menu from '../components/menu';
 import SearchBar from '../components/SearchBar';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/types';
+import BottomGrid from '../components/BottomGrid'; // Import BottomGrid component
 
 // Type for props
 type BottomBarProps = {
   handlePlusPress: () => void;
-  handleHomePress: () => void;  // Add handleHomePress prop
+  handleHomePress: () => void;
 };
 
 const BottomBar: React.FC<BottomBarProps> = React.memo(({ handlePlusPress, handleHomePress }) => {
   const [isMenuVisible, setMenuVisible] = useState(false);
   const [isSearchVisible, setSearchVisible] = useState(false);
+  const [isGridModalVisible, setGridModalVisible] = useState(false); // State for BottomGrid modal
 
   // Animation values
   const [slideAnim] = useState(new Animated.Value(500)); 
@@ -28,7 +24,6 @@ const BottomBar: React.FC<BottomBarProps> = React.memo(({ handlePlusPress, handl
 
   // Open Settings Menu
   const handleSettingsPress = useCallback(() => {
-    setMenuVisible(true);
     Animated.parallel([
       Animated.spring(slideAnim, {
         toValue: 0,
@@ -40,9 +35,9 @@ const BottomBar: React.FC<BottomBarProps> = React.memo(({ handlePlusPress, handl
         duration: 200,
         useNativeDriver: true,
       }),
-    ]).start();
+    ]).start(() => setMenuVisible(true)); // Set modal visible only after animation starts
   }, [slideAnim, overlayAnim]);
-
+  
   // Close Settings Menu
   const closeMenu = useCallback(() => {
     Animated.parallel([
@@ -90,6 +85,16 @@ const BottomBar: React.FC<BottomBarProps> = React.memo(({ handlePlusPress, handl
     ]).start(() => setSearchVisible(false));
   }, [searchAnim, overlayAnim]);
 
+  // Open BottomGrid modal
+  const handleBoxesPress = () => {
+    setGridModalVisible(true);
+  };
+
+  // Close BottomGrid modal
+  const closeGridModal = () => {
+    setGridModalVisible(false);
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.bottomBar}>
@@ -99,19 +104,19 @@ const BottomBar: React.FC<BottomBarProps> = React.memo(({ handlePlusPress, handl
 
         <View style={styles.divider} />
 
-        <TouchableOpacity style={styles.button} onPress={handlePlusPress}>  {/* Handle Plus press */}
+        <TouchableOpacity style={styles.button} onPress={handlePlusPress}>  
           <FontAwesomeIcon icon={faPlus} size={28} color="#fff" />
         </TouchableOpacity>
 
         <View style={styles.divider} />
 
-        <TouchableOpacity style={styles.button}>
+        <TouchableOpacity style={styles.button} onPress={handleBoxesPress}>  {/* Handle Boxes press */}
           <FontAwesomeIcon icon={faBoxes} size={28} color="#fff" />
         </TouchableOpacity>
 
         <View style={styles.divider} />
 
-        <TouchableOpacity style={styles.button} onPress={handleHomePress}>  {/* Handle Home press */}
+        <TouchableOpacity style={styles.button} onPress={handleHomePress}>  
           <FontAwesomeIcon icon={faHome} size={28} color="#fff" />
         </TouchableOpacity>
 
@@ -137,6 +142,9 @@ const BottomBar: React.FC<BottomBarProps> = React.memo(({ handlePlusPress, handl
       {isSearchVisible && (
         <SearchBar searchAnim={searchAnim} overlayAnim={overlayAnim} closeSearch={closeSearch} />
       )}
+
+      {/* BottomGrid Modal */}
+      <BottomGrid visible={isGridModalVisible} onClose={closeGridModal} />
     </View>
   );
 });

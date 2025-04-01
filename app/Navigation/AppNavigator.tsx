@@ -4,17 +4,24 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import LoginScreen from '../Screens/LoginScreen';
 import HomeScreen from '../Screens/HomeScreen';
 import CustomPageComponent from '../components/CustomPageComponent';
-import NavBarComponent from '../components/Symbols';  // Import NavBarComponent
+import NavBarComponent from '../components/Symbols'; 
 
-// Define the type for your navigation stack
 type RootStackParamList = {
   Login: undefined;
   Home: undefined;
   CustomPage: undefined;
-  NavBarPage: undefined;  // Add a new screen for NavBarComponent
+  NavBarPage: undefined; 
 };
 
-const Stack = createNativeStackNavigator<RootStackParamList>();  // Type the navigator
+const Stack = createNativeStackNavigator<RootStackParamList>(); 
+
+const CustomPageWrapper: React.FC<
+  NativeStackScreenProps<RootStackParamList, 'CustomPage'>
+> = props => {
+  return (
+    <CustomPageComponent {...props} onBackPress={() => props.navigation.goBack()} />
+  );
+};
 
 export default function AppNavigator() {
   return (
@@ -22,22 +29,22 @@ export default function AppNavigator() {
       <Stack.Screen
         name="Login"
         component={LoginScreen}
-        options={{ headerShown: false }} // Hide the header for LoginScreen
+        options={{ headerShown: false }} 
       />
       <Stack.Screen
         name="Home"
         component={HomeScreen}
-        options={{ headerShown: false }} // Hide the default header
+        options={{ headerShown: false }} 
       />
       <Stack.Screen
         name="CustomPage"
-        component={(props: NativeStackScreenProps<RootStackParamList, 'CustomPage'>) => <CustomPageComponent {...props} onBackPress={() => props.navigation.goBack()} />}
-        options={{ headerShown: false }} // Hide header if not needed
+        component={CustomPageWrapper} 
+        options={{ headerShown: false }} 
       />
       <Stack.Screen
-        name="NavBarPage"  // Define the NavBarPage
+        name="NavBarPage" 
         component={NavBarComponent}
-        options={{ headerShown: false }}  // Hide header if not needed
+        options={{ headerShown: false }} 
       />
     </Stack.Navigator>
   );

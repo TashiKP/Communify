@@ -33,34 +33,44 @@ const LoginScreen = () => {
   };
 
   useEffect(() => {
-    Animated.loop(
-      Animated.timing(pulseAnim, {
-        toValue: 1,
-        duration: 5000,
-        easing: Easing.bezier(0.65, 0, 0.35, 1),
-        useNativeDriver: true,
-      })
-    ).start();
+    const startAnimations = () => {
+      // Pulse animation loop
+      Animated.loop(
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 5000,
+          easing: Easing.bezier(0.65, 0, 0.35, 1),
+          useNativeDriver: true,
+        })
+      ).start();
+
+      // Background animation loop
+      Animated.loop(
+        Animated.timing(backgroundAnim, {
+          toValue: 1,
+          duration: 20000,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      ).start();
+    };
+
+    // Start animations after a 10-second delay
+    const delayTimeout = setTimeout(() => {
+      startAnimations();
+    }, 10000); // 10 seconds delay
 
     let charIndex = 0;
     const typingInterval = setInterval(() => {
       setTypingText(slogan.substring(0, charIndex));
       charIndex = (charIndex + 1) % (slogan.length + 1);
-    }, 150);
+    }, 250);
 
-    return () => clearInterval(typingInterval);
-  }, [pulseAnim]);
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.timing(backgroundAnim, {
-        toValue: 1,
-        duration: 20000,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
-    ).start();
-  }, []);
+    return () => {
+      clearInterval(typingInterval);
+      clearTimeout(delayTimeout); // Cleanup timeout
+    };
+  }, []); // Empty dependency array to run only once when the component mounts
 
   const backgroundStyle = {
     transform: [

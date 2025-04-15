@@ -1,4 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, {useState, useEffect, useRef} from 'react';
+import {useNavigation} from '@react-navigation/native';
+import {RootStackParamList} from '..//Navigation/types'; // Adjust the import path as necessary
+
 import {
   View,
   Text,
@@ -12,21 +15,25 @@ import {
   Easing,
   Dimensions,
 } from 'react-native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 const primaryColor = '#0077b6';
 const backgroundColor = '#f0f9ff';
 const textColor = '#000';
 
-const { width, height } = Dimensions.get('window');
+
+
+const {width, height} = Dimensions.get('window');
 
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const pulseAnim = useRef(new Animated.Value(0)).current;
   const [typingText, setTypingText] = useState('');
-  const slogan = "Where Voices Find Their Way";
+  const slogan = 'Where Voices Find Their Way';
   const backgroundAnim = useRef(new Animated.Value(0)).current;
-  const communify = "Communify";
+  const communify = 'Communify';
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const handleLogin = () => {
     console.log('Email:', email, 'Password:', password);
@@ -41,7 +48,7 @@ const LoginScreen = () => {
           duration: 5000,
           easing: Easing.bezier(0.65, 0, 0.35, 1),
           useNativeDriver: true,
-        })
+        }),
       ).start();
 
       // Background animation loop
@@ -51,7 +58,7 @@ const LoginScreen = () => {
           duration: 20000,
           easing: Easing.linear,
           useNativeDriver: true,
-        })
+        }),
       ).start();
     };
 
@@ -97,28 +104,24 @@ const LoginScreen = () => {
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardAvoidingView}
-      >
+        style={styles.keyboardAvoidingView}>
         <View style={styles.outerContainer}>
           <View style={styles.container}>
             <Animated.View
               style={[
                 styles.leftContainer,
                 {
-                  transform: [{ scale: pulseScale }],
+                  transform: [{scale: pulseScale}],
                   opacity: pulseOpacity,
                   backgroundColor: primaryColor,
-                  overflow: 'hidden'
+                  overflow: 'hidden',
                 },
-              ]}
-            >
-              <Animated.View style={[styles.backgroundAnimation, backgroundStyle]} />
-              <Text style={styles.communifyText}>
-                {communify}
-              </Text>
-              <Text style={styles.typingText}>
-                {typingText}
-              </Text>
+              ]}>
+              <Animated.View
+                style={[styles.backgroundAnimation, backgroundStyle]}
+              />
+              <Text style={styles.communifyText}>{communify}</Text>
+              <Text style={styles.typingText}>{typingText}</Text>
             </Animated.View>
 
             <View style={styles.rightContainer}>
@@ -141,7 +144,9 @@ const LoginScreen = () => {
                 secureTextEntry
               />
 
-              <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+              <TouchableOpacity
+                style={styles.loginButton}
+                onPress={handleLogin}>
                 <Text style={styles.loginButtonText}>Login</Text>
               </TouchableOpacity>
 
@@ -149,11 +154,14 @@ const LoginScreen = () => {
                 <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
               </TouchableOpacity>
 
-              <View style={styles.signUpButton}>
+              <TouchableOpacity
+                style={styles.signUpButton}
+                onPress={() => navigation.navigate('Signup')}>
                 <Text style={styles.signUpText}>
-                  Don't have an Account? <Text style={styles.signUpLink}>Sign Up</Text>
+                  Don't have an Account?{' '}
+                  <Text style={styles.signUpLink}>Sign Up</Text>
                 </Text>
-              </View>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -250,7 +258,7 @@ const styles = StyleSheet.create({
     color: 'white',
     textAlign: 'center',
     textShadowColor: 'lightblue',
-    textShadowOffset: { width: 0, height: 0 },
+    textShadowOffset: {width: 0, height: 0},
     textShadowRadius: 10,
   },
   communifyText: {
@@ -260,7 +268,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 10,
     textShadowColor: 'lightblue',
-    textShadowOffset: { width: 0, height: 0 },
+    textShadowOffset: {width: 0, height: 0},
     textShadowRadius: 10,
   },
   backgroundAnimation: {
@@ -270,7 +278,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     left: 0,
     top: 0,
-    transform: [{ translateX: 0 }],
+    transform: [{translateX: 0}],
   },
 });
 

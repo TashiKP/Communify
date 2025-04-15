@@ -28,10 +28,6 @@ const userSchema = new Schema({
     type: String,
     required: true,
   },
-  preferred_language: {
-    type: String,
-    required: true,
-  },
   status: {
     type: String,
     required: true,

@@ -4,5 +4,6 @@ export type RootStackParamList = {
     Login: undefined;  // No parameters for Login screen
     CustomPage: undefined;  // No parameters for CustomPage screen
     NavBarPage: undefined; 
+    Signup: undefined;
   };
   

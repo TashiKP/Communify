@@ -1,7 +1,29 @@
 {
-   "extends": "@react-native/typescript-config/tsconfig.json",
+  "extends": "@react-native/typescript-config/tsconfig.json",
   "compilerOptions": {
+    /* Add these flags */
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+
+    /* Keep your existing typeRoots if you specifically need them,
+       but often they aren't required if types are standard */
     "typeRoots": ["./node_modules/@types", "./node_modules"]
   },
-  "include": ["src", "app", "node_modules/@types"]
+  "include": [
+    "src", // Assuming your source code is here
+    "app", // Or here, adjust as needed
+    "index.js", // Include entry point
+    "*.js", // Include other JS files in root if any
+    "*.ts", // Include TS files in root if any
+    "*.tsx" // Include TSX files in root if any
+    // You usually DON'T need to include node_modules/@types here
+    // if typeRoots or default discovery works. Let's remove it for now.
+  ],
+   "exclude": [
+     "node_modules", // Standard exclusion
+     "babel.config.js",
+     "metro.config.js",
+     "jest.config.js"
+     // Add other specific files/folders to exclude if necessary
+   ]
 }

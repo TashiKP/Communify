@@ -1,143 +1,207 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import {
+    View, Text, StyleSheet, TouchableOpacity, Platform, Animated,
+    Easing
+} from 'react-native';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import { faUserCircle } from '@fortawesome/free-solid-svg-icons';
-import ProfileModal from './ProfileModal';
-import { useNavigation } from '@react-navigation/native'; // Import useNavigation
+import ProfileModal from './ProfileModal'; // Assuming './ProfileModal' is the correct path
+import { useNavigation, NavigationProp } from '@react-navigation/native';
 
-const Navbar = () => {
-  const [isEnglish, setIsEnglish] = useState(true);
-  const [profileModalVisible, setProfileModalVisible] = useState(false);
-  const navigation = useNavigation(); // Get the navigation object
-
-  const toggleLanguage = () => {
-    setIsEnglish(previous => !previous);
-  };
-
-  const handleLogout = () => {
-    console.log('User logged out');
-    // Add your logout logic here
-    setProfileModalVisible(false);
-  };
-
-  return (
-    <>
-      <View style={styles.navbar}>
-        <TouchableOpacity
-          style={styles.toggleButton}
-          onPress={toggleLanguage}
-          activeOpacity={0.8}>
-          <View
-            style={[
-              styles.toggleSlider,
-              isEnglish ? styles.toggleSliderLeft : styles.toggleSliderRight,
-            ]}>
-            <Text style={styles.toggleActiveText}>
-              {isEnglish ? 'Eng' : 'Dzo'}
-            </Text>
-          </View>
-        </TouchableOpacity>
-        <Text style={styles.navbarTitle}>Communify</Text>
-        <TouchableOpacity onPress={() => setProfileModalVisible(true)}>
-          <FontAwesomeIcon
-            icon={faUserCircle}
-            size={35}
-            color="white"
-            style={styles.profileIcon}
-          />
-        </TouchableOpacity>
-      </View>
-
-      <ProfileModal
-        visible={profileModalVisible}
-        onClose={() => setProfileModalVisible(false)}
-        onLogout={handleLogout}
-        userProfile={{
-          name: 'Jane Doe',
-          email: 'jane.doe@example.com',
-          avatar: 'https://via.placeholder.com/150',
-        }}
-        navigation={navigation} // Pass the navigation object
-      />
-    </>
-  );
+// Define a ParamList if you have typed navigation (replace 'any' with your actual stack params)
+type RootStackParamList = {
+  Login: undefined;
+  // other routes...
 };
 
+const Navbar = () => {
+    const [isEnglish, setIsEnglish] = useState(true);
+    const [profileModalVisible, setProfileModalVisible] = useState(false);
+    const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+
+    const toggleAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        Animated.timing(toggleAnim, {
+            toValue: isEnglish ? 0 : 1,
+            duration: 250,
+            easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+            useNativeDriver: false,
+        }).start();
+    }, [isEnglish, toggleAnim]);
+
+    const sliderPosition = toggleAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['3%', '47%'],
+    });
+
+    const toggleLanguage = () => {
+        setIsEnglish(previous => !previous);
+        console.log('Language toggled to:', !isEnglish ? 'English' : 'Dzongkha');
+    };
+
+    const handleLogout = () => {
+        console.log('User logged out');
+        closeProfileModal(); // Close modal first
+        // Add actual logout logic (clear tokens, reset state)
+        navigation.navigate('Login'); // Navigate after logout logic
+    };
+
+    const openProfileModal = () => {
+        setProfileModalVisible(true);
+    };
+
+    const closeProfileModal = () => {
+        setProfileModalVisible(false);
+    };
+
+    const userProfileData = {
+        name: 'Jane Doe',
+        email: 'jane.doe@example.com',
+        avatar: '',
+    };
+
+    return (
+        <>
+            <View style={styles.navbar}>
+                {/* Left Section (Language Toggle) */}
+                <View style={styles.navSectionLeft}>
+                    <TouchableOpacity
+                        style={styles.toggleButton}
+                        onPress={toggleLanguage}
+                        activeOpacity={0.8}
+                        hitSlop={styles.hitSlop}
+                        accessibilityRole="switch"
+                        accessibilityLabel="Toggle language"
+                        accessibilityState={{ checked: !isEnglish }}
+                    >
+                        <Text style={[styles.toggleText, styles.toggleTextInactive]}>Eng</Text>
+                        <Text style={[styles.toggleText, styles.toggleTextInactive]}>Dzo</Text>
+                        <Animated.View
+                            style={[
+                                styles.toggleSlider,
+                                { left: sliderPosition }
+                            ]}
+                        >
+                            <Text style={styles.toggleTextActive}>
+                                {isEnglish ? 'Eng' : 'Dzo'}
+                            </Text>
+                        </Animated.View>
+                    </TouchableOpacity>
+                </View>
+
+                {/* Center Section (Title) */}
+                <View style={styles.navSectionCenter}>
+                    <Text style={styles.navbarTitle}>Communify</Text>
+                </View>
+
+                {/* Right Section (Profile Icon) */}
+                <View style={styles.navSectionRight}>
+                    <TouchableOpacity
+                        onPress={openProfileModal}
+                        hitSlop={styles.hitSlop}
+                        accessibilityRole="button"
+                        accessibilityLabel="Open user profile"
+                    >
+                        <FontAwesomeIcon
+                            icon={faUserCircle}
+                            size={30}
+                            color="white"
+                        />
+                    </TouchableOpacity>
+                </View>
+            </View>
+
+            {/* Profile Modal */}
+            <ProfileModal
+                visible={profileModalVisible}
+                onClose={closeProfileModal}
+                onLogout={handleLogout} // Navbar's handleLogout handles navigation
+                userProfile={userProfileData}
+                // navigation={navigation} // <--- REMOVED THIS LINE
+            />
+        </>
+    );
+};
+
+// Styles remain the same...
 const styles = StyleSheet.create({
-  navbar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#0077b6',
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 5,
-    borderBottomWidth: 2,
-    borderBottomColor: 'rgba(0, 0, 0, 0.3)',
-    overflow: 'hidden',
-  },
-  toggleButton: {
-    width: 70,
-    height: 30,
-    borderRadius: 14,
-    backgroundColor: 'rgb(255, 255, 255)',
-    flexDirection: 'row',
-    position: 'relative',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  toggleSlider: {
-    width: 35,
-    height: 25,
-    borderRadius: 10,
-    backgroundColor: '#0077b6',
-    position: 'absolute',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1,
-    elevation: 2,
-  },
-  toggleSliderLeft: {
-    left: 4,
-  },
-  toggleSliderRight: {
-    right: 4,
-  },
-  toggleActiveText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  navbarTitle: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 30,
-    color: '#fff',
-    fontWeight: 'bold',
-    marginLeft: -25,
-    textShadowColor: '#000',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-  },
-  profileIcon: {
-    shadowColor: '#000',
-    shadowOffset: { width: 1, height: 1 },
-    shadowOpacity: 0.5,
-    shadowRadius: 3,
-    elevation: 4,
-  },
+    navbar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#0077b6',
+        paddingTop: Platform.OS === 'ios' ? 10 : 5,
+        paddingBottom: 10,
+        paddingHorizontal: 15,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 3,
+        elevation: 4,
+    },
+    navSectionLeft: {
+        width: 70,
+        justifyContent: 'center',
+        alignItems: 'flex-start',
+    },
+    navSectionCenter: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    navSectionRight: {
+        width: 70,
+        justifyContent: 'center',
+        alignItems: 'flex-end',
+    },
+    toggleButton: {
+        width: 65,
+        height: 30,
+        borderRadius: 15,
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        alignItems: 'center',
+        position: 'relative',
+        overflow: 'hidden',
+    },
+    toggleSlider: {
+        width: '50%',
+        height: '88%',
+        borderRadius: 12,
+        marginVertical: '6%',
+        backgroundColor: '#ffffff',
+        position: 'absolute',
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 1,
+        elevation: 2,
+    },
+    toggleText: {
+         fontSize: 13,
+         fontWeight: 'bold',
+         paddingHorizontal: 5,
+    },
+    toggleTextInactive: {
+         color: 'rgba(255, 255, 255, 0.7)',
+    },
+    toggleTextActive: {
+        color: '#0077b6',
+        fontSize: 13,
+        fontWeight: 'bold',
+    },
+    navbarTitle: {
+        fontSize: 22,
+        color: '#fff',
+        fontWeight: 'bold',
+    },
+    hitSlop: {
+        top: 10, bottom: 10, left: 10, right: 10
+    }
 });
+
 
 export default Navbar;

@@ -17,26 +17,38 @@ import {
     ImagePickerResponse,
 } from 'react-native-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useGrid, GridLayoutType } from '../context/GridContext'; // <-- Import context hook and type
 
 // --- Storage Key ---
 const STORAGE_KEY = '@Communify:customSymbols';
 
 // --- Constants ---
 const screenWidth = Dimensions.get('window').width;
-const NUM_COLUMNS = 5; // <--- ADJUST NUMBER OF COLUMNS (Try 4, 5, or 6)
-const GRID_PADDING = 10; // Padding on the sides of the entire grid
-const ITEM_MARGIN = 5;  // Margin around each individual item card
-
-// Calculate item width dynamically
-const itemWidth = (screenWidth - (GRID_PADDING * 2) - (ITEM_MARGIN * 2 * NUM_COLUMNS)) / NUM_COLUMNS;
+// --- Calculate Columns based on Context ---
+const getNumColumns = (layout: GridLayoutType): number => {
+    switch (layout) {
+        case 'simple': return 4;
+        case 'standard': return 5;
+        case 'dense': return 7;
+        default: return 5;
+    }
+};
+// Recalculate Item Width based on dynamic columns
+const calculateItemWidth = (layout: GridLayoutType): number => {
+    const numColumns = getNumColumns(layout);
+    const gridPadding = 10; // Match style
+    const itemMargin = 4;   // Match style
+    return (screenWidth - (gridPadding * 2) - (itemMargin * 2 * numColumns)) / numColumns;
+};
+// -------------------------------------
 
 // --- Component Props Interface ---
-interface CustomPageComponentProps { /* ... as before ... */
+interface CustomPageComponentProps {
     onBackPress: () => void;
     onSymbolsUpdate?: (symbols: SymbolItem[]) => void;
 }
 // --- Symbol Data Structure ---
-interface SymbolItem { /* ... as before ... */
+interface SymbolItem {
     id: string;
     name: string;
     imageUri?: string;
@@ -44,7 +56,11 @@ interface SymbolItem { /* ... as before ... */
 
 // --- Main Component ---
 const CustomPageComponent: React.FC<CustomPageComponentProps> = ({ onBackPress, onSymbolsUpdate }) => {
-    // --- State & Refs (Keep as before) ---
+    // --- Use Context ---
+    const { gridLayout, isLoadingLayout } = useGrid(); // <-- Get layout from context
+    // -----------------
+
+    // --- State & Refs ---
     const [symbols, setSymbols] = useState<SymbolItem[]>([]);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
@@ -56,8 +72,14 @@ const CustomPageComponent: React.FC<CustomPageComponentProps> = ({ onBackPress, 
     const [isLoadingStorage, setIsLoadingStorage] = useState(true);
     const initialLoadComplete = useRef(false);
 
-    // --- Load/Save useEffects (Keep as before) ---
-    useEffect(() => { /* ... Loading Logic ... */
+    // --- Calculate dynamic values based on context ---
+    const numGridColumns = getNumColumns(gridLayout);
+    const itemWidth = calculateItemWidth(gridLayout);
+    // -----------------------------------------------
+
+    // --- Load/Save useEffects ---
+    useEffect(() => {
+        // ... Loading Logic using AsyncStorage ...
         const loadSymbolsFromStorage = async () => {
             setIsLoadingStorage(true);
             initialLoadComplete.current = false;
@@ -74,9 +96,10 @@ const CustomPageComponent: React.FC<CustomPageComponentProps> = ({ onBackPress, 
             finally { setIsLoadingStorage(false); requestAnimationFrame(() => { initialLoadComplete.current = true; }); }
         };
         loadSymbolsFromStorage();
-     }, []);
+    }, []); // Run once
 
-    useEffect(() => { /* ... Saving Logic ... */
+    useEffect(() => {
+        // ... Saving Logic using AsyncStorage ...
         if (!initialLoadComplete.current) return;
         const saveSymbolsToStorage = async () => {
             try {
@@ -87,37 +110,56 @@ const CustomPageComponent: React.FC<CustomPageComponentProps> = ({ onBackPress, 
         };
         const timerId = setTimeout(() => { saveSymbolsToStorage(); }, 300);
         return () => clearTimeout(timerId);
-     }, [symbols, onSymbolsUpdate]);
+    }, [symbols, onSymbolsUpdate]); // Run when symbols change
 
-    // --- Modal Handling & Image Picker (Keep as before) ---
-    const openModal = (mode: 'add' | 'edit', symbol?: SymbolItem) => { /* ... */ setModalMode(mode); if (mode === 'edit' && symbol) { setEditingSymbol(symbol); setModalSymbolName(symbol.name); setModalImageUri(symbol.imageUri); } else { setEditingSymbol(null); setModalSymbolName(''); setModalImageUri(undefined); } setIsModalVisible(true); };
-    const closeModal = () => { /* ... */ setIsModalVisible(false); setTimeout(() => { setEditingSymbol(null); setModalSymbolName(''); setModalImageUri(undefined); setIsSavingModal(false); }, 300); };
-    const pickImage = () => { /* ... */ const options: ImageLibraryOptions = { mediaType: 'photo', quality: 0.7, selectionLimit: 1 }; launchImageLibrary(options, (response: ImagePickerResponse) => { if (response.didCancel) return; if (response.errorCode) { Alert.alert('Error', response.errorMessage || 'Could not select image.'); return; } if (response.assets?.[0]?.uri) setModalImageUri(response.assets[0].uri); }); };
+    // --- Modal Handling & Image Picker ---
+    const openModal = (mode: 'add' | 'edit', symbol?: SymbolItem) => {
+        setModalMode(mode);
+        if (mode === 'edit' && symbol) { setEditingSymbol(symbol); setModalSymbolName(symbol.name); setModalImageUri(symbol.imageUri); }
+        else { setEditingSymbol(null); setModalSymbolName(''); setModalImageUri(undefined); }
+        setIsModalVisible(true);
+    };
+    const closeModal = () => {
+        setIsModalVisible(false); setTimeout(() => { setEditingSymbol(null); setModalSymbolName(''); setModalImageUri(undefined); setIsSavingModal(false); }, 300);
+    };
+    const pickImage = () => {
+        const options: ImageLibraryOptions = { mediaType: 'photo', quality: 0.7, selectionLimit: 1 };
+        launchImageLibrary(options, (response: ImagePickerResponse) => {
+            if (response.didCancel) return;
+            if (response.errorCode) { Alert.alert('Error', response.errorMessage || 'Could not select image.'); return; }
+            if (response.assets?.[0]?.uri) setModalImageUri(response.assets[0].uri);
+        });
+    };
 
-    // --- CRUD Operations (Keep as before) ---
-    const handleSaveSymbol = () => { /* ... Update state logic ... */
-        const name = modalSymbolName.trim(); if (!name) { Alert.alert('Validation Error', 'Please enter a name.'); return; }
+    // --- CRUD Operations ---
+    const handleSaveSymbol = () => {
+        const name = modalSymbolName.trim(); if (!name) { Alert.alert('Validation Error', 'Name required.'); return; }
         setIsSavingModal(true); Keyboard.dismiss();
         setTimeout(() => {
             if (modalMode === 'edit' && editingSymbol) { setSymbols(prev => prev.map(s => s.id === editingSymbol.id ? { ...s, name, imageUri: modalImageUri } : s)); }
             else { const newSymbol: SymbolItem = { id: `custom_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`, name, imageUri: modalImageUri }; setSymbols(prev => [newSymbol, ...prev]); }
             setIsSavingModal(false); closeModal();
         }, 50);
-     };
-    const handleDeletePress = (symbol: SymbolItem) => { /* ... Alert logic ... */ Alert.alert('Confirm Deletion', `Delete "${symbol.name}"? This cannot be undone.`, [ { text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => confirmDelete(symbol.id) }, ]); };
-    const confirmDelete = (symbolId: string) => { /* ... Update state logic ... */ setIsDeleting(symbolId); setTimeout(() => { setSymbols(prev => prev.filter(s => s.id !== symbolId)); setIsDeleting(null); }, 300); };
+    };
+    const handleDeletePress = (symbol: SymbolItem) => {
+        Alert.alert('Confirm Deletion', `Delete "${symbol.name}"?`, [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => confirmDelete(symbol.id) },]);
+    };
+    const confirmDelete = (symbolId: string) => {
+        setIsDeleting(symbolId); setTimeout(() => { setSymbols(prev => prev.filter(s => s.id !== symbolId)); setIsDeleting(null); }, 300);
+    };
 
-    // --- Render Symbol Item (MODIFIED to use calculated width) ---
+    // --- Render Symbol Item ---
     const renderItem = ({ item }: { item: SymbolItem }) => (
-        // Apply margin here instead of padding on container
         <View style={styles.symbolItemContainer}>
-            <View style={[styles.symbolCard, { width: itemWidth }]}> {/* Apply calculated width */}
+            {/* Apply calculated width */}
+            <View style={[styles.symbolCard, { width: itemWidth }]}>
                 <View style={styles.symbolImageWrapper}>
                     {item.imageUri ? (
                         <Image source={{ uri: item.imageUri }} style={styles.symbolImage} resizeMode="contain" />
                     ) : (
                         <View style={styles.symbolPlaceholder}>
-                            <FontAwesomeIcon icon={faImage} size={itemWidth * 0.4} color="#ced4da" /> {/* Adjust icon size */}
+                            {/* Adjust icon size based on calculated width */}
+                            <FontAwesomeIcon icon={faImage} size={itemWidth * 0.4} color="#ced4da" />
                         </View>
                     )}
                 </View>
@@ -136,11 +178,11 @@ const CustomPageComponent: React.FC<CustomPageComponentProps> = ({ onBackPress, 
         </View>
     );
 
-    // --- Main Render (MODIFIED FlatList numColumns) ---
+    // --- Main Render ---
     return (
         <SafeAreaView style={styles.safeArea}>
             <View style={styles.container}>
-                {/* Header Bar (Keep as before) */}
+                {/* Header Bar */}
                 <View style={styles.headerBar}>
                     <TouchableOpacity onPress={onBackPress} style={styles.headerButton} hitSlop={styles.hitSlop}><FontAwesomeIcon icon={faArrowLeft} size={18} color="white" /></TouchableOpacity>
                     <Text style={styles.headerTitle}>Custom Symbols</Text>
@@ -148,50 +190,47 @@ const CustomPageComponent: React.FC<CustomPageComponentProps> = ({ onBackPress, 
                 </View>
 
                 {/* Content Area */}
-                {isLoadingStorage ? ( /* ... Loading Overlay ... */ <View style={styles.loadingOverlay}><ActivityIndicator size="large" color="#0077b6" /><Text style={styles.loadingText}>Loading Symbols...</Text></View> )
-                 : (
+                {isLoadingStorage || isLoadingLayout ? ( // Show loading if either storage or layout context is loading
+                    <View style={styles.loadingOverlay}>
+                        <ActivityIndicator size="large" color="#0077b6" />
+                        <Text style={styles.loadingText}>Loading Symbols...</Text>
+                    </View>
+                ) : (
                     <FlatList
                         data={symbols}
                         renderItem={renderItem}
-                        keyExtractor={(item) => item.id}
-                        numColumns={NUM_COLUMNS} // <-- Use constant for columns
+                        keyExtractor={(item) => `${item.id}-${gridLayout}`} // Add gridLayout to key
+                        numColumns={numGridColumns} // Use dynamic columns
+                        key={numGridColumns} // Force remount on column change
                         contentContainerStyle={styles.gridContainer}
-                        ListEmptyComponent={ /* ... Empty State Component ... */ <View style={styles.emptyContainer}><FontAwesomeIcon icon={faThLarge} size={50} color="#adb5bd" /><Text style={styles.emptyText}>No Custom Symbols Yet</Text><Text style={styles.emptySubText}>Tap the '+' button above to add your first symbol.</Text></View> }
-                        // Performance tuning for FlatList
-                        initialNumToRender={NUM_COLUMNS * 4} // Render a few rows initially
-                        maxToRenderPerBatch={NUM_COLUMNS * 2}
+                        ListEmptyComponent={<View style={styles.emptyContainer}><FontAwesomeIcon icon={faThLarge} size={50} color="#adb5bd" /><Text style={styles.emptyText}>No Custom Symbols</Text><Text style={styles.emptySubText}>Tap '+' to add.</Text></View>}
+                        initialNumToRender={numGridColumns * 4}
+                        maxToRenderPerBatch={numGridColumns * 2}
                         windowSize={11}
                         removeClippedSubviews={true}
+                        extraData={gridLayout} // Pass gridLayout as extraData
                     />
                 )}
 
-                {/* Add/Edit Symbol Modal (Keep as before) */}
+                {/* Add/Edit Symbol Modal */}
                 <Modal visible={isModalVisible} transparent animationType="fade" onRequestClose={closeModal}>
-                    {/* ... Modal Content Structure ... */}
-                     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-                         <View style={styles.modalOverlay}>
-                             <TouchableWithoutFeedback accessible={false}>
-                                 <View style={styles.modalContent}>
-                                     {/* ... Modal Header ... */}
-                                     <View style={styles.modalHeader}><Text style={styles.modalTitleText}>{modalMode === 'add' ? 'Add New Symbol' : 'Edit Symbol'}</Text><TouchableOpacity onPress={closeModal} style={styles.modalCloseButton} hitSlop={styles.hitSlop}><FontAwesomeIcon icon={faTimes} size={18} color="#6c757d" /></TouchableOpacity></View>
-                                     {/* ... Modal Body ScrollView ... */}
-                                     <ScrollView contentContainerStyle={styles.modalBody}>
-                                        {/* ... Image Picker ... */}
+                    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+                        <View style={styles.modalOverlay}>
+                            <TouchableWithoutFeedback accessible={false}>
+                                <View style={styles.modalContent}>
+                                    <View style={styles.modalHeader}><Text style={styles.modalTitleText}>{modalMode === 'add' ? 'Add' : 'Edit'} Symbol</Text><TouchableOpacity onPress={closeModal} style={styles.modalCloseButton} hitSlop={styles.hitSlop}><FontAwesomeIcon icon={faTimes} size={18} color="#6c757d" /></TouchableOpacity></View>
+                                    <ScrollView contentContainerStyle={styles.modalBody}>
                                         <Text style={styles.modalLabel}>Image (Optional)</Text>
-                                        <TouchableOpacity style={styles.modalImagePicker} onPress={pickImage} activeOpacity={0.7}>{modalImageUri ? (<Image source={{ uri: modalImageUri }} style={styles.modalPickedImage} resizeMode="contain"/>) : (<View style={styles.modalImagePlaceholder}><FontAwesomeIcon icon={faImage} size={40} color="#adb5bd"/><Text style={styles.modalImagePickerText}>Choose Image</Text></View>)}</TouchableOpacity>
-                                        {/* ... Warning Box ... */}
-                                        {modalImageUri && !modalImageUri.startsWith('file://') && (<View style={styles.warningBox}><FontAwesomeIcon icon={faExclamationTriangle} size={14} color="#ffc107" style={styles.warningIcon}/><Text style={styles.warningText}>Gallery images might disappear if deleted from source.</Text></View>)}
-                                        {/* ... Name Input ... */}
-                                        <Text style={styles.modalLabel}>Symbol Name *</Text><TextInput placeholder="Enter symbol name" value={modalSymbolName} onChangeText={setModalSymbolName} style={styles.modalInput} placeholderTextColor="#adb5bd" maxLength={40} returnKeyType="done" />
-                                        {/* ... Save Button ... */}
-                                        <TouchableOpacity style={[styles.modalSaveButton, (!modalSymbolName.trim() || isSavingModal) && styles.modalButtonDisabled]} onPress={handleSaveSymbol} disabled={!modalSymbolName.trim() || isSavingModal}>{isSavingModal ? <ActivityIndicator size="small" color="#ffffff" style={styles.buttonIcon} /> : <FontAwesomeIcon icon={faCheck} size={16} color="#ffffff" style={styles.buttonIcon}/>}<Text style={styles.modalButtonText}>{modalMode === 'add' ? 'Add Symbol' : 'Save Changes'}</Text></TouchableOpacity>
-                                        {/* ... Remove Image Button ... */}
+                                        <TouchableOpacity style={styles.modalImagePicker} onPress={pickImage} activeOpacity={0.7}>{modalImageUri ? (<Image source={{ uri: modalImageUri }} style={styles.modalPickedImage} resizeMode="contain"/>) : (<View style={styles.modalImagePlaceholder}><FontAwesomeIcon icon={faImage} size={40} color="#adb5bd"/><Text style={styles.modalImagePickerText}>Choose</Text></View>)}</TouchableOpacity>
+                                        {modalImageUri && !modalImageUri.startsWith('file://') && (<View style={styles.warningBox}><FontAwesomeIcon icon={faExclamationTriangle} size={14} color="#ffc107" style={styles.warningIcon}/><Text style={styles.warningText}>Gallery images might disappear.</Text></View>)}
+                                        <Text style={styles.modalLabel}>Name *</Text><TextInput placeholder="Enter symbol name" value={modalSymbolName} onChangeText={setModalSymbolName} style={styles.modalInput} placeholderTextColor="#adb5bd" maxLength={40} returnKeyType="done" />
+                                        <TouchableOpacity style={[styles.modalSaveButton, (!modalSymbolName.trim() || isSavingModal) && styles.modalButtonDisabled]} onPress={handleSaveSymbol} disabled={!modalSymbolName.trim() || isSavingModal}>{isSavingModal ? <ActivityIndicator size="small" color="#ffffff" style={styles.buttonIcon} /> : <FontAwesomeIcon icon={faCheck} size={16} color="#ffffff" style={styles.buttonIcon}/>}<Text style={styles.modalButtonText}>{modalMode === 'add' ? 'Add' : 'Save'}</Text></TouchableOpacity>
                                         {modalImageUri && modalMode === 'edit' && (<TouchableOpacity style={[styles.modalRemoveImageButton]} onPress={() => setModalImageUri(undefined)} disabled={isSavingModal}><FontAwesomeIcon icon={faTrash} size={14} color="#dc3545" style={styles.buttonIcon}/><Text style={styles.modalRemoveImageButtonText}>Remove Image</Text></TouchableOpacity>)}
-                                     </ScrollView>
-                                 </View>
-                             </TouchableWithoutFeedback>
-                         </View>
-                     </TouchableWithoutFeedback>
+                                    </ScrollView>
+                                </View>
+                            </TouchableWithoutFeedback>
+                        </View>
+                    </TouchableWithoutFeedback>
                 </Modal>
             </View>
         </SafeAreaView>
@@ -199,7 +238,7 @@ const CustomPageComponent: React.FC<CustomPageComponentProps> = ({ onBackPress, 
 };
 
 
-// --- Styles --- (MODIFIED grid/item styles)
+// --- Styles ---
 const styles = StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: '#0077b6', },
     container: { flex: 1, backgroundColor: '#f8f9fa', },
@@ -208,80 +247,22 @@ const styles = StyleSheet.create({
     headerBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#0077b6', height: Platform.OS === 'ios' ? 55 : 50, paddingHorizontal: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 4, },
     headerButton: { padding: 10, minWidth: 40, alignItems: 'center', justifyContent: 'center', },
     headerTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold', },
-    // --- Grid Styles ---
-    gridContainer: {
-        padding: GRID_PADDING, // Use constant for grid padding
-        // Remove paddingHorizontal/Vertical if using GRID_PADDING
-    },
-    symbolItemContainer: {
-        margin: ITEM_MARGIN, // Use constant for margin around items
-        // width is set dynamically on the symbolCard below
-    },
+    gridContainer: { padding: 10, /* GRID_PADDING */ }, // Use calculated padding
+    symbolItemContainer: { margin: 4, /* ITEM_MARGIN */ }, // Use calculated margin
     symbolCard: {
-        // width: itemWidth, // Width is applied inline in renderItem
-        aspectRatio: 1, // Keep square
-        backgroundColor: '#ffffff',
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#e9ecef',
-        overflow: 'hidden',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.08,
-        shadowRadius: 2,
-        elevation: 2,
-        flexDirection: 'column',
-        alignItems: 'center', // Center content horizontally
-        justifyContent: 'space-between', // Distribute space vertically
+        // width applied inline
+        aspectRatio: 1, backgroundColor: '#ffffff', borderRadius: 8, borderWidth: 1, borderColor: '#e9ecef', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 2, elevation: 2, flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between',
     },
-    symbolImageWrapper: {
-        width: '100%', // Take full width of card
-        flex: 1, // Allow image area to grow
-        backgroundColor: '#f8f9fa',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: '8%', // Padding relative to card size
-    },
-    symbolImage: {
-        width: '100%',
-        height: '100%',
-    },
-    symbolPlaceholder: {
-        justifyContent: 'center',
-        alignItems: 'center',
-        width: '100%',
-        height: '100%',
-    },
-    symbolInfo: {
-        width: '100%', // Take full width
-        paddingHorizontal: 6,
-        paddingVertical: 5, // Reduced vertical padding
-        borderTopWidth: 1,
-        borderTopColor: '#e9ecef',
-        // justifyContent: 'space-between', // Removed, let content determine height
-        minHeight: 40, // Ensure minimum height for text/buttons
-    },
-    symbolName: {
-        fontSize: 13, // Slightly larger font
-        fontWeight: '500',
-        color: '#343a40',
-        textAlign: 'center',
-        marginBottom: 4, // Increased space below name
-    },
-    symbolActions: {
-        flexDirection: 'row',
-        justifyContent: 'space-around', // Space out buttons
-        alignItems: 'center',
-        // marginTop: 2, // Removed
-    },
-    actionButton: {
-        padding: 5, // Slightly larger tap area
-    },
-    // --- Empty State Styles ---
+    symbolImageWrapper: { width: '100%', flex: 1, backgroundColor: '#f8f9fa', justifyContent: 'center', alignItems: 'center', padding: '8%', },
+    symbolImage: { width: '100%', height: '100%', },
+    symbolPlaceholder: { justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%', },
+    symbolInfo: { width: '100%', paddingHorizontal: 6, paddingVertical: 5, borderTopWidth: 1, borderTopColor: '#e9ecef', minHeight: 40, },
+    symbolName: { fontSize: 13, fontWeight: '500', color: '#343a40', textAlign: 'center', marginBottom: 4, },
+    symbolActions: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', },
+    actionButton: { padding: 5, },
     emptyContainer: { flex: 1, minHeight: Dimensions.get('window').height * 0.6, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 30, },
     emptyText: { fontSize: 18, fontWeight: '600', color: '#6c757d', marginTop: 15, textAlign: 'center' },
     emptySubText: { fontSize: 14, color: '#adb5bd', marginTop: 8, textAlign: 'center' },
-    // --- Modal Styles (Keep as before) ---
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.6)', justifyContent: 'center', alignItems: 'center', padding: 15 },
     modalContent: { width: '100%', maxWidth: 400, maxHeight: '90%', backgroundColor: '#ffffff', borderRadius: 16, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 5 },
     modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, paddingHorizontal: 15, borderBottomWidth: 1, borderBottomColor: '#e9ecef', position: 'relative' },

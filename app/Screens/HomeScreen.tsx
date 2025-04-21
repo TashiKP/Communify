@@ -13,7 +13,7 @@ import Navbar from '../components/navbar';
 import SymbolGrid from '../components/Symbols'; // Your main symbol grid component
 import BottomBar from '../components/bottomnav';
 // --- TYPE IMPORTS --- (Adjust paths as necessary)
-import { GridLayoutType } from '../components/GridLayoutScreen'; // Assuming GridLayoutScreen exports this
+import { GridLayoutType, useGrid } from '../context/GridContext';
 import { VoiceSettingData } from '../components/SymbolVoiceOverScreen'; // For TTS state
 
 // --- Define types needed ---

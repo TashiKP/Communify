@@ -19,7 +19,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '..//Navigation/types'; // Adjust import path
+import { RootStackParamList } from '../Navigation/types'; // Adjust import path
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import {
     faUser, faChildReaching, faCommentDots, faComments, faBrain, faKeyboard,

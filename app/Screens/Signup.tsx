@@ -18,7 +18,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '..//Navigation/types'; // Adjust the import path
+import { RootStackParamList } from '../Navigation/types'; // Adjust the import path
 
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import { faUser, faCakeCandles, faVenusMars, faEnvelope, faLock } from '@fortawesome/free-solid-svg-icons';

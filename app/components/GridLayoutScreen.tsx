@@ -1,59 +1,48 @@
-import React, { useState, useEffect } from 'react';
+// src/components/GridLayoutScreen.tsx
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-    View,
-    Text,
-    TouchableOpacity,
-    StyleSheet,
-    SafeAreaView, // Use SafeAreaView for full screen
-    Platform,
-    ScrollView, // Use ScrollView in case content overflows
-    Dimensions,
+    View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
+    Platform, ScrollView, ActivityIndicator, Alert // Added imports
 } from 'react-native';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import {
-    faArrowLeft, // Back icon
-    faThLarge,   // Dense
-    faTh,        // Standard
-    faGripVertical, // Simple
-    faCheckCircle // Checkmark for selected state
+    faArrowLeft, faThLarge, faTh, faGripVertical, faCheckCircle
 } from '@fortawesome/free-solid-svg-icons';
+import { useGrid, GridLayoutType } from '../context/GridContext'; // <-- Import context hook and type
 
-// Define the possible layout types
-export type GridLayoutType = 'simple' | 'standard' | 'dense';
-
-// Define component props
+// Define component props (No longer needs initialLayout or onSave)
 interface GridLayoutScreenProps {
-    // visible: boolean; // No longer needed - visibility controlled by rendering/navigation
     onClose: () => void; // Function to close this screen
-    initialLayout?: GridLayoutType; // Current layout setting
-    onSave: (layout: GridLayoutType) => void; // Callback when a layout is selected and saved
 }
 
 // --- Component ---
-const GridLayoutScreen: React.FC<GridLayoutScreenProps> = ({
-    onClose,
-    initialLayout = 'standard',
-    onSave,
-}) => {
-    const [selectedLayout, setSelectedLayout] = useState<GridLayoutType>(initialLayout);
+const GridLayoutScreen: React.FC<GridLayoutScreenProps> = ({ onClose }) => {
+    // --- Use Context ---
+    const { gridLayout, setGridLayout, isLoadingLayout } = useGrid(); // <-- Get state and setter from context
+    // -----------------
 
-    // Reset to initial layout when component mounts (or relevant prop changes)
-    useEffect(() => {
-        setSelectedLayout(initialLayout);
-    }, [initialLayout]);
+    // Handle layout selection - UPDATE CONTEXT and close
+    const handleLayoutSelect = useCallback(async (layout: GridLayoutType) => {
+        // Prevent selecting the same layout again (optional)
+        if (layout === gridLayout) {
+            onClose();
+            return;
+        }
+        try {
+            await setGridLayout(layout); // <-- Update context (which saves)
+            onClose(); // Close the screen after successful update
+        } catch (error) {
+            console.error("GridLayoutScreen: Failed to save layout via context", error);
+            // Alert is handled within context, but could add one here too if needed
+            // Alert.alert("Error", "Could not save the layout setting.");
+        }
+    }, [setGridLayout, onClose, gridLayout]); // Include gridLayout in dependencies for the check
 
-    // Handle layout selection - save and close
-    const handleLayoutSelect = (layout: GridLayoutType) => {
-        setSelectedLayout(layout); // Update state visually
-        onSave(layout);     // Notify parent
-        onClose();        // Close the screen
-    };
-
-    // Define button options with descriptions
+    // Layout options data
     const layoutOptions: {
         type: GridLayoutType;
         label: string;
-        icon: any;
+        icon: any; // FontAwesomeIconDefinition
         description: string;
     }[] = [
             { type: 'simple', label: 'Simple', icon: faGripVertical, description: 'Fewer, larger symbols per row.' },
@@ -82,19 +71,22 @@ const GridLayoutScreen: React.FC<GridLayoutScreenProps> = ({
 
                     {/* Layout Option Cards */}
                     {layoutOptions.map((option) => {
-                        const isSelected = selectedLayout === option.type;
+                        // Use context's gridLayout for selection state
+                        const isSelected = gridLayout === option.type;
                         return (
                             <TouchableOpacity
                                 key={option.type}
                                 style={[
                                     styles.optionCard,
-                                    isSelected && styles.optionCardSelected // Apply selected style
+                                    isSelected && styles.optionCardSelected, // Apply selected style
+                                    isLoadingLayout && styles.optionCardDisabled // Style for disabled state
                                 ]}
                                 onPress={() => handleLayoutSelect(option.type)}
                                 activeOpacity={0.8}
                                 accessibilityLabel={`Select ${option.label} grid layout. ${option.description}`}
                                 accessibilityRole="button"
-                                accessibilityState={{ selected: isSelected }}
+                                accessibilityState={{ selected: isSelected, disabled: isLoadingLayout }}
+                                disabled={isLoadingLayout} // Disable while loading initial state
                             >
                                 <View style={styles.optionContent}>
                                     <FontAwesomeIcon
@@ -129,6 +121,8 @@ const GridLayoutScreen: React.FC<GridLayoutScreenProps> = ({
                             </TouchableOpacity>
                         );
                     })}
+                    {/* Show loading indicator if loading */}
+                    {isLoadingLayout && <ActivityIndicator style={{ marginTop: 20 }} size="small" color="#0077b6" />}
                 </ScrollView>
             </View>
         </SafeAreaView>
@@ -145,7 +139,7 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#f8f9fa', // Light background for content area
     },
-    // Header Bar Styles (Similar to CustomPageComponent)
+    // Header Bar Styles
     headerBar: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -153,7 +147,6 @@ const styles = StyleSheet.create({
         backgroundColor: '#0077b6', // Theme color
         height: Platform.OS === 'ios' ? 55 : 50,
         paddingHorizontal: 10,
-        // No top padding needed if SafeAreaView handles it
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
@@ -177,6 +170,7 @@ const styles = StyleSheet.create({
     // ScrollView & Content Styles
     scrollContentContainer: {
         padding: 20, // Padding around the content
+        paddingBottom: 40, // Ensure space at bottom
     },
     instructionText: {
         fontSize: 16,
@@ -193,7 +187,6 @@ const styles = StyleSheet.create({
         marginBottom: 15, // Space between cards
         borderWidth: 2, // Border to indicate selection state
         borderColor: '#e9ecef', // Default light border
-        // Shadow for depth
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
@@ -204,6 +197,9 @@ const styles = StyleSheet.create({
         borderColor: '#0077b6', // Theme blue border when selected
         backgroundColor: '#e7f5ff', // Very light blue background tint when selected
     },
+     optionCardDisabled: {
+        opacity: 0.6, // Style when loading
+     },
     optionContent: {
         flexDirection: 'row', // Align icon, text, and checkmark horizontally
         alignItems: 'center',
@@ -236,4 +232,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default GridLayoutScreen; // Changed export name
+export default GridLayoutScreen;

@@ -1,7 +1,8 @@
+// src/Screens/LoginScreen.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '..//Navigation/types'; // Adjust import path as necessary
+import { RootStackParamList } from '../Navigation/types'; // Adjust import path as necessary
 
 import {
     View,
@@ -82,34 +83,26 @@ const LoginScreen = () => {
         ]).start();
 
         // --- Slogan Typing Animation ---
-        // Clear any existing intervals on re-render (though should only run once)
         if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
         if (cursorIntervalRef.current) clearInterval(cursorIntervalRef.current);
-        sloganIndex.current = 0; // Reset index
-        setDisplayedSlogan(''); // Reset displayed text
+        sloganIndex.current = 0;
+        setDisplayedSlogan('');
 
-        // Start typing after a short delay (allows container fade-in)
         const startTypingTimeout = setTimeout(() => {
-            // Cursor Blinking Interval
             cursorIntervalRef.current = setInterval(() => {
                 setShowCursor(prev => !prev);
             }, CURSOR_BLINK_MS);
 
-            // Typing Interval
             typingIntervalRef.current = setInterval(() => {
                 if (sloganIndex.current < FULL_SLOGAN.length) {
                     setDisplayedSlogan(prev => prev + FULL_SLOGAN[sloganIndex.current]);
                     sloganIndex.current += 1;
                 } else {
-                    // Typing finished
                     if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
-                    // Optional: Stop cursor blinking steadily 'on' after typing finishes
-                    // if (cursorIntervalRef.current) clearInterval(cursorIntervalRef.current);
-                    // setShowCursor(false); // Or keep it blinking, or hide it
                 }
             }, TYPING_SPEED_MS);
 
-        }, 600); // Start typing slightly after fade-in begins
+        }, 600);
 
 
         // --- Cleanup Function ---
@@ -118,8 +111,7 @@ const LoginScreen = () => {
             if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
             if (cursorIntervalRef.current) clearInterval(cursorIntervalRef.current);
         };
-        // Run only once on mount
-    }, [contentFadeAnim, formSlideAnim]); // Include base animations as deps
+    }, [contentFadeAnim, formSlideAnim]);
 
 
     // --- Handlers ---
@@ -133,10 +125,13 @@ const LoginScreen = () => {
         setIsLoading(true);
         console.log('Attempting Login:', email);
 
+        // Simulate API Call
         setTimeout(() => {
+            // Replace with your actual authentication logic
             if (email.toLowerCase() === 'test@gmail.com' && password === '123') {
                 console.log('Login Successful');
-                navigation.replace('Home');
+                // Use replace to remove Login from the history stack
+                navigation.replace('Home'); // <-- This call seems correct
             } else {
                 setError('Invalid email or password.');
             }
@@ -150,12 +145,11 @@ const LoginScreen = () => {
 
     const navigateToForgotPassword = () => {
         console.log('Forgot Password Pressed');
+        // Implement navigation if you have a Forgot Password screen
         // navigation.navigate('ForgotPassword');
     };
 
-    // Determine if slogan typing is finished
-    const isTypingFinished = sloganIndex.current >= FULL_SLOGAN.length;
-
+    // --- Render ---
     return (
         <SafeAreaView style={styles.safeArea}>
             <StatusBar barStyle="light-content" backgroundColor={primaryColor} />
@@ -174,9 +168,7 @@ const LoginScreen = () => {
                                 <View style={styles.sloganContainer}>
                                     <Text style={styles.sloganText}>
                                         {displayedSlogan}
-                                        {/* Blinking Cursor - hide it once typing is done or keep blinking */}
                                         {showCursor && <Text style={styles.cursor}>|</Text>}
-                                        {/* Placeholder to maintain height even when empty */}
                                         {!displayedSlogan && !showCursor && <Text style={styles.sloganText}> </Text>}
                                     </Text>
                                 </View>
@@ -282,7 +274,7 @@ const LoginScreen = () => {
     );
 };
 
-// --- Styles --- (Added Slogan Container and Cursor styles)
+// --- Styles ---
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
@@ -307,6 +299,12 @@ const styles = StyleSheet.create({
         backgroundColor: whiteColor,
         borderRadius: 25,
         overflow: 'hidden',
+        // Add Shadow for depth (optional)
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 5 },
+        shadowOpacity: 0.1,
+        shadowRadius: 15,
+        elevation: 10,
     },
     leftContainer: {
         flex: Platform.OS === 'web' ? 0.5 : 0.55,
@@ -326,19 +324,18 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: whiteColor,
         textAlign: 'center',
-        marginBottom: 15, // Increased margin to give slogan space
+        marginBottom: 15,
         letterSpacing: 0.5,
         textShadowColor: 'rgba(0, 0, 0, 0.25)',
         textShadowOffset: { width: 1, height: 2 },
         textShadowRadius: 4,
     },
-    // Added container to manage slogan layout and height
     sloganContainer: {
-        minHeight: 44, // Approx height for two lines of slogan text
+        minHeight: 44,
         justifyContent: 'center',
         alignItems: 'center',
         marginTop: 5,
-        paddingHorizontal: 10, // Prevent text touching edges if it wraps
+        paddingHorizontal: 10,
     },
     sloganText: {
         fontSize: 17,
@@ -348,12 +345,11 @@ const styles = StyleSheet.create({
         fontStyle: 'italic',
         lineHeight: 22,
     },
-    // Style for the blinking cursor
     cursor: {
-        fontSize: 17, // Match slogan font size
+        fontSize: 17,
         color: cursorColor,
-        fontWeight: 'bold', // Make cursor slightly bolder
-        marginLeft: 1, // Tiny space after text
+        fontWeight: 'bold',
+        marginLeft: 1,
     },
     decorativeLine: {
         position: 'absolute',
@@ -412,8 +408,9 @@ const styles = StyleSheet.create({
     },
     errorContainer: {
         marginBottom: 15,
-        marginTop: -10,
+        marginTop: -10, // Pull slightly closer to input
         alignItems: 'center',
+        paddingHorizontal: 5, // Padding if text wraps
     },
     errorText: {
         color: errorColor,
@@ -442,7 +439,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.3,
         shadowRadius: 6,
         elevation: 6,
-        minHeight: 55,
+        minHeight: 55, // Match input height
     },
     loginButtonText: {
         color: whiteColor,
@@ -451,9 +448,10 @@ const styles = StyleSheet.create({
         letterSpacing: 0.5,
     },
     buttonDisabled: {
-        backgroundColor: secondaryColor,
+        backgroundColor: secondaryColor, // Use secondary color for disabled state
         shadowOpacity: 0.1,
         elevation: 2,
+        opacity: 0.8, // Add opacity perhaps
     },
     footer: {
         marginTop: 30,

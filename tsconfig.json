@@ -16,7 +16,7 @@
     "*.js", // Include other JS files in root if any
     "*.ts", // Include TS files in root if any
     "*.tsx" // Include TSX files in root if any
-    // You usually DON'T need to include node_modules/@types here
+, "app/components/.tsx"    // You usually DON'T need to include node_modules/@types here
     // if typeRoots or default discovery works. Let's remove it for now.
   ],
    "exclude": [

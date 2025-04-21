@@ -22,10 +22,8 @@ const CateComponent: React.FC<CateComponentProps> = ({
 }) => {
   const [pictogramUrl, setPictogramUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  // Removed error state - just show default icon if fetch fails
 
   useEffect(() => {
-    // Don't fetch for 'Contextual' placeholder
     if (keyword.toLowerCase() === 'contextual') {
         setLoading(false);
         setPictogramUrl(null);
@@ -44,12 +42,12 @@ const CateComponent: React.FC<CateComponentProps> = ({
           const generatedUrl = `https://static.arasaac.org/pictograms/${pictogramId}/${pictogramId}_300.png`;
           setPictogramUrl(generatedUrl);
         } else {
-           console.warn(`No category icon found for: ${keyword}`);
+          // console.warn(`No category icon found for: ${keyword}`);
            setPictogramUrl(null);
         }
       } catch (err: any) {
-        console.error(`Error fetching category icon for ${keyword}:`, err.message || err);
-        setPictogramUrl(null); // Ensure no icon on error
+        // console.error(`Error fetching category icon for ${keyword}:`, err.message || err);
+        setPictogramUrl(null);
       } finally {
         setLoading(false);
       }
@@ -60,17 +58,16 @@ const CateComponent: React.FC<CateComponentProps> = ({
 
   const handlePress = () => {
     if (onPress) {
-      onPress(keyword); // Pass back the category name (keyword)
+      onPress(keyword);
     }
   };
 
   return (
     <TouchableOpacity
-        // Apply selected style conditionally
         style={[styles.cateComponent, isSelected && styles.selectedCateComponent]}
         onPress={handlePress}
         activeOpacity={0.7}
-        accessibilityLabel={`Category: ${keyword}`}
+        accessibilityLabel={`Category: ${keyword}${isSelected ? ', selected' : ''}`}
         accessibilityRole="button"
         accessibilityState={{ selected: isSelected }}
     >
@@ -81,7 +78,6 @@ const CateComponent: React.FC<CateComponentProps> = ({
             {!loading && pictogramUrl && (
                 <Image source={{ uri: pictogramUrl }} style={styles.symbolImage}/>
             )}
-            {/* Default icon if no image and not loading */}
             {!loading && !pictogramUrl && (
                 <FontAwesomeIcon icon={faFolder} size={24} color={isSelected ? '#0077b6' : '#adb5bd'} />
             )}
@@ -101,13 +97,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     paddingVertical: 12,
     paddingHorizontal: 15,
-    borderRadius: 8,
-    borderWidth: 1.5, // Slightly thicker border for selection indication
-    borderColor: '#e9ecef',
-    // Removed shadow
+    // Removed border radius/width - let separator handle lines
   },
-  selectedCateComponent: { // Style when selected
-      borderColor: '#0077b6', // Primary color border
+  selectedCateComponent: {
       backgroundColor: '#e7f5ff', // Light blue background
   },
   iconContainer: {
@@ -132,13 +124,13 @@ const styles = StyleSheet.create({
     color: '#343a40',
     textAlign: 'left',
   },
-   selectedKeywordText: { // Style for text when selected
+   selectedKeywordText: {
        fontWeight: '600',
-       color: '#0077b6', // Primary color text
+       color: '#0077b6',
    },
   chevronIcon: {
     marginLeft: 10,
   },
 });
 
-export default CateComponent;
+export default React.memo(CateComponent); // Memoize here

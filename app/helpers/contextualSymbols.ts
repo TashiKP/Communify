@@ -1,5 +1,4 @@
 // src/helpers/contextualSymbols.ts
-
 export type TimeContext = 'Morning' | 'Afternoon' | 'Evening' | 'Night' | 'Default';
 
 // Function to determine the current time context

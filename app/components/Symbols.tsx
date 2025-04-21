@@ -1,14 +1,15 @@
-// src/components/NavBarComponent.tsx
-
+// src/components/Symbols.tsx (Previously NavBarComponent.tsx)
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, StyleSheet, FlatList, Text, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
+import {
+    View, StyleSheet, FlatList, Text, ActivityIndicator, Alert, TouchableOpacity
+} from 'react-native';
 import SquareComponent from './SquareComponent'; // Ensure path is correct
 import CateComponent from './CateComponent'; // Use the INDIVIDUAL category component
 import { getCurrentTimeContext, getContextualSymbols, TimeContext } from '../helpers/contextualSymbols'; // Ensure path is correct
 
 // --- Category Definition ---
 interface CategoryInfo { id: string; name: string; }
-const APP_CATEGORIES: CategoryInfo[] = [
+const APP_CATEGORIES: CategoryInfo[] = [ /* ... keep as before ... */
     { id: 'cat_contextual', name: 'Contextual' },
     { id: 'cat_food', name: 'Food' }, { id: 'cat_drinks', name: 'Drinks' },
     { id: 'cat_people', name: 'People' }, { id: 'cat_places', name: 'Places' },
@@ -17,13 +18,11 @@ const APP_CATEGORIES: CategoryInfo[] = [
     { id: 'cat_clothing', name: 'Clothing' }, { id: 'cat_body', name: 'Body Parts' },
     { id: 'cat_school', name: 'School' }, { id: 'cat_colors', name: 'Colors' },
     { id: 'cat_numbers', name: 'Numbers' },
-    // Add more categories...
 ];
 // --- End Category Definition ---
 
 // --- Placeholder Symbol Fetching Logic ---
-function getSymbolsForCategory(categoryName: string): string[] {
-    console.log(`Placeholder: Fetching symbols for category "${categoryName}"`);
+function getSymbolsForCategory(categoryName: string): string[] { /* ... keep as before ... */
     const lowerCaseCat = categoryName.toLowerCase();
     switch (lowerCaseCat) {
         case 'food': return ['apple', 'banana', 'bread', 'water', 'milk', 'juice', 'eat', 'hungry', 'more', 'finished', 'orange', 'pizza', 'cookie', 'cake', 'cheese'];
@@ -46,11 +45,18 @@ function getSymbolsForCategory(categoryName: string): string[] {
 
 interface ContextualSymbolData { id: string; keyword: string; }
 
+// --- Add Prop for symbol press ---
+interface SymbolGridProps { // Changed interface name to match component
+    onSymbolPress: (keyword: string) => void; // Callback when a symbol is pressed
+    // Add other props if SymbolGrid needs them (like layoutType)
+    // layoutType?: string;
+}
+
 const MemoizedSquareComponent = React.memo(SquareComponent);
 const MemoizedCateComponent = React.memo(CateComponent);
 
-// --- NavBarComponent ---
-const NavBarComponent = () => {
+// --- SymbolGrid --- // Renamed component
+const SymbolGrid: React.FC<SymbolGridProps> = ({ onSymbolPress }) => { // Destructure the prop
   const [displayedSymbols, setDisplayedSymbols] = useState<ContextualSymbolData[]>([]);
   const [currentTimeContext, setCurrentTimeContext] = useState<TimeContext>('Default');
   const [loadingSymbols, setLoadingSymbols] = useState<boolean>(true);
@@ -59,58 +65,41 @@ const NavBarComponent = () => {
   const flatListRefLeft = useRef<FlatList<ContextualSymbolData>>(null);
   const flatListRefRight = useRef<FlatList<CategoryInfo>>(null);
 
+  // --- loadSymbols logic remains the same ---
   const loadSymbols = useCallback((categoryFilter: string | null = null) => {
     setLoadingSymbols(true);
     flatListRefLeft.current?.scrollToOffset({ offset: 0, animated: false });
-    console.log(`*** loadSymbols called with Filter: ${categoryFilter} ***`);
-
     try {
         let symbolsData: ContextualSymbolData[] = [];
         let contextName: TimeContext | null = null;
         let categoryName: string | null = null;
-
         if (!categoryFilter || categoryFilter.toLowerCase() === 'contextual') {
             const context = getCurrentTimeContext();
             const keywords = getContextualSymbols(context);
             symbolsData = keywords.map((keyword, index) => ({ id: `ctx_${context}_${index}_${keyword}`, keyword }));
-            contextName = context;
-            categoryName = null;
-            console.log(`Contextual symbols loaded for "${context}"`);
+            contextName = context; categoryName = null;
         } else {
             const keywords = getSymbolsForCategory(categoryFilter);
             symbolsData = keywords.map((keyword, index) => ({ id: `cat_${categoryFilter}_${index}_${keyword}`, keyword }));
-            contextName = null;
-            categoryName = categoryFilter;
-            console.log(`Category symbols loaded for "${categoryFilter}"`);
+            contextName = null; categoryName = categoryFilter;
         }
-
-        console.log('==> Setting Selected Category Name to:', categoryName);
         setSelectedCategoryName(categoryName);
-        console.log('==> Setting Displayed Symbols (count):', symbolsData.length);
         setDisplayedSymbols(symbolsData);
-        console.log('==> Setting Current Time Context to:', contextName ?? 'Default');
         setCurrentTimeContext(contextName ?? 'Default');
-
     } catch (err) {
          console.error("Error loading symbols:", err);
          const defaultKeywords = getContextualSymbols('Default');
          setDisplayedSymbols(defaultKeywords.map((k, i) => ({ id: `ctx_err_${i}_${k}`, keyword: k })));
-         setCurrentTimeContext('Default');
-         setSelectedCategoryName(null);
+         setCurrentTimeContext('Default'); setSelectedCategoryName(null);
          Alert.alert("Error", "Could not load symbols.");
-    } finally {
-        setLoadingSymbols(false);
-        console.log('*** loadSymbols finished ***');
-    }
+    } finally { setLoadingSymbols(false); }
   }, []);
 
-  useEffect(() => {
-    console.log('NavBarComponent Mounted - Initial Load');
+  // --- useEffect and handleCategoryPress remain the same ---
+   useEffect(() => {
     loadSymbols();
   }, [loadSymbols]);
-
   const handleCategoryPress = useCallback((categoryName: string) => {
-     console.log(`--- Category Pressed: ${categoryName} ---`);
     if (categoryName.toLowerCase() === 'contextual') {
         loadSymbols(null);
     } else {
@@ -118,31 +107,38 @@ const NavBarComponent = () => {
     }
   }, [loadSymbols]);
 
+
+  // --- Pass the onSymbolPress down ---
+  // Ensure this internal renderLeftItem USES the onSymbolPress prop passed to SymbolGrid
   const renderLeftItem = useCallback(({ item }: { item: ContextualSymbolData }) => (
     <View style={styles.squareItemContainer}>
-      <MemoizedSquareComponent keyword={item.keyword} language="en" />
+      <MemoizedSquareComponent
+          keyword={item.keyword}
+          language="en" // Or use a state/prop for language
+          onPress={onSymbolPress} // <-- **** THE FIX **** Pass the handler received from props
+      />
     </View>
-  ), []);
+  ), [onSymbolPress]); // Add onSymbolPress dependency
 
+
+  // --- renderRightItem remains the same ---
   const renderRightItem = useCallback(({ item }: { item: CategoryInfo }) => {
-    const isCurrentlySelected = selectedCategoryName === item.name || (!selectedCategoryName && item.name === 'Contextual');
-    // console.log(`Rendering CateComponent: ${item.name}, isSelected: ${isCurrentlySelected}`);
-    return (
-        <View style={styles.rightItemContainer}>
-        <MemoizedCateComponent
-            keyword={item.name}
-            language="en"
-            onPress={handleCategoryPress}
-            isSelected={isCurrentlySelected}
-        />
-        </View>
-    );
+      const isCurrentlySelected = selectedCategoryName === item.name || (!selectedCategoryName && item.name === 'Contextual');
+      return (
+          <View style={styles.rightItemContainer}>
+              <MemoizedCateComponent
+                  keyword={item.name}
+                  language="en"
+                  onPress={handleCategoryPress}
+                  isSelected={isCurrentlySelected}
+              />
+          </View>
+      );
   }, [handleCategoryPress, selectedCategoryName]);
 
   const navTitle = selectedCategoryName ? selectedCategoryName : `Contextual (${currentTimeContext})`;
 
-  console.log(`<<< NavBarComponent Rendering - Selected Category: ${selectedCategoryName} >>>`);
-
+  // --- Return statement remains structurally the same ---
   return (
     <View style={styles.container}>
       <View style={styles.navBar}>
@@ -154,40 +150,31 @@ const NavBarComponent = () => {
       </View>
       <View style={styles.content}>
         <View style={styles.leftSide}>
-          {loadingSymbols ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#0077b6" />
-            </View>
-          ) : (
-            <FlatList
-              ref={flatListRefLeft}
-              data={displayedSymbols}
-              renderItem={renderLeftItem}
-              keyExtractor={(item) => item.id}
-              numColumns={6}
-              contentContainerStyle={styles.gridContentContainer}
-              ListEmptyComponent={<View style={styles.emptyContainer}><Text style={styles.emptyListText}>No symbols found.</Text></View>}
-              initialNumToRender={18}
-              maxToRenderPerBatch={12}
-              windowSize={10}
-              extraData={selectedCategoryName} // Helps trigger re-render
-            />
+          {loadingSymbols ? ( /* ... Loading Indicator ... */ <View style={styles.loadingContainer}><ActivityIndicator size="large" color="#0077b6" /></View> )
+           : ( <FlatList
+                ref={flatListRefLeft}
+                data={displayedSymbols}
+                renderItem={renderLeftItem} // This now correctly passes onSymbolPress
+                keyExtractor={(item) => item.id}
+                numColumns={6} // Adjust as needed
+                /* ... other FlatList props ... */
+                contentContainerStyle={styles.gridContentContainer}
+                ListEmptyComponent={<View style={styles.emptyContainer}><Text style={styles.emptyListText}>No symbols found.</Text></View>}
+                initialNumToRender={18} maxToRenderPerBatch={12} windowSize={10} removeClippedSubviews={true}
+              />
           )}
         </View>
         <View style={styles.rightSide}>
            <FlatList
              ref={flatListRefRight}
-             style={styles.categoryFlatList} // *** ADDED flex: 1 style ***
+             style={styles.categoryFlatList}
              data={APP_CATEGORIES}
              renderItem={renderRightItem}
              keyExtractor={(item) => item.id}
-             numColumns={1}
-             contentContainerStyle={styles.categoryListContainer}
-             ItemSeparatorComponent={() => <View style={styles.categorySeparator} />}
-             initialNumToRender={10}
-             maxToRenderPerBatch={10}
-             windowSize={5}
-             extraData={selectedCategoryName} // Helps trigger re-render based on selection
+              /* ... other FlatList props ... */
+             numColumns={1} contentContainerStyle={styles.categoryListContainer}
+             initialNumToRender={APP_CATEGORIES.length} maxToRenderPerBatch={APP_CATEGORIES.length} windowSize={5}
+             extraData={selectedCategoryName}
            />
         </View>
       </View>
@@ -196,89 +183,24 @@ const NavBarComponent = () => {
 };
 
 // --- Styles ---
+// (Styles remain the same as in the previous version of NavBarComponent/SymbolGrid)
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f0f9ff',
-  },
-  navBar: {
-    backgroundColor: '#0077b6',
-    height: 35,
-    width: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 3,
-    zIndex: 10,
-  },
-  navBarTouchable: {
-    paddingHorizontal: 15,
-    paddingVertical: 5,
-  },
-  navBarTitle: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  content: {
-    flexDirection: 'row',
-    flex: 1, // Ensure content takes up vertical space
-  },
-  leftSide: {
-    flex: 8,
-    backgroundColor: '#f8f9fa',
-    // backgroundColor: 'lightblue', // DEBUG: Add background color
-  },
-  rightSide: {
-    flex: 2.5,
-    backgroundColor: '#ffffff',
-    borderLeftWidth: 1,
-    borderLeftColor: '#e0e0e0',
-    // backgroundColor: 'lightgreen', // DEBUG: Add background color
-  },
-  categoryFlatList: { // *** ADDED Style for the Right FlatList ***
-      flex: 1, // *** Make FlatList expand to fill its parent (rightSide) ***
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      padding: 20,
-  },
-  gridContentContainer: {
-     padding: 8,
-  },
-  categoryListContainer: {
-     paddingVertical: 0,
-     paddingHorizontal: 0, // Let CateComponent handle padding
-  },
-  squareItemContainer: {
-      margin: 5,
-  },
-  rightItemContainer: {
-     // Let CateComponent handle background/border
-     // Add separator style below if not using ItemSeparatorComponent
-      borderBottomWidth: 1,
-      borderBottomColor: '#f0f0f0'
-  },
-  categorySeparator: { // Style for ItemSeparatorComponent
-      height: 1,
-      backgroundColor: '#f0f0f0',
-       marginHorizontal: 15, // Optional indent
-  },
-  emptyListText: {
-    textAlign: 'center',
-    fontSize: 16,
-    color: '#6c757d',
-  }
+    container: { flex: 1, backgroundColor: '#f0f9ff', },
+    navBar: { backgroundColor: '#0077b6', height: 35, width: '100%', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 3, elevation: 3, zIndex: 10, },
+    navBarTouchable: { paddingHorizontal: 15, paddingVertical: 5, },
+    navBarTitle: { color: '#fff', fontSize: 16, fontWeight: '600', },
+    content: { flexDirection: 'row', flex: 1, },
+    leftSide: { flex: 8, backgroundColor: '#f8f9fa', },
+    rightSide: { flex: 2.5, backgroundColor: '#ffffff', borderLeftWidth: 1, borderLeftColor: '#e0e0e0', },
+    categoryFlatList: { flex: 1, },
+    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', },
+    emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, minHeight: 200, },
+    gridContentContainer: { padding: 5, alignItems: 'flex-start', },
+    categoryListContainer: { paddingVertical: 0, paddingHorizontal: 0, },
+    squareItemContainer: { margin: 4, },
+    rightItemContainer: { borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
+    emptyListText: { textAlign: 'center', fontSize: 16, color: '#6c757d', }
 });
 
-export default NavBarComponent;
+
+export default SymbolGrid; // Export with the correct name

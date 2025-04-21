@@ -1,42 +1,41 @@
+// src/components/bottomnav.tsx (BottomBar)
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-    View,
-    TouchableOpacity,
-    StyleSheet,
-    Modal,
-    Animated, // Import Animated
-    Platform,
-    Easing, // For animation timing
-    Text // For potential labels on toggle button
-} from 'react-native';
+    View, TouchableOpacity, StyleSheet, Modal, Animated, Easing, Platform, Text // Added Text, Platform
+} from 'react-native'; // Added other imports
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import {
     faSearch, faPlus, faBoxes, faHome, faKeyboard, faCog,
-    faChevronUp, // Icon for showing the bar
-    faChevronDown // Icon for hiding the bar
+    faChevronUp, // Removed if toggle logic moved
+    faChevronDown // Removed if toggle logic moved
 } from '@fortawesome/free-solid-svg-icons';
-import LinearGradient from 'react-native-linear-gradient'; // Optional gradient
+import LinearGradient from 'react-native-linear-gradient';
 
-// Import Components/Screens
-import Menu, { menuWidth } from '../components/menu';
-import SearchScreen from './SearchScreen';
-import GridLayoutScreen, { GridLayoutType } from './GridLayoutScreen';
-import CustomPageComponent from './CustomPageComponent';
-import KeyboardInputComponent from './KeyboardInputComponent';
+// --- Import Components/Screens/Types --- (Adjust paths as necessary)
+import Menu, { menuWidth } from '../components/menu'; // Assuming Menu exports menuWidth
+import SearchScreen from '../components/SearchScreen';
+import GridLayoutScreen, { GridLayoutType } from '../components/GridLayoutScreen';
+import CustomPageComponent from '../components/CustomPageComponent';
+import KeyboardInputComponent from '../components/KeyboardInputComponent';
+import { VoiceSettingData } from '../components/SymbolVoiceOverScreen'; // Import VoiceSettingData type
 
 // --- Constants ---
-const BAR_HEIGHT = 65; // Estimated height of the bottom bar + border/padding
-const TOGGLE_BUTTON_SIZE = 50;
+const BAR_HEIGHT = 65; // Make sure this matches actual height
+// const TOGGLE_BUTTON_SIZE = 50; // Removed if toggle logic moved
 
 // --- Props Interface ---
 type BottomBarProps = {
     handleHomePress: () => void;
-    onSymbolSelected: (symbol: { keyword: string; pictogramUrl: string }) => void;
-    onTextInputSubmit: (text: string) => void;
+    onSymbolSelected: (symbol: { keyword: string; pictogramUrl: string }) => void; // From Search modal
+    onTextInputSubmit: (text: string) => void; // From Keyboard modal
     currentLanguage?: string;
     currentGridLayout?: GridLayoutType;
     onGridLayoutSave: (layout: GridLayoutType) => void;
     onCustomSymbolsUpdate?: (symbols: any[]) => void;
+    // --- Add TTS Props ---
+    currentTtsSettings: VoiceSettingData;
+    onTtsSettingsSave: (settings: VoiceSettingData) => void;
+    // ---------------------
 };
 
 // --- Component ---
@@ -48,71 +47,78 @@ const BottomBar: React.FC<BottomBarProps> = React.memo(({
     currentGridLayout = 'standard',
     onGridLayoutSave,
     onCustomSymbolsUpdate,
+    // --- Destructure TTS Props ---
+    currentTtsSettings,
+    onTtsSettingsSave,
+    // ---------------------------
 }) => {
-  // --- State ---
-  const [isMenuVisible, setMenuVisible] = useState(false);
-  const [isSearchScreenVisible, setIsSearchScreenVisible] = useState(false);
-  const [isGridLayoutScreenVisible, setIsGridLayoutScreenVisible] = useState(false);
-  const [isCustomPageModalVisible, setIsCustomPageModalVisible] = useState(false);
-  const [isKeyboardInputVisible, setIsKeyboardInputVisible] = useState(false);
-  const [isBarVisible, setIsBarVisible] = useState(true); // State to control bar visibility
+    // --- State & Animation ---
+    // Modals visibility state
+    const [isMenuVisible, setMenuVisible] = useState(false);
+    const [isSearchScreenVisible, setIsSearchScreenVisible] = useState(false);
+    const [isGridLayoutScreenVisible, setIsGridLayoutScreenVisible] = useState(false);
+    const [isCustomPageModalVisible, setIsCustomPageModalVisible] = useState(false);
+    const [isKeyboardInputVisible, setIsKeyboardInputVisible] = useState(false);
 
-  // --- Animation Values ---
-  const menuSlideAnim = useRef(new Animated.Value(-menuWidth)).current;
-  const menuOverlayAnim = useRef(new Animated.Value(0)).current;
-  // Animation for the bar sliding up/down
-  const barSlideAnim = useRef(new Animated.Value(0)).current; // 0 = visible, BAR_HEIGHT = hidden
+    // Menu animation values
+    const menuSlideAnim = useRef(new Animated.Value(-menuWidth)).current;
+    const menuOverlayAnim = useRef(new Animated.Value(0)).current;
 
-  // --- Animation Logic ---
-  useEffect(() => {
-    // Animate bar based on isBarVisible state
-    Animated.timing(barSlideAnim, {
-      toValue: isBarVisible ? 0 : BAR_HEIGHT, // Target value based on state
-      duration: 250, // Animation duration
-      easing: Easing.out(Easing.ease), // Smooth easing
-      useNativeDriver: true, // Use native driver for performance
-    }).start();
-  }, [isBarVisible, barSlideAnim]);
+    // Removed bar visibility logic (controlled by HomeScreen)
 
-  // --- Toggle Bar Visibility ---
-  const toggleBarVisibility = () => {
-      setIsBarVisible(prev => !prev);
-  };
+    // --- Menu Handlers ---
+    const openMenu = useCallback(() => {
+        setMenuVisible(true);
+        Animated.parallel([
+            Animated.spring(menuSlideAnim, { toValue: 0, useNativeDriver: true, bounciness: 4, speed: 10 }),
+            Animated.timing(menuOverlayAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
+        ]).start();
+    }, [menuSlideAnim, menuOverlayAnim]);
 
-  // --- Menu Handlers --- (remain the same)
-  const openMenu = useCallback(() => { setMenuVisible(true); Animated.parallel([ Animated.spring(menuSlideAnim, { toValue: 0, useNativeDriver: true, bounciness: 4, speed: 10 }), Animated.timing(menuOverlayAnim, { toValue: 1, duration: 250, useNativeDriver: true }), ]).start(); }, [menuSlideAnim, menuOverlayAnim]);
-  const closeMenu = useCallback(() => { Animated.parallel([ Animated.spring(menuSlideAnim, { toValue: -menuWidth, useNativeDriver: true, bounciness: 4, speed: 10 }), Animated.timing(menuOverlayAnim, { toValue: 0, duration: 200, useNativeDriver: true }), ]).start(() => setMenuVisible(false)); }, [menuSlideAnim, menuOverlayAnim]);
+    const closeMenu = useCallback(() => {
+        Animated.parallel([
+            Animated.spring(menuSlideAnim, { toValue: -menuWidth, useNativeDriver: true, bounciness: 4, speed: 10 }),
+            Animated.timing(menuOverlayAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+        ]).start(() => setMenuVisible(false));
+    }, [menuSlideAnim, menuOverlayAnim]);
 
-  // --- Other Modal/Screen Handlers --- (remain the same)
-  const openSearchScreen = useCallback(() => { setIsSearchScreenVisible(true); }, []);
-  const closeSearchScreen = useCallback(() => { setIsSearchScreenVisible(false); }, []);
-  const handleSymbolSelect = useCallback((symbol: { keyword: string; pictogramUrl: string }) => { onSymbolSelected(symbol); setIsSearchScreenVisible(false); }, [onSymbolSelected]);
-  const openGridLayoutScreen = useCallback(() => { setIsGridLayoutScreenVisible(true); }, []);
-  const closeGridLayoutScreen = useCallback(() => { setIsGridLayoutScreenVisible(false); }, []);
-  const handleSaveGridLayout = useCallback((layout: GridLayoutType) => { onGridLayoutSave(layout); }, [onGridLayoutSave]);
-  const openCustomPageModal = useCallback(() => { setIsCustomPageModalVisible(true); }, []);
-  const closeCustomPageModal = useCallback(() => { setIsCustomPageModalVisible(false); }, []);
-  const openKeyboardInput = useCallback(() => { setIsKeyboardInputVisible(true); }, []);
-  const closeKeyboardInput = useCallback(() => { setIsKeyboardInputVisible(false); }, []);
-  const handleKeyboardSubmit = useCallback((text: string) => { onTextInputSubmit(text); closeKeyboardInput(); }, [onTextInputSubmit, closeKeyboardInput]);
 
-  // --- Render ---
-  return (
-    // Use React.Fragment to render multiple root-level elements (Bar + Toggle Button + Modals)
-    <>
-        {/* The Animated Bottom Bar Container */}
-        <Animated.View
-            style={[
-                styles.bottomBarContainer, // Absolute positioning
-                { transform: [{ translateY: barSlideAnim }] } // Apply slide animation
-            ]}
-        >
-             {/* Optional Gradient Background */}
+    // --- Other Modal/Screen Handlers ---
+    const openSearchScreen = useCallback(() => { setIsSearchScreenVisible(true); }, []);
+    const closeSearchScreen = useCallback(() => { setIsSearchScreenVisible(false); }, []);
+    const handleSymbolSelectFromSearch = useCallback((symbol: { keyword: string; pictogramUrl: string }) => {
+        onSymbolSelected(symbol); // Call parent handler
+        closeSearchScreen(); // Close the modal
+    }, [onSymbolSelected, closeSearchScreen]);
+
+    const openGridLayoutScreen = useCallback(() => { setIsGridLayoutScreenVisible(true); }, []);
+    const closeGridLayoutScreen = useCallback(() => { setIsGridLayoutScreenVisible(false); }, []);
+    // onSave for GridLayoutScreen calls the prop, parent handles feedback, screen closes itself via onClose
+    const handleSaveGridLayout = useCallback((layout: GridLayoutType) => {
+        onGridLayoutSave(layout); // Let parent handle saving/state update
+        // The GridLayoutScreen itself calls its onClose prop when saving
+    }, [onGridLayoutSave]);
+
+    const openCustomPageModal = useCallback(() => { setIsCustomPageModalVisible(true); }, []);
+    const closeCustomPageModal = useCallback(() => { setIsCustomPageModalVisible(false); }, []);
+
+    const openKeyboardInput = useCallback(() => { setIsKeyboardInputVisible(true); }, []);
+    const closeKeyboardInput = useCallback(() => { setIsKeyboardInputVisible(false); }, []);
+    const handleKeyboardSubmitInternal = useCallback((text: string) => {
+        onTextInputSubmit(text); // Call parent handler
+        // Keep keyboard input open or close based on preference
+        // closeKeyboardInput();
+    }, [onTextInputSubmit /*, closeKeyboardInput */]);
+
+
+    // --- Render ---
+    return (
+        // Use Fragment as the Animated wrapper is now in HomeScreen
+        <>
             <LinearGradient
-                 colors={['#0077b6', '#005f94']} // Example gradient colors
-                 style={styles.bottomBarGradient}
+                colors={['#0077b6', '#005f94']} // Example gradient
+                style={styles.bottomBarGradient}
             >
-                {/* Actual Bar Content */}
                 <View style={styles.bottomBarContent}>
                     {/* Search Button */}
                     <TouchableOpacity style={styles.button} onPress={openSearchScreen} accessibilityLabel="Search symbols">
@@ -145,107 +151,87 @@ const BottomBar: React.FC<BottomBarProps> = React.memo(({
                     </TouchableOpacity>
                 </View>
             </LinearGradient>
-        </Animated.View>
 
-        {/* Floating Toggle Button - Rendered separately, positioned absolutely */}
-        <TouchableOpacity
-            style={styles.toggleButton}
-            onPress={toggleBarVisibility}
-            activeOpacity={0.8}
-            accessibilityLabel={isBarVisible ? "Hide toolbar" : "Show toolbar"}
-        >
-             <FontAwesomeIcon icon={isBarVisible ? faChevronDown : faChevronUp} size={20} color="#0077b6" />
-             {/* Optional Text Label: */}
-             {/* <Text style={styles.toggleButtonText}>{isBarVisible ? 'Hide' : 'Show'}</Text> */}
-        </TouchableOpacity>
+            {/* --- Modals Rendered by BottomBar --- */}
+            <Modal visible={isMenuVisible} transparent={true} animationType="none" onRequestClose={closeMenu} >
+                {/* Pass TTS Settings and Save Handler to Menu */}
+                <Menu
+                    slideAnim={menuSlideAnim}
+                    overlayAnim={menuOverlayAnim}
+                    closeMenu={closeMenu}
+                    currentTtsSettings={currentTtsSettings} // <-- Pass down
+                    onTtsSettingsSave={onTtsSettingsSave}   // <-- Pass down
+                />
+            </Modal>
 
-        {/* --- Modals Rendered by BottomBar --- */}
-        {/* (Modal rendering logic remains the same) */}
-        <Modal visible={isMenuVisible} transparent={true} animationType="none" onRequestClose={closeMenu} >
-            <Menu slideAnim={menuSlideAnim} overlayAnim={menuOverlayAnim} closeMenu={closeMenu} />
-        </Modal>
+            {/* --- Other Modals --- */}
+            {/* Search Screen is now a Modal itself */}
+            {isSearchScreenVisible && (
+                <SearchScreen
+                    onCloseSearch={closeSearchScreen}
+                    language={currentLanguage}
+                    onSelectSymbol={handleSymbolSelectFromSearch}
+                />
+             )}
 
-        {isSearchScreenVisible && (
-            <SearchScreen onCloseSearch={closeSearchScreen} language={currentLanguage} onSelectSymbol={handleSymbolSelect} />
-        )}
+            {/* Grid Layout Screen presented as a Modal */}
+             {isGridLayoutScreenVisible && (
+                 <Modal visible={isGridLayoutScreenVisible} animationType="slide" onRequestClose={closeGridLayoutScreen} >
+                    <GridLayoutScreen
+                        onClose={closeGridLayoutScreen} // Allow screen to close itself
+                        initialLayout={currentGridLayout}
+                        onSave={handleSaveGridLayout} // Parent notified on save
+                    />
+                 </Modal>
+             )}
 
-        <Modal visible={isGridLayoutScreenVisible} animationType="slide" onRequestClose={closeGridLayoutScreen} >
-            <GridLayoutScreen onClose={closeGridLayoutScreen} initialLayout={currentGridLayout} onSave={handleSaveGridLayout} />
-        </Modal>
+            {/* Custom Page Component presented as a Modal */}
+             {isCustomPageModalVisible && (
+                <Modal visible={isCustomPageModalVisible} animationType="slide" onRequestClose={closeCustomPageModal}>
+                    <CustomPageComponent
+                        onBackPress={closeCustomPageModal} // Allow screen to close itself
+                        onSymbolsUpdate={onCustomSymbolsUpdate}
+                    />
+                </Modal>
+             )}
 
-        <Modal visible={isCustomPageModalVisible} animationType="slide" onRequestClose={closeCustomPageModal} >
-            <CustomPageComponent onBackPress={closeCustomPageModal} onSymbolsUpdate={onCustomSymbolsUpdate} />
-        </Modal>
-
-        <KeyboardInputComponent
-            visible={isKeyboardInputVisible}
-            onClose={closeKeyboardInput}
-            onSubmit={handleKeyboardSubmit}
-            placeholder="Type word or sentence..."
-        />
-    </>
-  );
+             {/* Keyboard Input Component presented as a Modal */}
+             {isKeyboardInputVisible && (
+                 <KeyboardInputComponent
+                     visible={isKeyboardInputVisible} // Controls modal visibility
+                     onClose={closeKeyboardInput} // Allow screen to close itself
+                     onSubmit={handleKeyboardSubmitInternal} // Parent notified on submit
+                     placeholder="Type word or sentence..."
+                 />
+              )}
+        </>
+    );
 });
 
 // --- Styles ---
 const styles = StyleSheet.create({
-  bottomBarContainer: { // Container for positioning and animation
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: BAR_HEIGHT, // Use constant height
-    zIndex: 5, // Ensure bar is above content but potentially below modals
-  },
-  bottomBarGradient: { // Style for the gradient layer
-      flex: 1, // Take full height of container
+  // Removed container style
+  bottomBarGradient: {
+      // Removed flex: 1, height determined by container or content
+      height: BAR_HEIGHT, // Set height explicitly
       borderTopWidth: 1,
-      borderTopColor: 'rgba(255, 255, 255, 0.2)', // Lighter border on top
+      borderTopColor: 'rgba(255, 255, 255, 0.2)',
   },
-  bottomBarContent: { // Holds the buttons
-    flex: 1,
+  bottomBarContent: {
+    flex: 1, // Fill the gradient height
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 5, // Keep horizontal padding
-    paddingVertical: 5, // Adjust vertical padding if needed
+    paddingHorizontal: 5,
+    // Removed paddingVertical: 5 if BAR_HEIGHT handles it
   },
   button: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8, // Adjust padding for slightly larger icons
-     height: '100%', // Make button fill height
+    // Removed paddingVertical: 8
+    height: '100%', // Make button fill height
   },
-  // --- Floating Toggle Button ---
-  toggleButton: {
-      position: 'absolute',
-      // Center horizontally, adjust left/right if needed
-      alignSelf: 'center',
-      // Position above the bottom bar's height + some margin
-      bottom: BAR_HEIGHT - (TOGGLE_BUTTON_SIZE / 2) + 10, // Overlap slightly when shown, clear when hidden
-      width: TOGGLE_BUTTON_SIZE,
-      height: TOGGLE_BUTTON_SIZE,
-      borderRadius: TOGGLE_BUTTON_SIZE / 2, // Make it circular
-      backgroundColor: '#ffffff', // White background
-      justifyContent: 'center',
-      alignItems: 'center',
-      // Shadow/Elevation for FAB effect
-      shadowColor: "#000",
-      shadowOffset: {
-          width: 0,
-          height: 2,
-      },
-      shadowOpacity: 0.25,
-      shadowRadius: 3.84,
-      elevation: 5,
-      zIndex: 10, // Ensure toggle button is above the bar
-  },
-  // Optional text style if adding text to toggle button
-  // toggleButtonText: {
-  //     fontSize: 10,
-  //     color: '#0077b6',
-  //     marginTop: 2,
-  // },
+  // Removed toggle button styles
 });
 
 export default BottomBar;

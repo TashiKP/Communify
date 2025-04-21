@@ -2,72 +2,96 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
     View, StyleSheet, Animated, TouchableWithoutFeedback, Keyboard,
-    Easing, Platform, Text, Alert // REMOVED SafeAreaView from here
+    Easing, Platform, Text, Alert
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context'; // <--- CORRECT IMPORT
-import Tts from 'react-native-tts'; // Added for TTS
+import { SafeAreaView } from 'react-native-safe-area-context'; // Correct import for 'edges' prop
+import Tts from 'react-native-tts';
 
 // --- COMPONENT IMPORTS --- (Adjust paths as necessary)
 import IconInputComponent from '../components/input';
 import Navbar from '../components/navbar';
-import SymbolGrid from '../components/Symbols'; // Renamed from NavBarComponent
+import SymbolGrid from '../components/Symbols'; // Your main symbol grid component
 import BottomBar from '../components/bottomnav';
 // --- TYPE IMPORTS --- (Adjust paths as necessary)
-import { GridLayoutType } from '../components/GridLayoutScreen';
-import { VoiceSettingData } from '../components/SymbolVoiceOverScreen'; // Now essential
+import { GridLayoutType } from '../components/GridLayoutScreen'; // Assuming GridLayoutScreen exports this
+import { VoiceSettingData } from '../components/SymbolVoiceOverScreen'; // For TTS state
 
 // --- Define types needed ---
-type SearchSymbolInfo = { keyword: string; pictogramUrl: string }; // For search results passed to BottomBar handler
-type SelectedSymbol = { id: string; keyword: string }; // For items in the sentence bar
+type SearchSymbolInfo = { keyword: string; pictogramUrl: string }; // For search results
+type SelectedSymbol = { id: string; keyword: string; imageUri?: string }; // Added optional imageUri for input bar
 
 // --- Default TTS Settings ---
-// Define it here, but ideally load from storage/context
+// TODO: Load these from AsyncStorage or context in a real app
 const defaultTtsSettings: VoiceSettingData = {
     pitch: 0.5, speed: 0.5, volume: 0.8, pitchLocked: false, speedLocked: false,
     volumeLocked: false, selectedVoiceId: null, highlightWord: true, speakPunctuation: false,
 };
 
 // --- Configuration ---
-const HIDE_DELAY = 4000;
-const ANIMATION_DURATION_IN = 250;
-const ANIMATION_DURATION_OUT = 350;
-const BOTTOM_BAR_HEIGHT = 60; // Adjust if BottomBar height changes
+const HIDE_DELAY = 4000; // ms before auto-hiding BottomBar
+const ANIMATION_DURATION_IN = 250; // Slide-in duration
+const ANIMATION_DURATION_OUT = 350; // Slide-out duration
+const BOTTOM_BAR_HEIGHT = 65; // <--- IMPORTANT: Match the actual height of your BottomBar component (IconInputComponent uses 65)
 
 const HomeScreen = () => {
     // --- State ---
-    const [isBarVisible, setIsBarVisible] = useState(true);
-    const [currentLayout, setCurrentLayout] = useState<GridLayoutType>('standard');
-    const [currentLang, setCurrentLang] = useState('en'); // Keep language state if needed
-    const [selectedItems, setSelectedItems] = useState<SelectedSymbol[]>([]);
+    const [isBarVisible, setIsBarVisible] = useState(true); // BottomBar visibility
+    const [currentLayout, setCurrentLayout] = useState<GridLayoutType>('standard'); // Example layout state
+    const [currentLang, setCurrentLang] = useState('en'); // Example language state
+    const [selectedItems, setSelectedItems] = useState<SelectedSymbol[]>([]); // Items in the input bar
 
     // --- TTS State ---
-    const [ttsSettings, setTtsSettings] = useState<VoiceSettingData>(defaultTtsSettings); // State for settings
+    const [ttsSettings, setTtsSettings] = useState<VoiceSettingData>(defaultTtsSettings);
     const [isTtsSpeaking, setIsTtsSpeaking] = useState(false);
     const [isTtsInitialized, setIsTtsInitialized] = useState(false);
 
     // --- Animation ---
-    const bottomBarPosition = useRef(new Animated.Value(0)).current;
+    const bottomBarPosition = useRef(new Animated.Value(0)).current; // 0 = visible, BOTTOM_BAR_HEIGHT = hidden
     const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     // --- Animation Functions (Slide Up/Down) ---
-    const slideUp = useCallback(() => { Animated.timing(bottomBarPosition, { toValue: 0, duration: ANIMATION_DURATION_IN, easing: Easing.out(Easing.ease), useNativeDriver: true }).start();}, [bottomBarPosition]);
-    const slideDown = useCallback(() => { Animated.timing(bottomBarPosition, { toValue: BOTTOM_BAR_HEIGHT + (Platform.OS === 'ios' ? 30 : 10), duration: ANIMATION_DURATION_OUT, easing: Easing.in(Easing.ease), useNativeDriver: true }).start();}, [bottomBarPosition]); // Increased slide down value
+    const slideUp = useCallback(() => {
+        Animated.timing(bottomBarPosition, {
+            toValue: 0, // Position at bottom edge
+            duration: ANIMATION_DURATION_IN,
+            easing: Easing.out(Easing.ease),
+            useNativeDriver: true
+        }).start();
+    }, [bottomBarPosition]);
+
+    const slideDown = useCallback(() => {
+        Animated.timing(bottomBarPosition, {
+            toValue: BOTTOM_BAR_HEIGHT + (Platform.OS === 'ios' ? 30 : 10), // Move below screen edge (+ extra for safe area/shadows)
+            duration: ANIMATION_DURATION_OUT,
+            easing: Easing.in(Easing.ease),
+            useNativeDriver: true
+        }).start();
+    }, [bottomBarPosition]);
 
     // --- Timer Logic for Auto-Hide ---
     const showAndResetTimer = useCallback(() => {
         if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-        if (!isBarVisible) { setIsBarVisible(true); slideUp(); }
+        if (!isBarVisible) { // Only slide up if currently hidden
+            setIsBarVisible(true);
+            slideUp();
+        }
+        // Set timer to hide the bar
         hideTimerRef.current = setTimeout(() => {
-            // Optional: Check Keyboard.isVisible() here if needed, but can be unreliable
-            setIsBarVisible(false); slideDown(); hideTimerRef.current = null;
+            // Optional: Check if keyboard is visible here if needed
+            // if (Keyboard.isVisible()) { showAndResetTimer(); return; }
+            setIsBarVisible(false);
+            slideDown();
+            hideTimerRef.current = null;
         }, HIDE_DELAY);
-    }, [isBarVisible, slideUp, slideDown]); // Include dependencies
+    }, [isBarVisible, slideUp, slideDown]); // Dependencies
 
     // --- Effect for Initial Show & Cleanup ---
     useEffect(() => {
-        showAndResetTimer(); // Show bar on mount
-        return () => { if (hideTimerRef.current) clearTimeout(hideTimerRef.current); }; // Cleanup timer
-    }, [showAndResetTimer]); // Dependency ensures it runs once correctly
+        showAndResetTimer(); // Show bar and start timer on mount
+        return () => { // Cleanup timer on unmount
+            if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+        };
+    }, [showAndResetTimer]); // Dependency
 
     // --- TTS Initialization and Listeners ---
     useEffect(() => {
@@ -79,7 +103,6 @@ const HomeScreen = () => {
         const initializeTts = async () => {
             console.log("Attempting TTS Initialization with settings:", ttsSettings);
             try {
-                // Apply settings during initialization
                 await Tts.setDefaultLanguage(currentLang);
                 if (ttsSettings.selectedVoiceId) await Tts.setDefaultVoice(ttsSettings.selectedVoiceId);
                 await Tts.setDefaultPitch(ttsSettings.pitch * 1.5 + 0.5);
@@ -91,119 +114,89 @@ const HomeScreen = () => {
                 cancelListener = Tts.addEventListener('tts-cancel', () => { if (isMounted) setIsTtsSpeaking(false); console.log(">> EVENT: tts-cancel") });
 
                 if (isMounted) {
-                    // Fetch voices *after* init to potentially set a default if none is selected
                     const voicesResult = await Tts.voices();
                     const usableVoices = voicesResult.filter(v => !(Platform.OS === 'android' && v.networkConnectionRequired && v.notInstalled));
-                    // Only set default if NO voice is currently selected in state AND voices are available
                     if (!ttsSettings.selectedVoiceId && usableVoices.length > 0) {
-                        const defaultVoice = usableVoices.find(v => v.language.startsWith(currentLang)) || usableVoices[0]; // Prefer current language
+                        const defaultVoice = usableVoices.find(v => v.language.startsWith(currentLang)) || usableVoices[0];
                         console.log("No voice selected, setting default:", defaultVoice.id);
-                        // Update state non-blockingly
                         setTtsSettings(prev => ({ ...prev, selectedVoiceId: defaultVoice.id }));
                     }
                     setIsTtsInitialized(true);
                     console.log("TTS Initialized Successfully");
                 }
 
-            } catch (err: any) {
-                console.error('TTS Initialization failed:', err);
-                if (isMounted && err.message !== 'TTS engine is not ready') {
-                    Alert.alert('TTS Error', `Text-to-Speech engine failed to initialize. (${err.message})`);
-                }
-                if (isMounted) setIsTtsInitialized(false); // Ensure state is false on error
-            }
+            } catch (err: any) { /* ... error handling ... */ console.error('TTS Initialization failed:', err); if (isMounted) setIsTtsInitialized(false); }
         };
 
         initializeTts();
 
-        return () => {
-            isMounted = false;
-            Tts.stop();
-            startListener?.remove();
-            finishListener?.remove();
-            cancelListener?.remove();
-            console.log("TTS Listeners Cleaned Up");
-        };
-        // Re-initialize if key settings change
+        return () => { isMounted = false; Tts.stop(); startListener?.remove(); finishListener?.remove(); cancelListener?.remove(); };
     }, [currentLang, ttsSettings.selectedVoiceId, ttsSettings.pitch, ttsSettings.speed]);
 
 
     // --- Handlers for SymbolGrid and IconInputComponent ---
-    const handleSymbolPress = useCallback((keyword: string) => {
+    const handleSymbolPress = useCallback((keyword: string, imageUri?: string) => { // Updated signature
         setSelectedItems(prev => [
             ...prev,
-            { keyword, id: `${Date.now()}-${keyword}-${prev.length}` }
+            // Store imageUri if you plan to display custom images in the input bar
+            { keyword, imageUri, id: `${Date.now()}-${keyword}-${prev.length}` }
         ]);
-        showAndResetTimer(); // Reset timer on interaction
-    }, [showAndResetTimer]); // Dependency on timer reset function
+        showAndResetTimer();
+    }, [showAndResetTimer]);
 
     const handleBackspacePress = useCallback(() => {
         setSelectedItems(prev => prev.slice(0, -1));
-        showAndResetTimer(); // Reset timer on interaction
+        showAndResetTimer();
     }, [showAndResetTimer]);
 
     const handleClearPress = useCallback(() => {
         setSelectedItems([]);
-        if (isTtsSpeaking) Tts.stop(); // Stop speech if clearing
-        showAndResetTimer(); // Reset timer on interaction
+        if (isTtsSpeaking) Tts.stop();
+        showAndResetTimer();
     }, [isTtsSpeaking, showAndResetTimer]);
 
-    // --- Modified handleSpeakPress to use current ttsSettings state ---
+    // --- Modified handleSpeakPress ---
     const handleSpeakPress = useCallback(async () => {
         showAndResetTimer();
-        console.log(`Speak pressed. isTtsInitialized: ${isTtsInitialized}, isTtsSpeaking: ${isTtsSpeaking}`); // Debug log
         if (!isTtsInitialized) { Alert.alert("TTS Error", "TTS not ready."); return; }
-        if (isTtsSpeaking) { Tts.stop(); return; } // Listener handles setIsTtsSpeaking(false)
+        if (isTtsSpeaking) { Tts.stop(); return; }
         if (selectedItems.length === 0) return;
 
         const sentence = selectedItems.map(item => item.keyword).join(' ');
-        console.log(`HomeScreen: Speaking - "${sentence}" with pitch: ${ttsSettings.pitch}, speed: ${ttsSettings.speed}`); // Log current settings
+        console.log(`HomeScreen: Speaking - "${sentence}" with pitch: ${ttsSettings.pitch}, speed: ${ttsSettings.speed}`);
         try {
-            // --- Apply CURRENT settings before speaking ---
-            // Check if voice exists before setting (important after initialization)
+            // Apply CURRENT settings before speaking
             if (ttsSettings.selectedVoiceId) {
-                const voices = await Tts.voices(); // Check available voices again
+                const voices = await Tts.voices();
                 if (voices.some(v => v.id === ttsSettings.selectedVoiceId)) {
                     await Tts.setDefaultVoice(ttsSettings.selectedVoiceId);
-                } else {
-                    console.warn(`Selected voice ${ttsSettings.selectedVoiceId} not found, using engine default.`);
-                    // Optionally reset state if voice is invalid
-                    // setTtsSettings(prev => ({...prev, selectedVoiceId: null}));
-                }
+                } else { console.warn(`Voice ${ttsSettings.selectedVoiceId} not found.`); }
             }
-            await Tts.setDefaultPitch(ttsSettings.pitch * 1.5 + 0.5); // Use state value
-            await Tts.setDefaultRate(ttsSettings.speed * 0.9 + 0.05);  // Use state value
-
-            Tts.speak(sentence); // Listener handles setIsTtsSpeaking(true)
-        } catch (error: any) {
-            console.error("TTS Speak error:", error);
-            setIsTtsSpeaking(false); // Ensure state is reset on error
-            Alert.alert("Speak Error", `Could not speak sentence. ${error.message || ''}`);
-        }
-    }, [selectedItems, isTtsSpeaking, ttsSettings, isTtsInitialized, showAndResetTimer]); // <-- Add ttsSettings dependency
+            await Tts.setDefaultPitch(ttsSettings.pitch * 1.5 + 0.5);
+            await Tts.setDefaultRate(ttsSettings.speed * 0.9 + 0.05);
+            Tts.speak(sentence);
+        } catch (error: any) { console.error("TTS Speak error:", error); setIsTtsSpeaking(false); Alert.alert("Speak Error", `Could not speak. ${error.message || ''}`); }
+    }, [selectedItems, isTtsSpeaking, ttsSettings, isTtsInitialized, showAndResetTimer]);
 
 
-    // --- Handler to UPDATE TTS Settings State (passed down) ---
+    // --- Handler to UPDATE TTS Settings State ---
     const handleTtsSettingsSave = useCallback((newSettings: VoiceSettingData) => {
         console.log("HomeScreen: Updating TTS Settings:", newSettings);
-        setTtsSettings(newSettings); // Update the state in HomeScreen
+        setTtsSettings(newSettings);
         // TODO: Persist newSettings to AsyncStorage here
-        // Example: AsyncStorage.setItem('ttsSettings', JSON.stringify(newSettings));
-        Alert.alert("Settings Saved", "Voice settings have been updated."); // Provide feedback
-        showAndResetTimer(); // Reset timer after settings interaction
-    }, [showAndResetTimer]); // Dependency
+        Alert.alert("Settings Saved", "Voice settings updated.");
+        showAndResetTimer();
+    }, [showAndResetTimer]);
 
 
     // --- Handlers Passed to BottomBar ---
     const handleHomePress = useCallback(() => {
         console.log('Home Pressed');
-        // Add logic like setSelectedItems([]) or reset filters in SymbolGrid if needed
         showAndResetTimer();
     }, [showAndResetTimer]);
 
-    // Handler for symbols selected via the SEARCH modal (from BottomBar)
     const handleSearchSymbolSelect = useCallback((symbol: SearchSymbolInfo) => {
-        console.log('Search Symbol Selected in HomeScreen:', symbol);
+        console.log('Search Symbol Selected:', symbol);
         setSelectedItems(prev => [
             ...prev,
             { keyword: symbol.keyword, id: `${Date.now()}-${symbol.keyword}-${prev.length}` }
@@ -211,27 +204,25 @@ const HomeScreen = () => {
         showAndResetTimer();
     }, [showAndResetTimer]);
 
-    // Handler for text submitted via the KEYBOARD INPUT modal (from BottomBar)
     const handleTextInputSubmit = useCallback((text: string) => {
-        console.log('Text Input Submitted in HomeScreen:', text);
-         setSelectedItems(prev => [
+        console.log('Text Input Submitted:', text);
+        setSelectedItems(prev => [
             ...prev,
             { keyword: text, id: `${Date.now()}-${text}-${prev.length}` }
         ]);
         showAndResetTimer();
     }, [showAndResetTimer]);
 
-
     const handleLayoutSave = useCallback((newLayout: GridLayoutType) => {
-        console.log("Layout updated in HomeScreen:", newLayout);
+        console.log("Layout updated:", newLayout);
         setCurrentLayout(newLayout);
-        // TODO: Add persistence logic here for layout
+        // TODO: Persist layout
         showAndResetTimer();
     }, [showAndResetTimer]);
 
     const handleCustomSymbolsUpdate = useCallback((updatedSymbols: any[]) => {
         console.log('Custom symbols updated notification:', updatedSymbols.length);
-        // TODO: Handle custom symbol updates if needed (e.g., refresh grid?)
+        // TODO: Potentially reload custom symbols in SymbolGrid here if needed
         showAndResetTimer();
     }, [showAndResetTimer]);
 
@@ -239,9 +230,10 @@ const HomeScreen = () => {
     // --- Render Input Bar Children ---
     const renderInputItems = () => {
         if (selectedItems.length === 0) return null;
-        // Render simple text chips
+        // Render simple text chips (Can be enhanced to show images using item.imageUri)
         return selectedItems.map((item) => (
             <View key={item.id} style={styles.inputItemChip}>
+                {/* Optional: Render Image if item.imageUri exists */}
                 <Text style={styles.inputItemText}>{item.keyword}</Text>
             </View>
         ));
@@ -249,14 +241,15 @@ const HomeScreen = () => {
 
     // --- Main Render ---
     return (
-        // Use edges prop with SafeAreaView from react-native-safe-area-context
         <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-            {/* Wrap main content area in TouchableWithoutFeedback */}
+            {/* TouchableWithoutFeedback to reset timer on main content tap */}
             <TouchableWithoutFeedback onPress={showAndResetTimer} accessible={false}>
                  <View style={styles.container}>
+                    {/* Fixed Navbar */}
                     <Navbar />
+                    {/* Fixed Input Component */}
                     <IconInputComponent
-                        onSpeakPress={handleSpeakPress} // Uses updated handler
+                        onSpeakPress={handleSpeakPress}
                         onBackspacePress={handleBackspacePress}
                         onClearPress={handleClearPress}
                         isSpeakDisabled={selectedItems.length === 0 || isTtsSpeaking || !isTtsInitialized}
@@ -266,38 +259,36 @@ const HomeScreen = () => {
                         {renderInputItems()}
                     </IconInputComponent>
 
-                    {/* Main content area */}
-                    <View style={styles.mainContent} key={`layout-${currentLayout}`}>
+                    {/* Scrollable/Main Content Area */}
+                    <View style={styles.mainContent} key={`layout-${currentLayout}-${currentLang}`}>
                         <SymbolGrid
-                            // Pass layoutType={currentLayout} // If SymbolGrid uses it
-                            onSymbolPress={handleSymbolPress} // Pass symbol press handler
-                            key={currentLang} // Force re-render if language changes
+                            onSymbolPress={handleSymbolPress}
+                            // Pass other props like layoutType if needed
                         />
                     </View>
                  </View>
             </TouchableWithoutFeedback>
 
-            {/* Animated Wrapper for BottomBar - Outside the main TouchableWithoutFeedback */}
+            {/* Animated BottomBar Container - Outside the main TouchableWithoutFeedback */}
             <Animated.View
                 style={[
                     styles.bottomBarContainer,
+                    // Apply the translateY transformation based on bottomBarPosition animated value
                     { transform: [{ translateY: bottomBarPosition }] }
                 ]}
+                // Disable touch events on the container when it's hidden
                 pointerEvents={isBarVisible ? 'auto' : 'none'}
             >
                 <BottomBar
-                    // --- Pass Handlers from HomeScreen ---
                     handleHomePress={handleHomePress}
-                    onSymbolSelected={handleSearchSymbolSelect} // Handler for SEARCH modal results
-                    onTextInputSubmit={handleTextInputSubmit} // Handler for KEYBOARD modal results
+                    onSymbolSelected={handleSearchSymbolSelect}
+                    onTextInputSubmit={handleTextInputSubmit}
                     currentLanguage={currentLang}
                     currentGridLayout={currentLayout}
                     onGridLayoutSave={handleLayoutSave}
                     onCustomSymbolsUpdate={handleCustomSymbolsUpdate}
-                    // --- Pass TTS Settings and Save Handler Down ---
                     currentTtsSettings={ttsSettings}
                     onTtsSettingsSave={handleTtsSettingsSave}
-                    // ---------------------------------------------
                 />
             </Animated.View>
         </SafeAreaView>
@@ -308,22 +299,22 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#f0f9ff', // Match main background or Navbar color
+        backgroundColor: '#0077b6', // Match Navbar color for top safe area
     },
     container: {
         flex: 1,
-        // This View helps contain the layout within the safe area, excluding bottom bar
+        backgroundColor: '#f0f9ff', // Main background below Navbar/Input
     },
     mainContent: {
         flex: 1, // Takes space between IconInput and BottomBar area
-        backgroundColor: '#f0f9ff', // Or your main content background
     },
     bottomBarContainer: {
-        position: 'absolute', // Position over content
+        position: 'absolute', // Position OVER the main content
         bottom: 0,
         left: 0,
         right: 0,
-        zIndex: 5, // Ensure it's above main content but below modals potentially
+        height: BOTTOM_BAR_HEIGHT, // Give the container a defined height
+        zIndex: 5,
     },
     // Styles for items inside IconInputComponent
     inputItemChip: {
@@ -335,7 +326,7 @@ const styles = StyleSheet.create({
         marginVertical: 4,
         borderWidth: 1,
         borderColor: '#b2ebf2',
-        shadowColor: '#000', // Optional subtle shadow
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.1,
         shadowRadius: 1,

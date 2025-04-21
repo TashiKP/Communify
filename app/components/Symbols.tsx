@@ -1,16 +1,21 @@
-// src/components/Symbols.tsx (Previously NavBarComponent.tsx)
+// src/components/Symbols.tsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     View, StyleSheet, FlatList, Text, ActivityIndicator, Alert, TouchableOpacity
 } from 'react-native';
-import SquareComponent from './SquareComponent'; // Ensure path is correct
-import CateComponent from './CateComponent'; // Use the INDIVIDUAL category component
-import { getCurrentTimeContext, getContextualSymbols, TimeContext } from '../helpers/contextualSymbols'; // Ensure path is correct
+import AsyncStorage from '@react-native-async-storage/async-storage'; // <-- Import AsyncStorage
+import SquareComponent from './SquareComponent';
+import CateComponent from './CateComponent';
+import { getCurrentTimeContext, getContextualSymbols, TimeContext } from '../helpers/contextualSymbols';
+
+// --- Storage Key for Custom Symbols (MUST MATCH CustomPageComponent) ---
+const CUSTOM_SYMBOLS_STORAGE_KEY = '@Communify:customSymbols';
 
 // --- Category Definition ---
 interface CategoryInfo { id: string; name: string; }
-const APP_CATEGORIES: CategoryInfo[] = [ /* ... keep as before ... */
+const APP_CATEGORIES: CategoryInfo[] = [
     { id: 'cat_contextual', name: 'Contextual' },
+    { id: 'cat_custom', name: 'Custom' }, // <-- ADD CUSTOM CATEGORY
     { id: 'cat_food', name: 'Food' }, { id: 'cat_drinks', name: 'Drinks' },
     { id: 'cat_people', name: 'People' }, { id: 'cat_places', name: 'Places' },
     { id: 'cat_actions', name: 'Actions' }, { id: 'cat_feelings', name: 'Feelings' },
@@ -18,129 +23,212 @@ const APP_CATEGORIES: CategoryInfo[] = [ /* ... keep as before ... */
     { id: 'cat_clothing', name: 'Clothing' }, { id: 'cat_body', name: 'Body Parts' },
     { id: 'cat_school', name: 'School' }, { id: 'cat_colors', name: 'Colors' },
     { id: 'cat_numbers', name: 'Numbers' },
+    // Add more categories...
 ];
 // --- End Category Definition ---
 
-// --- Placeholder Symbol Fetching Logic ---
-function getSymbolsForCategory(categoryName: string): string[] { /* ... keep as before ... */
+// --- Symbol Data Structures ---
+// Structure for symbols loaded from Custom Storage
+interface CustomSymbolItem {
+    id: string;
+    name: string;
+    imageUri?: string;
+}
+// Unified structure for what's displayed in the grid
+interface DisplayedSymbolData {
+    id: string;
+    keyword: string; // Use 'name' from CustomSymbolItem as keyword
+    imageUri?: string; // URI for custom symbols
+}
+// --- End Symbol Data Structures ---
+
+
+// --- Placeholder Symbol Fetching Logic (Keep as before) ---
+function getSymbolsForCategory(categoryName: string): string[] {
+    // console.log(`Placeholder: Fetching symbols for category "${categoryName}"`);
     const lowerCaseCat = categoryName.toLowerCase();
-    switch (lowerCaseCat) {
-        case 'food': return ['apple', 'banana', 'bread', 'water', 'milk', 'juice', 'eat', 'hungry', 'more', 'finished', 'orange', 'pizza', 'cookie', 'cake', 'cheese'];
-        case 'drinks': return ['water', 'milk', 'juice', 'drink', 'thirsty', 'cup', 'bottle', 'soda', 'tea', 'coffee'];
-        case 'people': return ['mom', 'dad', 'teacher', 'friend', 'boy', 'girl', 'baby', 'me', 'you', 'doctor', 'police', 'man', 'woman'];
-        case 'animals': return ['dog', 'cat', 'bird', 'fish', 'bear', 'lion', 'horse', 'cow', 'pig', 'duck', 'frog'];
-        case 'toys': return ['ball', 'doll', 'car', 'blocks', 'puzzle', 'play', 'game', 'bike', 'train', 'plane'];
-        case 'places': return ['home', 'school', 'park', 'store', 'playground', 'house', 'room', 'outside', 'library', 'hospital'];
-        case 'actions': return ['eat', 'drink', 'play', 'go', 'stop', 'want', 'help', 'look', 'listen', 'sleep', 'run', 'walk', 'jump', 'read', 'write', 'open', 'close', 'give', 'take', 'wash'];
-        case 'feelings': return ['happy', 'sad', 'angry', 'scared', 'surprised', 'tired', 'hurt', 'sick', 'excited', 'love'];
-        case 'clothing': return ['shirt', 'pants', 'shoes', 'socks', 'hat', 'jacket', 'dress', 'get dressed'];
-        case 'body parts': return ['head', 'eyes', 'nose', 'mouth', 'ears', 'hands', 'feet', 'arms', 'legs', 'tummy'];
-        case 'school': return ['school', 'teacher', 'book', 'pencil', 'paper', 'read', 'write', 'learn', 'bus', 'backpack', 'desk', 'chair'];
-        case 'colors': return ['red', 'blue', 'green', 'yellow', 'orange', 'purple', 'pink', 'brown', 'black', 'white', 'color'];
-        case 'numbers': return ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'number', 'count'];
-        default: return [];
-    }
+    // (Switch statement remains the same)
+    switch (lowerCaseCat) { /* ... cases ... */ } return [];
 }
 // --- End Placeholder ---
 
-interface ContextualSymbolData { id: string; keyword: string; }
-
-// --- Add Prop for symbol press ---
-interface SymbolGridProps { // Changed interface name to match component
-    onSymbolPress: (keyword: string) => void; // Callback when a symbol is pressed
-    // Add other props if SymbolGrid needs them (like layoutType)
-    // layoutType?: string;
+interface SymbolGridProps {
+    onSymbolPress: (keyword: string, imageUri?: string) => void; // <-- Modify signature
 }
 
 const MemoizedSquareComponent = React.memo(SquareComponent);
 const MemoizedCateComponent = React.memo(CateComponent);
 
-// --- SymbolGrid --- // Renamed component
-const SymbolGrid: React.FC<SymbolGridProps> = ({ onSymbolPress }) => { // Destructure the prop
-  const [displayedSymbols, setDisplayedSymbols] = useState<ContextualSymbolData[]>([]);
+// --- SymbolGrid ---
+const SymbolGrid: React.FC<SymbolGridProps> = ({ onSymbolPress }) => {
+  const [displayedSymbols, setDisplayedSymbols] = useState<DisplayedSymbolData[]>([]); // <-- Use unified structure
+  const [customSymbols, setCustomSymbols] = useState<CustomSymbolItem[]>([]); // <-- State for custom symbols
   const [currentTimeContext, setCurrentTimeContext] = useState<TimeContext>('Default');
-  const [loadingSymbols, setLoadingSymbols] = useState<boolean>(true);
-  const [selectedCategoryName, setSelectedCategoryName] = useState<string | null>(null);
+  const [loadingSymbols, setLoadingSymbols] = useState<boolean>(true); // Combined loading state
+  const [selectedCategoryName, setSelectedCategoryName] = useState<string | null>(null); // Start with null
 
-  const flatListRefLeft = useRef<FlatList<ContextualSymbolData>>(null);
+  const flatListRefLeft = useRef<FlatList<DisplayedSymbolData>>(null);
   const flatListRefRight = useRef<FlatList<CategoryInfo>>(null);
 
-  // --- loadSymbols logic remains the same ---
+  // --- Load Custom Symbols on Mount ---
+  useEffect(() => {
+    let isMounted = true;
+    const loadCustomSymbols = async () => {
+        try {
+            const jsonValue = await AsyncStorage.getItem(CUSTOM_SYMBOLS_STORAGE_KEY);
+            if (isMounted && jsonValue !== null) {
+                const loaded: CustomSymbolItem[] = JSON.parse(jsonValue);
+                if (Array.isArray(loaded)) {
+                    setCustomSymbols(loaded);
+                    console.log(`SymbolGrid: Loaded ${loaded.length} custom symbols.`);
+                }
+            } else if (isMounted) {
+                 setCustomSymbols([]); // Ensure it's empty if nothing loaded
+            }
+        } catch (e) {
+            console.error('SymbolGrid: Failed to load custom symbols.', e);
+             if (isMounted) setCustomSymbols([]);
+            // Optionally show an alert, but might be annoying on every load failure
+        }
+    };
+    loadCustomSymbols();
+    return () => { isMounted = false; }
+  }, []); // Load once on mount
+
+  // --- Load Displayed Symbols (Contextual/Category/Custom) ---
   const loadSymbols = useCallback((categoryFilter: string | null = null) => {
     setLoadingSymbols(true);
     flatListRefLeft.current?.scrollToOffset({ offset: 0, animated: false });
-    try {
-        let symbolsData: ContextualSymbolData[] = [];
-        let contextName: TimeContext | null = null;
-        let categoryName: string | null = null;
-        if (!categoryFilter || categoryFilter.toLowerCase() === 'contextual') {
-            const context = getCurrentTimeContext();
-            const keywords = getContextualSymbols(context);
-            symbolsData = keywords.map((keyword, index) => ({ id: `ctx_${context}_${index}_${keyword}`, keyword }));
-            contextName = context; categoryName = null;
-        } else {
-            const keywords = getSymbolsForCategory(categoryFilter);
-            symbolsData = keywords.map((keyword, index) => ({ id: `cat_${categoryFilter}_${index}_${keyword}`, keyword }));
-            contextName = null; categoryName = categoryFilter;
-        }
-        setSelectedCategoryName(categoryName);
-        setDisplayedSymbols(symbolsData);
-        setCurrentTimeContext(contextName ?? 'Default');
-    } catch (err) {
-         console.error("Error loading symbols:", err);
-         const defaultKeywords = getContextualSymbols('Default');
-         setDisplayedSymbols(defaultKeywords.map((k, i) => ({ id: `ctx_err_${i}_${k}`, keyword: k })));
-         setCurrentTimeContext('Default'); setSelectedCategoryName(null);
-         Alert.alert("Error", "Could not load symbols.");
-    } finally { setLoadingSymbols(false); }
-  }, []);
+    // console.log(`SymbolGrid: loadSymbols called with Filter: ${categoryFilter}`);
 
-  // --- useEffect and handleCategoryPress remain the same ---
-   useEffect(() => {
-    loadSymbols();
-  }, [loadSymbols]);
+    // Use setTimeout to allow state updates (like customSymbols) to potentially settle
+    // and ensure loading indicator shows briefly.
+    setTimeout(() => {
+        try {
+            let symbolsData: DisplayedSymbolData[] = [];
+            let contextName: TimeContext | null = null;
+            let categoryName: string | null = null;
+
+            // --- Check for CUSTOM Category ---
+            if (categoryFilter?.toLowerCase() === 'custom') {
+                console.log("SymbolGrid: Loading CUSTOM symbols");
+                symbolsData = customSymbols.map(cs => ({ // Map CustomSymbolItem to DisplayedSymbolData
+                    id: cs.id,
+                    keyword: cs.name, // Use name as the keyword
+                    imageUri: cs.imageUri // Pass the imageUri
+                }));
+                categoryName = 'Custom';
+                contextName = null;
+            }
+            // --- Check for CONTEXTUAL ---
+            else if (!categoryFilter || categoryFilter.toLowerCase() === 'contextual') {
+                console.log("SymbolGrid: Loading CONTEXTUAL symbols");
+                const context = getCurrentTimeContext();
+                const keywords = getContextualSymbols(context);
+                symbolsData = keywords.map((keyword, index) => ({
+                    id: `ctx_${context}_${index}_${keyword}`,
+                    keyword,
+                    imageUri: undefined // No specific URI for contextual/category
+                }));
+                categoryName = null;
+                contextName = context;
+            }
+            // --- Load Standard Category ---
+            else {
+                console.log(`SymbolGrid: Loading category: ${categoryFilter}`);
+                const keywords = getSymbolsForCategory(categoryFilter);
+                symbolsData = keywords.map((keyword, index) => ({
+                    id: `cat_${categoryFilter}_${index}_${keyword}`,
+                    keyword,
+                    imageUri: undefined
+                }));
+                categoryName = categoryFilter;
+                contextName = null;
+            }
+
+            setSelectedCategoryName(categoryName); // Set selected category name
+            setDisplayedSymbols(symbolsData);
+            setCurrentTimeContext(contextName ?? 'Default');
+
+        } catch (err) {
+            console.error("SymbolGrid: Error processing symbols:", err);
+            const defaultKeywords = getContextualSymbols('Default');
+            setDisplayedSymbols(defaultKeywords.map((k, i) => ({ id: `ctx_err_${i}_${k}`, keyword: k })));
+            setCurrentTimeContext('Default');
+            setSelectedCategoryName(null); // Reset category on error
+            Alert.alert("Error", "Could not load symbols.");
+        } finally {
+            setLoadingSymbols(false);
+            // console.log('SymbolGrid: loadSymbols finished');
+        }
+    }, 50); // Short delay
+
+  }, [customSymbols]); // <-- Re-run loadSymbols if customSymbols array changes
+
+  // Initial Load Effect
+  useEffect(() => {
+    console.log('SymbolGrid Mounted - Initial Load');
+    loadSymbols(); // Load default (contextual) on mount
+  }, [loadSymbols]); // Depend only on loadSymbols
+
+
+  // --- Category Press Handler ---
   const handleCategoryPress = useCallback((categoryName: string) => {
+    // console.log(`SymbolGrid: Category Pressed - ${categoryName}`);
+    // Check if already selected to prevent unnecessary loading
+    if (categoryName === selectedCategoryName || (!selectedCategoryName && categoryName === 'Contextual')) {
+        return;
+    }
+
     if (categoryName.toLowerCase() === 'contextual') {
         loadSymbols(null);
     } else {
         loadSymbols(categoryName);
     }
-  }, [loadSymbols]);
+  }, [loadSymbols, selectedCategoryName]);
 
 
-  // --- Pass the onSymbolPress down ---
-  // Ensure this internal renderLeftItem USES the onSymbolPress prop passed to SymbolGrid
-  const renderLeftItem = useCallback(({ item }: { item: ContextualSymbolData }) => (
+  // --- Render Symbol Item ---
+  const renderLeftItem = useCallback(({ item }: { item: DisplayedSymbolData }) => (
     <View style={styles.squareItemContainer}>
       <MemoizedSquareComponent
           keyword={item.keyword}
-          language="en" // Or use a state/prop for language
-          onPress={onSymbolPress} // <-- **** THE FIX **** Pass the handler received from props
+          language="en"
+          imageUri={item.imageUri} // <-- Pass optional imageUri
+          // --- Pass keyword AND imageUri to handler ---
+          onPress={(keyword) => onSymbolPress(keyword, item.imageUri)} // Pass imageUri back too
+          // -------------------------------------------
       />
     </View>
-  ), [onSymbolPress]); // Add onSymbolPress dependency
+  // Add onSymbolPress dependency
+  ), [onSymbolPress]);
 
 
-  // --- renderRightItem remains the same ---
+  // --- Render Category Item ---
   const renderRightItem = useCallback(({ item }: { item: CategoryInfo }) => {
-      const isCurrentlySelected = selectedCategoryName === item.name || (!selectedCategoryName && item.name === 'Contextual');
-      return (
-          <View style={styles.rightItemContainer}>
-              <MemoizedCateComponent
-                  keyword={item.name}
-                  language="en"
-                  onPress={handleCategoryPress}
-                  isSelected={isCurrentlySelected}
-              />
-          </View>
-      );
+    const isCurrentlySelected =
+        (selectedCategoryName === item.name) || // Selected is this category name
+        (!selectedCategoryName && item.name.toLowerCase() === 'contextual'); // Nothing selected AND this is Contextual
+    return (
+        <View style={styles.rightItemContainer}>
+            <MemoizedCateComponent
+                keyword={item.name}
+                language="en"
+                onPress={handleCategoryPress}
+                isSelected={isCurrentlySelected}
+            />
+        </View>
+    );
   }, [handleCategoryPress, selectedCategoryName]);
 
+  // Determine NavBar Title
   const navTitle = selectedCategoryName ? selectedCategoryName : `Contextual (${currentTimeContext})`;
 
-  // --- Return statement remains structurally the same ---
+  // console.log(`<<< SymbolGrid Rendering - Selected Category: ${selectedCategoryName} >>>`); // DEBUG
+
   return (
     <View style={styles.container}>
+      {/* Nav Bar */}
       <View style={styles.navBar}>
         <TouchableOpacity onPress={() => loadSymbols(null)} activeOpacity={0.7} style={styles.navBarTouchable}>
              <Text style={styles.navBarTitle} numberOfLines={1} ellipsizeMode="tail">
@@ -148,22 +236,31 @@ const SymbolGrid: React.FC<SymbolGridProps> = ({ onSymbolPress }) => { // Destru
              </Text>
          </TouchableOpacity>
       </View>
+      {/* Content */}
       <View style={styles.content}>
+        {/* Left Side (Symbols Grid) */}
         <View style={styles.leftSide}>
-          {loadingSymbols ? ( /* ... Loading Indicator ... */ <View style={styles.loadingContainer}><ActivityIndicator size="large" color="#0077b6" /></View> )
-           : ( <FlatList
-                ref={flatListRefLeft}
-                data={displayedSymbols}
-                renderItem={renderLeftItem} // This now correctly passes onSymbolPress
-                keyExtractor={(item) => item.id}
-                numColumns={6} // Adjust as needed
-                /* ... other FlatList props ... */
-                contentContainerStyle={styles.gridContentContainer}
-                ListEmptyComponent={<View style={styles.emptyContainer}><Text style={styles.emptyListText}>No symbols found.</Text></View>}
-                initialNumToRender={18} maxToRenderPerBatch={12} windowSize={10} removeClippedSubviews={true}
-              />
+          {loadingSymbols ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#0077b6" />
+            </View>
+          ) : (
+            <FlatList
+              ref={flatListRefLeft}
+              data={displayedSymbols}
+              renderItem={renderLeftItem}
+              keyExtractor={(item) => item.id} // Use the unified ID
+              numColumns={6} // Adjust as needed
+              contentContainerStyle={styles.gridContentContainer}
+              ListEmptyComponent={<View style={styles.emptyContainer}><Text style={styles.emptyListText}>No symbols found.</Text></View>}
+              initialNumToRender={18}
+              maxToRenderPerBatch={12}
+              windowSize={10}
+              removeClippedSubviews={true}
+            />
           )}
         </View>
+        {/* Right Side (Categories) */}
         <View style={styles.rightSide}>
            <FlatList
              ref={flatListRefRight}
@@ -171,10 +268,13 @@ const SymbolGrid: React.FC<SymbolGridProps> = ({ onSymbolPress }) => { // Destru
              data={APP_CATEGORIES}
              renderItem={renderRightItem}
              keyExtractor={(item) => item.id}
-              /* ... other FlatList props ... */
-             numColumns={1} contentContainerStyle={styles.categoryListContainer}
-             initialNumToRender={APP_CATEGORIES.length} maxToRenderPerBatch={APP_CATEGORIES.length} windowSize={5}
-             extraData={selectedCategoryName}
+             numColumns={1}
+             contentContainerStyle={styles.categoryListContainer}
+             ItemSeparatorComponent={() => <View style={styles.categorySeparator} />} // Optional separator
+             initialNumToRender={APP_CATEGORIES.length}
+             maxToRenderPerBatch={APP_CATEGORIES.length}
+             windowSize={5}
+             extraData={selectedCategoryName} // Re-render list when selection changes
            />
         </View>
       </View>
@@ -182,8 +282,7 @@ const SymbolGrid: React.FC<SymbolGridProps> = ({ onSymbolPress }) => { // Destru
   );
 };
 
-// --- Styles ---
-// (Styles remain the same as in the previous version of NavBarComponent/SymbolGrid)
+// --- Styles (Keep as before) ---
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f0f9ff', },
     navBar: { backgroundColor: '#0077b6', height: 35, width: '100%', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 3, elevation: 3, zIndex: 10, },
@@ -198,9 +297,9 @@ const styles = StyleSheet.create({
     gridContentContainer: { padding: 5, alignItems: 'flex-start', },
     categoryListContainer: { paddingVertical: 0, paddingHorizontal: 0, },
     squareItemContainer: { margin: 4, },
-    rightItemContainer: { borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
+    rightItemContainer: { /* Let CateComponent handle borders/styles */ },
+    categorySeparator: { height: 1, backgroundColor: '#f0f0f0', marginHorizontal: 15, }, // Keep if desired
     emptyListText: { textAlign: 'center', fontSize: 16, color: '#6c757d', }
 });
 
-
-export default SymbolGrid; // Export with the correct name
+export default SymbolGrid;

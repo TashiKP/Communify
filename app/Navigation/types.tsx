@@ -1,8 +1,8 @@
 export type RootStackParamList = {
   Home: undefined;
   Login: undefined;
-  CustomPage: undefined; // Assuming this exists
-  NavBarPage: undefined; // Assuming this exists
+  CustomPage: undefined; 
+  NavBarPage: undefined;
   Signup: undefined;
 
   // *** ADD THIS LINE ***

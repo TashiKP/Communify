@@ -13,8 +13,8 @@ import {
     SafeAreaView,
     KeyboardAvoidingView,
     Platform,
-    Animated,
-    Easing,
+    Animated, // <-- UNCOMMENTED
+    Easing, // <-- UNCOMMENTED
     Dimensions,
     StatusBar,
     TouchableWithoutFeedback,
@@ -25,21 +25,21 @@ import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import { faEnvelope, faLock } from '@fortawesome/free-solid-svg-icons';
 
 // --- Colors ---
-const primaryColor = '#0077b6'; // Deep Blue
-const secondaryColor = '#00b4d8'; // Lighter Blue Accent
-const backgroundColor = '#f0f9ff'; // Very Light Blue Background (Form side)
+const primaryColor = '#0077b6';
+const secondaryColor = '#00b4d8';
+const backgroundColor = '#f0f9ff';
 const whiteColor = '#ffffff';
-const textColor = '#343a40'; // Dark Grey Text
-const placeholderColor = '#adb5bd'; // Lighter Grey Placeholders
-const errorColor = '#dc3545'; // Standard Error Red
-const subtleBorderColor = '#e0e0e0'; // Softer border color
-const cursorColor = 'rgba(255, 255, 255, 0.75)'; // Cursor color
+const textColor = '#343a40';
+const placeholderColor = '#adb5bd';
+const errorColor = '#dc3545';
+const subtleBorderColor = '#e0e0e0';
+const cursorColor = 'rgba(255, 255, 255, 0.75)'; // <-- UNCOMMENTED
 
 const { width, height } = Dimensions.get('window');
 
-const FULL_SLOGAN = 'Where Voices Find Their Way'; // Store the full slogan
-const TYPING_SPEED_MS = 100; // Milliseconds per character
-const CURSOR_BLINK_MS = 500; // Milliseconds for cursor blink interval
+const FULL_SLOGAN = 'Where Voices Find Their Way';
+const TYPING_SPEED_MS = 100; // <-- UNCOMMENTED
+const CURSOR_BLINK_MS = 500; // <-- UNCOMMENTED
 
 const LoginScreen = () => {
     const [email, setEmail] = useState('');
@@ -47,17 +47,18 @@ const LoginScreen = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Slogan Animation State
+    // --- UNCOMMENTED SLOGAN/CURSOR STATE ---
     const [displayedSlogan, setDisplayedSlogan] = useState('');
     const [showCursor, setShowCursor] = useState(true);
     const sloganIndex = useRef(0);
     const typingIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const cursorIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    // --------------------------------------
 
-
-    // --- Animations ---
+    // --- UNCOMMENTED ANIMATION VALUES ---
     const contentFadeAnim = useRef(new Animated.Value(0)).current;
     const formSlideAnim = useRef(new Animated.Value(30)).current;
+    // ----------------------------------
 
     const communify = 'Communify';
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -65,28 +66,30 @@ const LoginScreen = () => {
 
     // --- Animation Effect ---
     useEffect(() => {
-        // Combined fade/slide animation for overall content
+        // --- UNCOMMENTED INITIAL ANIMATIONS ---
         Animated.parallel([
             Animated.timing(contentFadeAnim, {
                 toValue: 1,
                 duration: 800,
                 easing: Easing.out(Easing.ease),
-                useNativeDriver: true,
+                useNativeDriver: true, // Keep native driver for opacity/transform
             }),
             Animated.timing(formSlideAnim, {
                 toValue: 0,
                 duration: 700,
                 delay: 200,
                 easing: Easing.out(Easing.quad),
-                useNativeDriver: true,
+                useNativeDriver: true, // Keep native driver for opacity/transform
             })
         ]).start();
+        // --------------------------------------
 
-        // --- Slogan Typing Animation ---
+        // --- UNCOMMENTED SLOGAN/CURSOR LOGIC ---
         if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
         if (cursorIntervalRef.current) clearInterval(cursorIntervalRef.current);
         sloganIndex.current = 0;
         setDisplayedSlogan('');
+        setShowCursor(true); // Ensure cursor starts visible
 
         const startTypingTimeout = setTimeout(() => {
             cursorIntervalRef.current = setInterval(() => {
@@ -99,11 +102,13 @@ const LoginScreen = () => {
                     sloganIndex.current += 1;
                 } else {
                     if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
+                    // Optionally stop cursor blinking here if desired
+                    // if (cursorIntervalRef.current) clearInterval(cursorIntervalRef.current);
+                    // setShowCursor(false);
                 }
             }, TYPING_SPEED_MS);
 
-        }, 600);
-
+        }, 600); // Delay before starting typing
 
         // --- Cleanup Function ---
         return () => {
@@ -111,10 +116,12 @@ const LoginScreen = () => {
             if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
             if (cursorIntervalRef.current) clearInterval(cursorIntervalRef.current);
         };
-    }, [contentFadeAnim, formSlideAnim]);
+        // -----------------------------------------------------
+
+    }, [contentFadeAnim, formSlideAnim]); // Dependencies are the initial animation values
 
 
-    // --- Handlers ---
+    // --- Handlers (Keep as before) ---
     const handleLogin = () => {
         Keyboard.dismiss();
         setError(null);
@@ -125,13 +132,10 @@ const LoginScreen = () => {
         setIsLoading(true);
         console.log('Attempting Login:', email);
 
-        // Simulate API Call
         setTimeout(() => {
-            // Replace with your actual authentication logic
             if (email.toLowerCase() === 'test@gmail.com' && password === '123') {
                 console.log('Login Successful');
-                // Use replace to remove Login from the history stack
-                navigation.replace('Home'); // <-- This call seems correct
+                navigation.replace('Home'); // Make sure 'Home' screen is defined in navigator
             } else {
                 setError('Invalid email or password.');
             }
@@ -140,13 +144,12 @@ const LoginScreen = () => {
     };
 
     const navigateToSignup = () => {
-        navigation.navigate('Signup');
+        navigation.navigate('Signup'); // Make sure 'Signup' screen is defined
     };
 
     const navigateToForgotPassword = () => {
         console.log('Forgot Password Pressed');
-        // Implement navigation if you have a Forgot Password screen
-        // navigation.navigate('ForgotPassword');
+        // navigation.navigate('ForgotPassword'); // If you implement this screen
     };
 
     // --- Render ---
@@ -162,23 +165,28 @@ const LoginScreen = () => {
 
                         {/* Left Branding Column */}
                         <View style={styles.leftContainer}>
+                             {/* --- UNCOMMENTED Animated.View and style --- */}
                              <Animated.View style={[styles.brandingContent, { opacity: contentFadeAnim }]}>
                                 <Text style={styles.communifyText}>{communify}</Text>
-                                {/* Animated Slogan Text */}
+                                {/* --- UNCOMMENTED Slogan/Cursor Rendering --- */}
                                 <View style={styles.sloganContainer}>
                                     <Text style={styles.sloganText}>
                                         {displayedSlogan}
                                         {showCursor && <Text style={styles.cursor}>|</Text>}
+                                        {/* Placeholder for height */}
                                         {!displayedSlogan && !showCursor && <Text style={styles.sloganText}> </Text>}
                                     </Text>
                                 </View>
+                                {/* -------------------------------------- */}
                              </Animated.View>
+                             {/* -------------------------------------- */}
                              <View style={styles.decorativeLine} />
                         </View>
 
                         {/* Right Form Column */}
                         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
                             <View style={styles.rightContainer}>
+                                 {/* --- UNCOMMENTED Animated.View and styles --- */}
                                 <Animated.View style={[
                                     styles.formContent,
                                     {
@@ -186,85 +194,23 @@ const LoginScreen = () => {
                                         transform: [{ translateY: formSlideAnim }]
                                     }
                                 ]}>
+                                    {/* ... Rest of the form ... */}
                                     <Text style={styles.title}>Welcome Back!</Text>
                                     <Text style={styles.subtitle}>Sign in to continue</Text>
-
-                                    {/* Email Input */}
                                     <View style={styles.inputWrapper}>
-                                         <FontAwesomeIcon icon={faEnvelope} size={18} color={placeholderColor} style={styles.inputIcon} />
-                                        <TextInput
-                                            style={styles.input}
-                                            placeholder="Email Address"
-                                            placeholderTextColor={placeholderColor}
-                                            value={email}
-                                            onChangeText={setEmail}
-                                            keyboardType="email-address"
-                                            autoCapitalize="none"
-                                            autoComplete="email"
-                                            returnKeyType="next"
-                                            onSubmitEditing={() => passwordInputRef.current?.focus()}
-                                            blurOnSubmit={false}
-                                        />
+                                        <FontAwesomeIcon icon={faEnvelope} size={18} color={placeholderColor} style={styles.inputIcon} />
+                                        <TextInput style={styles.input} placeholder="Email Address" placeholderTextColor={placeholderColor} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoComplete="email" returnKeyType="next" onSubmitEditing={() => passwordInputRef.current?.focus()} blurOnSubmit={false}/>
                                      </View>
-
-                                    {/* Password Input */}
                                     <View style={styles.inputWrapper}>
                                          <FontAwesomeIcon icon={faLock} size={18} color={placeholderColor} style={styles.inputIcon} />
-                                        <TextInput
-                                            ref={passwordInputRef}
-                                            style={styles.input}
-                                            placeholder="Password"
-                                            placeholderTextColor={placeholderColor}
-                                            value={password}
-                                            onChangeText={setPassword}
-                                            secureTextEntry
-                                            returnKeyType="go"
-                                            onSubmitEditing={handleLogin}
-                                        />
+                                         <TextInput ref={passwordInputRef} style={styles.input} placeholder="Password" placeholderTextColor={placeholderColor} value={password} onChangeText={setPassword} secureTextEntry returnKeyType="go" onSubmitEditing={handleLogin}/>
                                      </View>
-
-                                     {/* Error Message Display */}
-                                     {error && (
-                                         <View style={styles.errorContainer}>
-                                             <Text style={styles.errorText}>{error}</Text>
-                                         </View>
-                                     )}
-
-                                    {/* Forgot Password Link */}
-                                    <TouchableOpacity
-                                        style={styles.forgotPasswordButton}
-                                        onPress={navigateToForgotPassword}
-                                        disabled={isLoading}
-                                    >
-                                        <Text style={styles.secondaryLinkText}>Forgot Password?</Text>
-                                    </TouchableOpacity>
-
-                                    {/* Login Button */}
-                                    <TouchableOpacity
-                                        style={[styles.loginButton, isLoading && styles.buttonDisabled]}
-                                        onPress={handleLogin}
-                                        disabled={isLoading}
-                                        activeOpacity={0.75}
-                                    >
-                                        {isLoading
-                                            ? <ActivityIndicator size="small" color={whiteColor} />
-                                            : <Text style={styles.loginButtonText}>Login</Text>
-                                        }
-                                    </TouchableOpacity>
-
-
-                                    {/* Sign Up Link */}
-                                    <View style={styles.footer}>
-                                         <Text style={styles.footerText}>Don't have an account? </Text>
-                                         <TouchableOpacity
-                                            onPress={navigateToSignup}
-                                            disabled={isLoading}
-                                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                         >
-                                            <Text style={styles.signupLinkText}>Sign Up</Text>
-                                        </TouchableOpacity>
-                                    </View>
+                                    {error && (<View style={styles.errorContainer}><Text style={styles.errorText}>{error}</Text></View>)}
+                                    <TouchableOpacity style={styles.forgotPasswordButton} onPress={navigateToForgotPassword} disabled={isLoading}><Text style={styles.secondaryLinkText}>Forgot Password?</Text></TouchableOpacity>
+                                    <TouchableOpacity style={[styles.loginButton, isLoading && styles.buttonDisabled]} onPress={handleLogin} disabled={isLoading}>{isLoading ? <ActivityIndicator size="small" color={whiteColor} /> : <Text style={styles.loginButtonText}>Login</Text>}</TouchableOpacity>
+                                    <View style={styles.footer}><Text style={styles.footerText}>Don't have an account? </Text><TouchableOpacity onPress={navigateToSignup} disabled={isLoading} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}><Text style={styles.signupLinkText}>Sign Up</Text></TouchableOpacity></View>
                                 </Animated.View>
+                                 {/* -------------------------------------- */}
                             </View>
                         </TouchableWithoutFeedback>
                     </View>
@@ -299,7 +245,6 @@ const styles = StyleSheet.create({
         backgroundColor: whiteColor,
         borderRadius: 25,
         overflow: 'hidden',
-        // Add Shadow for depth (optional)
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 5 },
         shadowOpacity: 0.1,
@@ -345,7 +290,7 @@ const styles = StyleSheet.create({
         fontStyle: 'italic',
         lineHeight: 22,
     },
-    cursor: {
+    cursor: { // <-- UNCOMMENTED Style
         fontSize: 17,
         color: cursorColor,
         fontWeight: 'bold',
@@ -408,9 +353,9 @@ const styles = StyleSheet.create({
     },
     errorContainer: {
         marginBottom: 15,
-        marginTop: -10, // Pull slightly closer to input
+        marginTop: -10,
         alignItems: 'center',
-        paddingHorizontal: 5, // Padding if text wraps
+        paddingHorizontal: 5,
     },
     errorText: {
         color: errorColor,
@@ -439,7 +384,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.3,
         shadowRadius: 6,
         elevation: 6,
-        minHeight: 55, // Match input height
+        minHeight: 55,
     },
     loginButtonText: {
         color: whiteColor,
@@ -448,10 +393,10 @@ const styles = StyleSheet.create({
         letterSpacing: 0.5,
     },
     buttonDisabled: {
-        backgroundColor: secondaryColor, // Use secondary color for disabled state
+        backgroundColor: secondaryColor,
         shadowOpacity: 0.1,
         elevation: 2,
-        opacity: 0.8, // Add opacity perhaps
+        opacity: 0.8,
     },
     footer: {
         marginTop: 30,

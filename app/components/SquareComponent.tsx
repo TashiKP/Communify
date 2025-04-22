@@ -1,5 +1,5 @@
 // src/components/SquareComponent.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     View, Text, Image, StyleSheet, ActivityIndicator, Platform,
     TouchableOpacity
@@ -28,8 +28,10 @@ const SquareComponent: React.FC<SquareComponentProps> = React.memo(({
   const [loading, setLoading] = useState<boolean>(!imageUri); // Don't load if imageUri is provided
   const [error, setError] = useState<string | null>(null);
   const [topBarColor, setTopBarColor] = useState<string>('#E0E0E0');
+  const isMountedRef = useRef(true); // Ref to track mount status
 
   useEffect(() => {
+    isMountedRef.current = true; // Set true on mount/update
     // Reset state if not using a provided imageUri
     if (!imageUri) {
         setPictogramUrl(null);
@@ -49,32 +51,48 @@ const SquareComponent: React.FC<SquareComponentProps> = React.memo(({
     setTopBarColor(randomColor);
 
     // Fetch only if imageUri is NOT provided
+    let timer: NodeJS.Timeout | null = null;
     if (!imageUri) {
         const fetchPictogram = async () => {
             const imageSize = 300; // Request a reasonable size
             const searchUrl = `https://api.arasaac.org/api/pictograms/${language}/search/${encodeURIComponent(keyword)}`;
             try {
                 const response = await axios.get(searchUrl);
-                const pictogramId = response.data?.[0]?._id;
-                if (pictogramId) {
-                    const generatedUrl = `https://static.arasaac.org/pictograms/${pictogramId}/${pictogramId}_${imageSize}.png`;
-                    setPictogramUrl(generatedUrl);
-                    setError(null);
-                } else {
-                    setError('Not found');
+                if (isMountedRef.current) { // Check before setting state
+                    const pictogramId = response.data?.[0]?._id;
+                    if (pictogramId) {
+                        const generatedUrl = `https://static.arasaac.org/pictograms/${pictogramId}/${pictogramId}_${imageSize}.png`;
+                        setPictogramUrl(generatedUrl);
+                        setError(null);
+                    } else {
+                        setError('Not found');
+                    }
                 }
             } catch (err: any) {
-                setError(err.response?.status === 404 ? 'Not found' : 'Load error');
+                 if (isMountedRef.current) {
+                    setError(err.response?.status === 404 ? 'Not found' : 'Load error');
+                 }
             } finally {
-                setLoading(false);
+                 if (isMountedRef.current) { // Check before setting state
+                    setLoading(false);
+                 }
             }
         };
         // Debounce fetch slightly
-        const timer = setTimeout(fetchPictogram, 50);
-        return () => clearTimeout(timer);
+        timer = setTimeout(fetchPictogram, 50);
+
+    } else {
+         // Ensure loading is false if imageUri is provided initially
+         if (isMountedRef.current) {
+            setLoading(false);
+         }
     }
-    // If imageUri is provided, the effect completes without fetching.
-    // The return function for cleanup is implicitly undefined, which is fine.
+
+    // Cleanup function
+    return () => {
+        isMountedRef.current = false; // Set false on unmount
+        if (timer) clearTimeout(timer);
+    };
 
   }, [keyword, language, imageUri]); // Rerun effect if these change
 
@@ -129,8 +147,6 @@ const SquareComponent: React.FC<SquareComponentProps> = React.memo(({
                 {/* --- Render Fallback Text if error or image failed/missing --- */}
                 {!loading && (error || (!imageUri && !pictogramUrl)) && (
                      <View style={styles.fallbackContainer}>
-                        {/* Optionally show a placeholder icon */}
-                        {/* <FontAwesomeIcon icon={faImage} size={dynamicPlaceholderIconSize * 0.5} color={errorColor} style={{ marginBottom: 5 }}/> */}
                          <Text style={[styles.statusTextError, { fontSize: dynamicFontSize }]} numberOfLines={2} ellipsizeMode="tail">
                             {keyword}
                          </Text>

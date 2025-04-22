@@ -196,9 +196,6 @@ const Menu: React.FC<MenuProps> = ({
              <Modal visible={activeModal === 'parental'} animationType="slide" transparent={false} onRequestClose={handleCloseSubModal} >
                  {activeModal === 'parental' && (
                     <ParentalControls
-                        // Pass visible prop if it's still a modal component? Or handle internally?
-                        // Assuming ParentalControls is now a full screen modal component:
-                        // visible={true} // Not needed if using Modal wrapper like others
                         onClose={handleCloseSubModal}
                         initialSettings={memoizedParentalSettings} // Use internal state
                         onSave={handleParentalSave} // Use internal save handler
@@ -207,7 +204,6 @@ const Menu: React.FC<MenuProps> = ({
             </Modal>
 
             {/* About Us Screen Modal */}
-            {/* Assuming AboutScreen handles its own presentation style if needed */}
             <Modal visible={activeModal === 'about'} animationType="slide" transparent={false} onRequestClose={handleCloseSubModal} >
                 {activeModal === 'about' &&
                     <AboutScreen onClose={handleCloseSubModal} />

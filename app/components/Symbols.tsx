@@ -1,23 +1,35 @@
 // src/components/Symbols.tsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-    View, StyleSheet, FlatList, Text, ActivityIndicator, Alert, TouchableOpacity
-} from 'react-native';
+    View, StyleSheet, FlatList, Text, ActivityIndicator, Alert, TouchableOpacity, Dimensions
+} from 'react-native'; // Added Dimensions
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import SquareComponent from './SquareComponent';
 import CateComponent from './CateComponent';
 import { getCurrentTimeContext, getContextualSymbols, TimeContext } from '../context/contextualSymbols';
-import { useGrid, GridLayoutType } from '../context/GridContext'; // <-- Import context hook and type
+import { useGrid, GridLayoutType } from '../context/GridContext';
 
-// --- Constants for Columns based on Layout Type ---
+// --- Constants & Calculations ---
+const screenWidth = Dimensions.get('window').width;
+// Function to determine number of columns based on layout preference
 const getNumColumns = (layout: GridLayoutType): number => {
     switch (layout) {
-        case 'simple': return 4; // Fewer columns for simple
-        case 'standard': return 6; // Standard
-        case 'dense': return 8; // More columns for dense
+        case 'simple': return 4;
+        case 'standard': return 6; // Adjusted default for larger screens potentially
+        case 'dense': return 8;
         default: return 6;
     }
 };
+// Function to calculate width of individual symbol items
+const calculateItemWidth = (layout: GridLayoutType, numCols: number): number => {
+    const gridPadding = 5;   // Match gridContentContainer padding
+    const itemMargin = 4;    // Match squareItemContainer margin
+    const totalMargins = itemMargin * 2 * numCols;
+    const totalPadding = gridPadding * 2;
+    const availableWidth = screenWidth * (8 / 10.5) - totalPadding - totalMargins; // Adjust screen width portion based on flex ratios (8 / (8+2.5))
+    return Math.max(80, Math.floor(availableWidth / numCols)); // Ensure a minimum reasonable size
+};
+// --------------------------------
 
 // --- Storage Key for Custom Symbols ---
 const CUSTOM_SYMBOLS_STORAGE_KEY = '@Communify:customSymbols';
@@ -26,7 +38,7 @@ const CUSTOM_SYMBOLS_STORAGE_KEY = '@Communify:customSymbols';
 interface CategoryInfo { id: string; name: string; }
 const APP_CATEGORIES: CategoryInfo[] = [
     { id: 'cat_contextual', name: 'Contextual' },
-    { id: 'cat_custom', name: 'Custom' }, // <-- Added CUSTOM CATEGORY
+    { id: 'cat_custom', name: 'Custom' },
     { id: 'cat_food', name: 'Food' }, { id: 'cat_drinks', name: 'Drinks' },
     { id: 'cat_people', name: 'People' }, { id: 'cat_places', name: 'Places' },
     { id: 'cat_actions', name: 'Actions' }, { id: 'cat_feelings', name: 'Feelings' },
@@ -37,12 +49,10 @@ const APP_CATEGORIES: CategoryInfo[] = [
 ];
 // --- End Category Definition ---
 
-
 // --- Symbol Data Structures ---
-interface CustomSymbolItem { id: string; name: string; imageUri?: string; }
+interface CustomSymbolItem { id: string; name: string; imageUri?: string; categoryId?: string | null; } // Added categoryId
 interface DisplayedSymbolData { id: string; keyword: string; imageUri?: string; }
 // --- End Symbol Data Structures ---
-
 
 // --- Placeholder Symbol Fetching Logic ---
 function getSymbolsForCategory(categoryName: string): string[] {
@@ -81,12 +91,17 @@ const SymbolGrid: React.FC<SymbolGridProps> = ({ onSymbolPress }) => {
     const { gridLayout, isLoadingLayout } = useGrid();
     // -----------------
 
+    // --- Calculate Dynamic Values ---
+    const numGridColumns = getNumColumns(gridLayout);
+    const itemWidth = calculateItemWidth(gridLayout, numGridColumns); // Calculate width here
+    // --------------------------------
+
     // --- State ---
     const [displayedSymbols, setDisplayedSymbols] = useState<DisplayedSymbolData[]>([]);
     const [customSymbols, setCustomSymbols] = useState<CustomSymbolItem[]>([]);
     const [currentTimeContext, setCurrentTimeContext] = useState<TimeContext>('Default');
-    const [loadingGridContent, setLoadingGridContent] = useState<boolean>(true); // Loading state for symbols/categories
-    const [selectedCategoryName, setSelectedCategoryName] = useState<string | null>(null); // Default to contextual
+    const [loadingGridContent, setLoadingGridContent] = useState<boolean>(true);
+    const [selectedCategoryName, setSelectedCategoryName] = useState<string | null>(null); // Default to contextual (null)
 
     // Refs
     const flatListRefLeft = useRef<FlatList<DisplayedSymbolData>>(null);
@@ -111,12 +126,11 @@ const SymbolGrid: React.FC<SymbolGridProps> = ({ onSymbolPress }) => {
         return () => { isMounted = false; }
     }, []);
 
-    // --- Load Displayed Symbols (Contextual/Category/Custom) ---
+    // --- Load Displayed Symbols ---
     const loadSymbols = useCallback((categoryFilter: string | null = null) => {
         setLoadingGridContent(true);
         flatListRefLeft.current?.scrollToOffset({ offset: 0, animated: false });
 
-        // Use setTimeout to ensure loading state updates UI before potentially heavy mapping
         setTimeout(() => {
             try {
                 let symbolsData: DisplayedSymbolData[] = [];
@@ -143,18 +157,16 @@ const SymbolGrid: React.FC<SymbolGridProps> = ({ onSymbolPress }) => {
 
             } catch (err) {
                 console.error("SymbolGrid: Error processing symbols:", err);
-                // Fallback logic
                 const defaultKeywords = getContextualSymbols('Default');
                 setDisplayedSymbols(defaultKeywords.map((k: any, i: any) => ({ id: `ctx_err_${i}_${k}`, keyword: k })));
-                setCurrentTimeContext('Default');
-                setSelectedCategoryName(null);
+                setCurrentTimeContext('Default'); setSelectedCategoryName(null);
                 Alert.alert("Error", "Could not load symbols.");
             } finally {
                 setLoadingGridContent(false);
             }
         }, 50);
 
-    }, [customSymbols]); // Re-run if customSymbols change
+    }, [customSymbols]); // Re-run if customSymbols list changes
 
     // Initial Load Effect
     useEffect(() => {
@@ -163,7 +175,7 @@ const SymbolGrid: React.FC<SymbolGridProps> = ({ onSymbolPress }) => {
 
     // --- Category Press Handler ---
     const handleCategoryPress = useCallback((categoryName: string) => {
-        const currentSelection = selectedCategoryName ?? 'Contextual';
+        const currentSelection = selectedCategoryName ?? 'Contextual'; // Handle null case
         if (categoryName === currentSelection) return; // Avoid reloading same category
 
         if (categoryName.toLowerCase() === 'contextual') loadSymbols(null);
@@ -177,11 +189,12 @@ const SymbolGrid: React.FC<SymbolGridProps> = ({ onSymbolPress }) => {
             <MemoizedSquareComponent
                 keyword={item.keyword}
                 language="en" // Or use state/prop
-                imageUri={item.imageUri} // Pass optional imageUri
+                imageUri={item.imageUri}
+                size={itemWidth} // Pass calculated size
                 onPress={(keyword) => onSymbolPress(keyword, item.imageUri)} // Pass imageUri back too
             />
         </View>
-    ), [onSymbolPress]); // Add onSymbolPress dependency
+    ), [onSymbolPress, itemWidth]); // Add itemWidth dependency
 
     // --- Render Category Item ---
     const renderRightItem = useCallback(({ item }: { item: CategoryInfo }) => {
@@ -198,11 +211,8 @@ const SymbolGrid: React.FC<SymbolGridProps> = ({ onSymbolPress }) => {
         );
     }, [handleCategoryPress, selectedCategoryName]);
 
-    // Determine NavBar Title
+    // --- Nav Title & Loading State ---
     const navTitle = selectedCategoryName ? selectedCategoryName : `Contextual (${currentTimeContext})`;
-    const numGridColumns = getNumColumns(gridLayout); // Calculate columns based on context
-
-    // Combined Loading State (Checks context loading AND grid content loading)
     const isLoading = isLoadingLayout || loadingGridContent;
 
     return (
@@ -226,7 +236,7 @@ const SymbolGrid: React.FC<SymbolGridProps> = ({ onSymbolPress }) => {
                             ref={flatListRefLeft}
                             data={displayedSymbols}
                             renderItem={renderLeftItem}
-                            keyExtractor={(item) => `${item.id}-${gridLayout}`} // Key includes layout
+                            keyExtractor={(item) => `${item.id}-${gridLayout}`} // Include layout in key
                             numColumns={numGridColumns} // Use dynamic columns
                             key={numGridColumns.toString()} // Force remount on column change
                             contentContainerStyle={styles.gridContentContainer}
@@ -234,27 +244,27 @@ const SymbolGrid: React.FC<SymbolGridProps> = ({ onSymbolPress }) => {
                             initialNumToRender={numGridColumns * 3}
                             maxToRenderPerBatch={numGridColumns * 2}
                             windowSize={10}
-                            removeClippedSubviews={true}
-                            extraData={gridLayout} // Ensure update on layout change
+                            removeClippedSubviews={true} // Helps performance
+                            extraData={itemWidth} // Re-render if itemWidth changes
                         />
                     )}
                 </View>
                 {/* Right Side (Categories) */}
                 <View style={styles.rightSide}>
-                    <FlatList
-                        ref={flatListRefRight}
-                        style={styles.categoryFlatList}
-                        data={APP_CATEGORIES}
-                        renderItem={renderRightItem}
-                        keyExtractor={(item) => item.id}
-                        numColumns={1}
-                        contentContainerStyle={styles.categoryListContainer}
-                        // ItemSeparatorComponent={() => <View style={styles.categorySeparator} />} // Optional separator
-                        initialNumToRender={APP_CATEGORIES.length}
-                        maxToRenderPerBatch={APP_CATEGORIES.length}
-                        windowSize={5}
-                        extraData={selectedCategoryName} // Re-render list when selection changes
-                    />
+                   <FlatList
+                     ref={flatListRefRight}
+                     style={styles.categoryFlatList}
+                     data={APP_CATEGORIES}
+                     renderItem={renderRightItem}
+                     keyExtractor={(item) => item.id}
+                     numColumns={1}
+                     contentContainerStyle={styles.categoryListContainer}
+                     ItemSeparatorComponent={() => <View style={styles.categorySeparator} />} // Optional visual separator
+                     initialNumToRender={APP_CATEGORIES.length} // Usually okay to render all categories
+                     maxToRenderPerBatch={APP_CATEGORIES.length}
+                     windowSize={5}
+                     extraData={selectedCategoryName} // Re-render when selection changes
+                   />
                 </View>
             </View>
         </View>
@@ -268,15 +278,15 @@ const styles = StyleSheet.create({
     navBarTouchable: { paddingHorizontal: 15, paddingVertical: 5, },
     navBarTitle: { color: '#fff', fontSize: 16, fontWeight: '600', },
     content: { flexDirection: 'row', flex: 1, },
-    leftSide: { flex: 8, backgroundColor: '#f8f9fa', },
-    rightSide: { flex: 2.5, backgroundColor: '#ffffff', borderLeftWidth: 1, borderLeftColor: '#e0e0e0', },
+    leftSide: { flex: 8, backgroundColor: '#f8f9fa', }, // Adjusted flex ratio
+    rightSide: { flex: 2.5, backgroundColor: '#ffffff', borderLeftWidth: 1, borderLeftColor: '#e0e0e0', }, // Adjusted flex ratio
     categoryFlatList: { flex: 1, },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', },
     emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, minHeight: 200, },
-    gridContentContainer: { padding: 5, alignItems: 'flex-start', },
+    gridContentContainer: { padding: 5, alignItems: 'flex-start', }, // Grid items padding
     categoryListContainer: { paddingVertical: 0, paddingHorizontal: 0, },
-    squareItemContainer: { margin: 4, },
-    rightItemContainer: { borderBottomWidth: 1, borderBottomColor: '#f0f0f0', },
+    squareItemContainer: { margin: 4, }, // Margin around each SquareComponent
+    rightItemContainer: { borderBottomWidth: 1, borderBottomColor: '#f0f0f0', }, // Separator for categories
     categorySeparator: { height: 1, backgroundColor: '#f0f0f0', marginHorizontal: 15, },
     emptyListText: { textAlign: 'center', fontSize: 16, color: '#6c757d', }
 });

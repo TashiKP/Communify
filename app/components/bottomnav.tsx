@@ -1,41 +1,40 @@
 // src/components/bottomnav.tsx (BottomBar)
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-    View, TouchableOpacity, StyleSheet, Modal, Animated, Easing, Platform, Text // Added Text, Platform
-} from 'react-native'; // Added other imports
+    View, TouchableOpacity, StyleSheet, Modal, Animated, Easing, Platform, Text
+} from 'react-native';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import {
-    faSearch, faPlus, faBoxes, faHome, faKeyboard, faCog,
-    faChevronUp, // Removed if toggle logic moved
-    faChevronDown // Removed if toggle logic moved
+    faSearch, faPlus, faBoxes, faHome, faKeyboard, faCog
+    // Removed Chevron icons as toggle logic is likely in HomeScreen now
 } from '@fortawesome/free-solid-svg-icons';
 import LinearGradient from 'react-native-linear-gradient';
 
 // --- Import Components/Screens/Types --- (Adjust paths as necessary)
-import Menu, { menuWidth } from '../components/menu'; // Assuming Menu exports menuWidth
-import SearchScreen from '../components/SearchScreen';
-import GridLayoutScreen, { GridLayoutType } from '../components/GridLayoutScreen';
-import CustomPageComponent from '../components/CustomPageComponent';
-import KeyboardInputComponent from '../components/KeyboardInputComponent';
-import { VoiceSettingData } from '../components/SymbolVoiceOverScreen'; // Import VoiceSettingData type
+// Assuming Menu exports menuWidth correctly
+import Menu, { menuWidth } from './menu'; // Use relative path if in same dir
+import SearchScreen from './SearchScreen'; // Use relative path
+import GridLayoutScreen from './GridLayoutScreen'; // Use relative path
+import CustomPageComponent from './CustomPageComponent'; // Use relative path
+import KeyboardInputComponent from './KeyboardInputComponent'; // Use relative path
+import { VoiceSettingData } from './SymbolVoiceOverScreen'; // Import VoiceSettingData type
+// --- FIX: Import GridLayoutType from context ---
+import { GridLayoutType } from '../context/GridContext'; // Import type from context file
 
 // --- Constants ---
-const BAR_HEIGHT = 65; // Make sure this matches actual height
-// const TOGGLE_BUTTON_SIZE = 50; // Removed if toggle logic moved
+const BAR_HEIGHT = 65; // Ensure this matches the height used in HomeScreen animation
 
 // --- Props Interface ---
 type BottomBarProps = {
-    handleHomePress: () => void;
-    onSymbolSelected: (symbol: { keyword: string; pictogramUrl: string }) => void; // From Search modal
-    onTextInputSubmit: (text: string) => void; // From Keyboard modal
-    currentLanguage?: string;
-    currentGridLayout?: GridLayoutType;
-    onGridLayoutSave: (layout: GridLayoutType) => void;
-    onCustomSymbolsUpdate?: (symbols: any[]) => void;
-    // --- Add TTS Props ---
-    currentTtsSettings: VoiceSettingData;
-    onTtsSettingsSave: (settings: VoiceSettingData) => void;
-    // ---------------------
+    handleHomePress: () => void; // Callback for Home button press
+    onSymbolSelected: (symbol: { keyword: string; pictogramUrl: string }) => void; // Callback for symbol selected from Search
+    onTextInputSubmit: (text: string) => void; // Callback for text submitted from Keyboard
+    currentLanguage?: string; // Language passed down to SearchScreen
+    // currentGridLayout?: GridLayoutType; // No longer needed to pass down to GridLayoutScreen as it uses context
+    onGridLayoutSave?: (layout: GridLayoutType) => void; // Optional: Callback IF HomeScreen needs to know immediately when layout is saved (e.g., reset timer). Context handles the actual state change.
+    onCustomSymbolsUpdate?: (symbols: any[]) => void; // Callback for custom symbol updates (replace 'any' with SymbolItem[] if defined)
+    currentTtsSettings: VoiceSettingData; // Current TTS settings passed down to Menu
+    onTtsSettingsSave: (settings: VoiceSettingData) => void; // Callback to save TTS settings passed down to Menu
 };
 
 // --- Component ---
@@ -44,27 +43,21 @@ const BottomBar: React.FC<BottomBarProps> = React.memo(({
     onSymbolSelected,
     onTextInputSubmit,
     currentLanguage = 'en',
-    currentGridLayout = 'standard',
-    onGridLayoutSave,
+    // currentGridLayout, // No longer needed to destructure
+    onGridLayoutSave, // Keep destructuring if prop is kept
     onCustomSymbolsUpdate,
-    // --- Destructure TTS Props ---
     currentTtsSettings,
     onTtsSettingsSave,
-    // ---------------------------
 }) => {
     // --- State & Animation ---
-    // Modals visibility state
     const [isMenuVisible, setMenuVisible] = useState(false);
     const [isSearchScreenVisible, setIsSearchScreenVisible] = useState(false);
     const [isGridLayoutScreenVisible, setIsGridLayoutScreenVisible] = useState(false);
     const [isCustomPageModalVisible, setIsCustomPageModalVisible] = useState(false);
     const [isKeyboardInputVisible, setIsKeyboardInputVisible] = useState(false);
 
-    // Menu animation values
     const menuSlideAnim = useRef(new Animated.Value(-menuWidth)).current;
     const menuOverlayAnim = useRef(new Animated.Value(0)).current;
-
-    // Removed bar visibility logic (controlled by HomeScreen)
 
     // --- Menu Handlers ---
     const openMenu = useCallback(() => {
@@ -82,22 +75,24 @@ const BottomBar: React.FC<BottomBarProps> = React.memo(({
         ]).start(() => setMenuVisible(false));
     }, [menuSlideAnim, menuOverlayAnim]);
 
-
     // --- Other Modal/Screen Handlers ---
     const openSearchScreen = useCallback(() => { setIsSearchScreenVisible(true); }, []);
     const closeSearchScreen = useCallback(() => { setIsSearchScreenVisible(false); }, []);
     const handleSymbolSelectFromSearch = useCallback((symbol: { keyword: string; pictogramUrl: string }) => {
-        onSymbolSelected(symbol); // Call parent handler
-        closeSearchScreen(); // Close the modal
+        onSymbolSelected(symbol); // Notify parent (HomeScreen)
+        closeSearchScreen();
     }, [onSymbolSelected, closeSearchScreen]);
 
     const openGridLayoutScreen = useCallback(() => { setIsGridLayoutScreenVisible(true); }, []);
     const closeGridLayoutScreen = useCallback(() => { setIsGridLayoutScreenVisible(false); }, []);
-    // onSave for GridLayoutScreen calls the prop, parent handles feedback, screen closes itself via onClose
-    const handleSaveGridLayout = useCallback((layout: GridLayoutType) => {
-        onGridLayoutSave(layout); // Let parent handle saving/state update
-        // The GridLayoutScreen itself calls its onClose prop when saving
-    }, [onGridLayoutSave]);
+    // handleSaveGridLayout is removed as GridLayoutScreen handles saving via context.
+    // If HomeScreen needs notification for timer reset, it can be passed via onGridLayoutSave prop.
+    const notifyLayoutSaved = (layout: GridLayoutType) => {
+         if (onGridLayoutSave) {
+            onGridLayoutSave(layout); // Call the prop if it exists
+         }
+    };
+
 
     const openCustomPageModal = useCallback(() => { setIsCustomPageModalVisible(true); }, []);
     const closeCustomPageModal = useCallback(() => { setIsCustomPageModalVisible(false); }, []);
@@ -105,67 +100,41 @@ const BottomBar: React.FC<BottomBarProps> = React.memo(({
     const openKeyboardInput = useCallback(() => { setIsKeyboardInputVisible(true); }, []);
     const closeKeyboardInput = useCallback(() => { setIsKeyboardInputVisible(false); }, []);
     const handleKeyboardSubmitInternal = useCallback((text: string) => {
-        onTextInputSubmit(text); // Call parent handler
-        // Keep keyboard input open or close based on preference
-        // closeKeyboardInput();
-    }, [onTextInputSubmit /*, closeKeyboardInput */]);
-
+        onTextInputSubmit(text); // Notify parent
+        // closeKeyboardInput(); // Optionally close after submit
+    }, [onTextInputSubmit]);
 
     // --- Render ---
     return (
-        // Use Fragment as the Animated wrapper is now in HomeScreen
+        // Use Fragment as the Animated wrapper is in HomeScreen
         <>
             <LinearGradient
                 colors={['#0077b6', '#005f94']} // Example gradient
                 style={styles.bottomBarGradient}
             >
                 <View style={styles.bottomBarContent}>
-                    {/* Search Button */}
-                    <TouchableOpacity style={styles.button} onPress={openSearchScreen} accessibilityLabel="Search symbols">
-                    <FontAwesomeIcon icon={faSearch} size={26} color="#fff" />
-                    </TouchableOpacity>
-
-                    {/* Add Button */}
-                    <TouchableOpacity style={styles.button} onPress={openCustomPageModal} accessibilityLabel="Add or manage custom symbols">
-                    <FontAwesomeIcon icon={faPlus} size={26} color="#fff" />
-                    </TouchableOpacity>
-
-                    {/* Grid/Boxes Button */}
-                    <TouchableOpacity style={styles.button} onPress={openGridLayoutScreen} accessibilityLabel="Change grid layout">
-                    <FontAwesomeIcon icon={faBoxes} size={26} color="#fff" />
-                    </TouchableOpacity>
-
-                    {/* Home Button */}
-                    <TouchableOpacity style={styles.button} onPress={handleHomePress} accessibilityLabel="Go to home screen">
-                    <FontAwesomeIcon icon={faHome} size={26} color="#fff" />
-                    </TouchableOpacity>
-
-                    {/* Keyboard Button */}
-                    <TouchableOpacity style={styles.button} onPress={openKeyboardInput} accessibilityLabel="Open keyboard input">
-                    <FontAwesomeIcon icon={faKeyboard} size={26} color="#fff" />
-                    </TouchableOpacity>
-
-                    {/* Settings Button */}
-                    <TouchableOpacity style={styles.button} onPress={openMenu} accessibilityLabel="Open settings menu">
-                    <FontAwesomeIcon icon={faCog} size={26} color="#fff" />
-                    </TouchableOpacity>
+                    {/* Buttons: Search, Add, Grid, Home, Keyboard, Settings */}
+                    <TouchableOpacity style={styles.button} onPress={openSearchScreen} accessibilityLabel="Search symbols"><FontAwesomeIcon icon={faSearch} size={26} color="#fff" /></TouchableOpacity>
+                    <TouchableOpacity style={styles.button} onPress={openCustomPageModal} accessibilityLabel="Add custom symbols"><FontAwesomeIcon icon={faPlus} size={26} color="#fff" /></TouchableOpacity>
+                    <TouchableOpacity style={styles.button} onPress={openGridLayoutScreen} accessibilityLabel="Change grid layout"><FontAwesomeIcon icon={faBoxes} size={26} color="#fff" /></TouchableOpacity>
+                    <TouchableOpacity style={styles.button} onPress={handleHomePress} accessibilityLabel="Go home"><FontAwesomeIcon icon={faHome} size={26} color="#fff" /></TouchableOpacity>
+                    <TouchableOpacity style={styles.button} onPress={openKeyboardInput} accessibilityLabel="Open keyboard"><FontAwesomeIcon icon={faKeyboard} size={26} color="#fff" /></TouchableOpacity>
+                    <TouchableOpacity style={styles.button} onPress={openMenu} accessibilityLabel="Open settings"><FontAwesomeIcon icon={faCog} size={26} color="#fff" /></TouchableOpacity>
                 </View>
             </LinearGradient>
 
             {/* --- Modals Rendered by BottomBar --- */}
             <Modal visible={isMenuVisible} transparent={true} animationType="none" onRequestClose={closeMenu} >
-                {/* Pass TTS Settings and Save Handler to Menu */}
                 <Menu
                     slideAnim={menuSlideAnim}
                     overlayAnim={menuOverlayAnim}
                     closeMenu={closeMenu}
-                    currentTtsSettings={currentTtsSettings} // <-- Pass down
-                    onTtsSettingsSave={onTtsSettingsSave}   // <-- Pass down
+                    currentTtsSettings={currentTtsSettings}
+                    onTtsSettingsSave={onTtsSettingsSave}
                 />
             </Modal>
 
-            {/* --- Other Modals --- */}
-            {/* Search Screen is now a Modal itself */}
+            {/* Search Screen Modal */}
             {isSearchScreenVisible && (
                 <SearchScreen
                     onCloseSearch={closeSearchScreen}
@@ -174,33 +143,35 @@ const BottomBar: React.FC<BottomBarProps> = React.memo(({
                 />
              )}
 
-            {/* Grid Layout Screen presented as a Modal */}
+            {/* Grid Layout Screen Modal - Removed unused props */}
              {isGridLayoutScreenVisible && (
                  <Modal visible={isGridLayoutScreenVisible} animationType="slide" onRequestClose={closeGridLayoutScreen} >
                     <GridLayoutScreen
-                        onClose={closeGridLayoutScreen} // Allow screen to close itself
-                        initialLayout={currentGridLayout}
-                        onSave={handleSaveGridLayout} // Parent notified on save
+                        onClose={closeGridLayoutScreen} // Screen closes itself
+                        // Note: If you need to notify HomeScreen immediately on save,
+                        // you'd modify GridLayoutScreen to accept an onSave prop again
+                        // and call it within its handleLayoutSelect function *after* context update.
+                        // Then pass notifyLayoutSaved (or onGridLayoutSave directly) here.
                     />
                  </Modal>
              )}
 
-            {/* Custom Page Component presented as a Modal */}
+            {/* Custom Page Component Modal */}
              {isCustomPageModalVisible && (
                 <Modal visible={isCustomPageModalVisible} animationType="slide" onRequestClose={closeCustomPageModal}>
                     <CustomPageComponent
-                        onBackPress={closeCustomPageModal} // Allow screen to close itself
-                        onSymbolsUpdate={onCustomSymbolsUpdate}
+                        onBackPress={closeCustomPageModal}
+                        onSymbolsUpdate={onCustomSymbolsUpdate} // Pass optional update handler
                     />
                 </Modal>
              )}
 
-             {/* Keyboard Input Component presented as a Modal */}
+             {/* Keyboard Input Component Modal */}
              {isKeyboardInputVisible && (
                  <KeyboardInputComponent
-                     visible={isKeyboardInputVisible} // Controls modal visibility
-                     onClose={closeKeyboardInput} // Allow screen to close itself
-                     onSubmit={handleKeyboardSubmitInternal} // Parent notified on submit
+                     visible={isKeyboardInputVisible}
+                     onClose={closeKeyboardInput}
+                     onSubmit={handleKeyboardSubmitInternal}
                      placeholder="Type word or sentence..."
                  />
               )}
@@ -210,9 +181,7 @@ const BottomBar: React.FC<BottomBarProps> = React.memo(({
 
 // --- Styles ---
 const styles = StyleSheet.create({
-  // Removed container style
   bottomBarGradient: {
-      // Removed flex: 1, height determined by container or content
       height: BAR_HEIGHT, // Set height explicitly
       borderTopWidth: 1,
       borderTopColor: 'rgba(255, 255, 255, 0.2)',
@@ -222,16 +191,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 5,
-    // Removed paddingVertical: 5 if BAR_HEIGHT handles it
   },
   button: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    // Removed paddingVertical: 8
     height: '100%', // Make button fill height
   },
-  // Removed toggle button styles
 });
 
 export default BottomBar;

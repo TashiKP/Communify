@@ -1,6 +1,5 @@
 // src/data/defaultCategorySymbols.ts
 
-// Define the structure for type safety (optional but recommended)
 interface DefaultCategoryData {
     [key: string]: string[]; // Category name (lowercase) maps to array of keywords
   }
@@ -21,7 +20,4 @@ interface DefaultCategoryData {
     numbers: ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'number', 'count'],
   };
   
-  // You could also add a helper function here if needed, but direct import is fine
-  // export function getDefaultsForCategory(categoryName: string): string[] {
-  //   return defaultCategoryData[categoryName.toLowerCase()] || [];
-  // }
+ 

@@ -1,91 +1,60 @@
+// src/components/ParentalControls.tsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-    View, Text, TouchableOpacity, StyleSheet, Modal, SafeAreaView, ScrollView, Platform,
-    Switch, TextInput, ActivityIndicator, Alert
+    View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Platform,
+    ActivityIndicator, Alert, Keyboard // Added Keyboard
 } from 'react-native';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
-import {
-    faTimes, faCheck, faClock, faUserShield, faShieldAlt, faChild, faChevronRight,
-    faGlobe, faMobileAlt, faBed, faLock, faSave, faUndo, faBan, faHourglassHalf,
-    faCalendarAlt, faEyeSlash, faHeart
-} from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft, faSave, faUndo } from '@fortawesome/free-solid-svg-icons'; // Keep only used icons here
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
-// --- Types ---
-export type AsdLevel = 'high' | 'medium' | 'low' | 'noAsd';
-type DayOfWeek = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
-
-export interface ParentalSettingsData {
-    blockViolence: boolean;
-    blockInappropriate: boolean;
-    dailyLimitHours: string;
-    asdLevel: AsdLevel | null;
-    downtimeEnabled: boolean;
-    downtimeDays: DayOfWeek[];
-    downtimeStart: string; // HH:MM
-    downtimeEnd: string;   // HH:MM
-    requirePasscode: boolean;
-}
+// Import types and sub-components (Adjust paths if your structure differs)
+import { ParentalSettingsData, AsdLevel, DayOfWeek } from './parental/types';
+import ContentFilteringSection from './parental/ContentFilteringSection';
+import AppManagementSection from './parental/AppManagementSection';
+import ScreenTimeSection from './parental/ScreenTimeSection';
+import ChildProfileSection from './parental/ChildProfileSection';
+import SecuritySection from './parental/SecuritySection';
+import UsageReportingSection from './parental/UsageReportingSection';
 
 // --- Props Interface ---
 interface ParentalControlsProps {
-    visible: boolean;
     onClose: () => void;
     initialSettings: ParentalSettingsData;
-    onSave: (settings: ParentalSettingsData) => Promise<void> | void;
+    onSave: (settings: ParentalSettingsData) => Promise<void>; // Expecting Promise from parent now
 }
 
 // --- Default Settings ---
 const defaultSettings: ParentalSettingsData = {
-    blockViolence: false,
-    blockInappropriate: false,
-    dailyLimitHours: '',
-    asdLevel: null,
-    downtimeEnabled: false,
-    downtimeDays: [],
-    downtimeStart: '21:00',
-    downtimeEnd: '07:00',
-    requirePasscode: false,
+    blockViolence: false, blockInappropriate: false, dailyLimitHours: '',
+    asdLevel: null, downtimeEnabled: false, downtimeDays: [],
+    downtimeStart: '21:00', downtimeEnd: '07:00', requirePasscode: false,
+    notifyEmails: [], // Initialize new field
 };
 
 // --- Utility Functions ---
-const formatTime = (date: Date): string => {
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    return `${hours}:${minutes}`;
-};
-
-const parseTime = (timeString: string): Date => {
-    const timeParts = timeString?.split(':');
-    const hours = parseInt(timeParts?.[0] ?? '0', 10);
-    const minutes = parseInt(timeParts?.[1] ?? '0', 10);
-    const date = new Date();
-    if (!isNaN(hours) && !isNaN(minutes)) {
-        date.setHours(hours, minutes, 0, 0);
-    } else {
-        date.setHours(0, 0, 0, 0);
-    }
-    return date;
-};
-
+const formatTime = (date: Date): string => { const h = date.getHours().toString().padStart(2,'0'); const m = date.getMinutes().toString().padStart(2,'0'); return `${h}:${m}`; };
+const parseTime = (timeString: string): Date => { const p=timeString?.split(':'); const h=parseInt(p?.[0]??'0',10); const m=parseInt(p?.[1]??'0',10); const d=new Date(); if(!isNaN(h)&&!isNaN(m))d.setHours(h,m,0,0); else d.setHours(0,0,0,0); return d; };
 const daysOfWeek: DayOfWeek[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // --- Component ---
 const ParentalControls: React.FC<ParentalControlsProps> = ({
-    visible,
     onClose,
     initialSettings,
     onSave
 }) => {
     // --- Local State ---
-    const [localSettings, setLocalSettings] = useState<ParentalSettingsData>(initialSettings);
-    const [originalSettings, setOriginalSettings] = useState<ParentalSettingsData>(initialSettings);
+    const [localSettings, setLocalSettings] = useState<ParentalSettingsData>(() => ({ ...defaultSettings, ...initialSettings }));
+    const [originalSettings, setOriginalSettings] = useState<ParentalSettingsData>(() => ({ ...defaultSettings, ...initialSettings }));
     const [isSaving, setIsSaving] = useState(false);
-
-    // --- Time Picker State ---
     const [showTimePicker, setShowTimePicker] = useState(false);
     const [timePickerTarget, setTimePickerTarget] = useState<'start' | 'end' | null>(null);
     const [timePickerValue, setTimePickerValue] = useState<Date>(new Date());
+    // --- State for Usage Reporting Input ---
+    const [showAddEmailInput, setShowAddEmailInput] = useState(false);
+    const [newNotifyEmail, setNewNotifyEmail] = useState('');
+    // ---------------------------------------
 
     // --- Memoize ---
     const hasUnsavedChanges = useMemo(() => {
@@ -93,338 +62,226 @@ const ParentalControls: React.FC<ParentalControlsProps> = ({
     }, [localSettings, originalSettings]);
 
     // --- Effects ---
+    // Reset local state when initialSettings prop changes
     useEffect(() => {
-        if (visible) {
-            setLocalSettings(initialSettings);
-            setOriginalSettings(initialSettings);
-            setIsSaving(false);
-            setShowTimePicker(false);
-        }
-    }, [visible, initialSettings]);
+        const mergedInitial = { ...defaultSettings, ...initialSettings };
+        setLocalSettings(mergedInitial);
+        setOriginalSettings(mergedInitial);
+        setIsSaving(false); setShowTimePicker(false);
+        setShowAddEmailInput(false); setNewNotifyEmail('');
+    }, [initialSettings]);
 
-    // --- Handlers ---
-    const handleSettingChange = <K extends keyof ParentalSettingsData>(
-        key: K,
-        value: ParentalSettingsData[K]
-    ) => {
-        if (key === 'dailyLimitHours') {
-            const numericValue = value as string;
-            const filteredValue = numericValue.replace(/[^0-9]/g, '');
-            const num = parseInt(filteredValue, 10);
+    const handleSettingChange = useCallback(<K extends keyof ParentalSettingsData>( key: K, value: ParentalSettingsData[K] ) => {
+        setLocalSettings(prev => {
+            // Handle the specific case for dailyLimitHours
+            if (key === 'dailyLimitHours') {
+                const numericValue = value as string;
+                const filteredValue = numericValue.replace(/[^0-9]/g, '');
+                const num = parseInt(filteredValue, 10);
+                let finalValue: string;
 
-            if (filteredValue === '') {
-                 setLocalSettings(prev => ({ ...prev, [key]: '' }));
-            } else if (!isNaN(num) && num >= 0 && num <= 24) {
-                setLocalSettings(prev => ({ ...prev, [key]: num.toString() }));
-            } else if (!isNaN(num) && num > 24) {
-                setLocalSettings(prev => ({ ...prev, [key]: '24' }));
+                if (filteredValue === '') {
+                    finalValue = '';
+                } else if (!isNaN(num)) {
+                    if (num === 0) finalValue = '0';
+                    else if (num > 0 && num <= 24) finalValue = num.toString();
+                    else if (num > 24) finalValue = '24';
+                    else finalValue = prev.dailyLimitHours; // Fallback to previous valid string
+                } else {
+                    finalValue = prev.dailyLimitHours; // Fallback if not a valid number input
+                }
+                return { ...prev, dailyLimitHours: finalValue }; // Use the specific key here
             }
-        } else {
-            setLocalSettings(prev => ({ ...prev, [key]: value }));
-        }
-    };
 
-    const handleDowntimeDayToggle = (day: DayOfWeek) => {
+             if (key === 'notifyEmails') {
+                 return { ...prev, notifyEmails: value as string[] }; // Use specific key and cast value
+             }
+             if (key === 'downtimeDays') {
+                 return { ...prev, downtimeDays: value as DayOfWeek[] }; // Use specific key and cast value
+            }
+             if (key === 'asdLevel') {
+                 return { ...prev, asdLevel: value as AsdLevel | null }; // Use specific key and cast value
+             }
+             if (key === 'downtimeStart' || key === 'downtimeEnd') {
+                 return { ...prev, [key]: value as string}; // Use specific key and cast value
+             }
+
+            return { ...prev, [key]: value };
+        });
+    }, []); // Keep dependency array empty
+
+    const handleDowntimeDayToggle = useCallback((day: DayOfWeek) => {
         setLocalSettings(prev => {
             const currentDays = prev.downtimeDays;
-            const newDays = currentDays.includes(day)
-                ? currentDays.filter(d => d !== day)
-                : [...currentDays, day].sort((a, b) => daysOfWeek.indexOf(a) - daysOfWeek.indexOf(b));
+            const newDays = currentDays.includes(day) ? currentDays.filter(d => d !== day) : [...currentDays, day].sort((a, b) => daysOfWeek.indexOf(a) - daysOfWeek.indexOf(b));
             return { ...prev, downtimeDays: newDays };
         });
-    };
+    }, []); // daysOfWeek is constant, no need to list
 
     const handleReset = () => {
-        Alert.alert(
-            "Reset Changes?",
-            "Discard changes and revert to the last saved settings?",
-            [
-                { text: "Cancel", style: "cancel" },
-                { text: "Reset", style: "destructive", onPress: () => setLocalSettings(originalSettings) }
-            ]
-        );
+        if (hasUnsavedChanges) {
+            Alert.alert( "Reset Changes?", "Discard all changes and revert to the last saved settings?", [ { text: "Cancel", style: "cancel" }, { text: "Reset", style: "destructive", onPress: () => setLocalSettings(originalSettings) } ] );
+        }
     };
 
     const handleAttemptClose = useCallback(() => {
-        if (hasUnsavedChanges) {
-        Alert.alert(
-            "Unsaved Changes",
-            "You have unsaved changes. Discard them and close?",
-            [
-                { text: "Cancel", style: "cancel" },
-                { text: "Discard", style: "destructive", onPress: onClose }
-            ]
-        );
-        } else {
-        onClose();
-        }
+        if (hasUnsavedChanges) { Alert.alert( "Unsaved Changes", "You have unsaved changes. Discard them and close?", [ { text: "Cancel", style: "cancel" }, { text: "Discard", style: "destructive", onPress: onClose } ] ); }
+        else { onClose(); }
     }, [hasUnsavedChanges, onClose]);
 
     const handleSaveChanges = async () => {
         if (!hasUnsavedChanges) return;
-
-        if (localSettings.downtimeEnabled && localSettings.downtimeDays.length === 0) {
-            Alert.alert("Incomplete Setting", "Please select at least one day for the downtime schedule or disable downtime.");
-            return;
-        }
+        if (localSettings.downtimeEnabled && localSettings.downtimeDays.length === 0) { Alert.alert("Incomplete Setting", "Please select at least one day for the downtime schedule or disable downtime."); return; }
 
         setIsSaving(true);
         try {
-            await onSave(localSettings);
-            setOriginalSettings(localSettings);
-            onClose();
+            await onSave(localSettings); // Call parent save function
+            setOriginalSettings(localSettings); // Update baseline on success
+            onClose(); // Close modal on success
         } catch (error) {
-            console.error("Error saving parental controls:", error);
+            console.error("Error saving parental controls (via onSave prop):", error);
             Alert.alert("Error", "Could not save settings. Please try again.");
-            setIsSaving(false);
+            setIsSaving(false); // Reset saving state only on error
         }
     };
 
-    // --- Time Picker Handlers ---
-     const showTimePickerModal = (target: 'start' | 'end') => {
-        setTimePickerTarget(target);
-        const currentTime = target === 'start' ? localSettings.downtimeStart : localSettings.downtimeEnd;
-        setTimePickerValue(parseTime(currentTime));
-        setShowTimePicker(true);
-    };
+    const showTimePickerModal = useCallback((target: 'start' | 'end') => { setTimePickerTarget(target); setTimePickerValue(parseTime(target === 'start' ? localSettings.downtimeStart : localSettings.downtimeEnd)); setShowTimePicker(true); }, [localSettings.downtimeStart, localSettings.downtimeEnd]);
+    const onTimeChange = (event: DateTimePickerEvent, selectedDate?: Date) => { const currentDate = selectedDate || timePickerValue; if (Platform.OS === 'android') setShowTimePicker(false); if (event.type === 'set' && timePickerTarget) { const formattedTime = formatTime(currentDate); handleSettingChange(timePickerTarget === 'start' ? 'downtimeStart' : 'downtimeEnd', formattedTime); setTimePickerTarget(null); if (Platform.OS === 'ios') setShowTimePicker(false); } else if (event.type === 'dismissed'){ setTimePickerTarget(null); if (Platform.OS === 'ios') setShowTimePicker(false); } };
+    const handleConfigureApps = useCallback(() => Alert.alert("App Limits", "Coming Soon."), []);
+    const handleConfigureWeb = useCallback(() => Alert.alert("Web Filtering", "Coming Soon."), []);
+    const handleConfigurePasscode = useCallback(() => Alert.alert("Security", "Coming Soon."), []);
 
-    const onTimeChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
-        const currentDate = selectedDate || timePickerValue;
-        if (Platform.OS === 'android') {
-             setShowTimePicker(false);
-        }
+    // --- Handlers for Usage Reporting ---
+    const toggleAddEmailInput = useCallback(() => { setShowAddEmailInput(prev => !prev); setNewNotifyEmail(''); if (showAddEmailInput) Keyboard.dismiss(); }, [showAddEmailInput]);
+    const handleAddNotifyEmail = useCallback(() => {
+        const trimmedEmail = newNotifyEmail.trim();
+        if (!trimmedEmail) return;
+        if (!emailRegex.test(trimmedEmail)) { Alert.alert("Invalid Email", "Please enter a valid email address."); return; }
+        const lowerCaseEmail = trimmedEmail.toLowerCase();
+        if (localSettings.notifyEmails.some(email => email.toLowerCase() === lowerCaseEmail)) { Alert.alert("Duplicate Email", "This email address is already added."); return; }
+        handleSettingChange('notifyEmails', [...localSettings.notifyEmails, trimmedEmail]);
+        setNewNotifyEmail(''); setShowAddEmailInput(false); Keyboard.dismiss();
+    }, [newNotifyEmail, localSettings.notifyEmails, handleSettingChange]);
+    const handleDeleteNotifyEmail = useCallback((emailToDelete: string) => {
+        handleSettingChange('notifyEmails', localSettings.notifyEmails.filter(email => email !== emailToDelete));
+    }, [localSettings.notifyEmails, handleSettingChange]);
+    // ---------------------------------------
 
-        if (event.type === 'set' && timePickerTarget) {
-             const formattedTime = formatTime(currentDate);
-             handleSettingChange(timePickerTarget === 'start' ? 'downtimeStart' : 'downtimeEnd', formattedTime);
-             setTimePickerTarget(null);
-             if (Platform.OS === 'ios') {
-                 setShowTimePicker(false);
-             }
-        } else if (event.type === 'dismissed'){
-             setTimePickerTarget(null);
-             if (Platform.OS === 'ios') {
-                 setShowTimePicker(false);
-             }
-        }
-    };
+    // --- Pass styles object down ---
+    const componentStyles = useMemo(() => ({
+        ...styles,
+        _primaryColor: primaryColor, _darkGrey: darkGrey, _placeholderColor: placeholderColor,
+        _mediumGrey: mediumGrey, _whiteColor: whiteColor, _textColor: textColor, _errorColor: errorColor,
+        _lightGrey: lightGrey, _screenBackgroundColor: screenBackgroundColor, _cardBackgroundColor: cardBackgroundColor,
+    }), []); // Empty array ensures this only calculates once
 
-
-    // Placeholders
-    const handleConfigureApps = () => Alert.alert("App Limits", "Configure allowed apps (Coming Soon).");
-    const handleConfigureWeb = () => Alert.alert("Web Filtering", "Configure web restrictions (Coming Soon).");
-    const handleConfigurePasscode = () => Alert.alert("Security", "Set parental passcode (Coming Soon).");
-
-
-    // --- Render ---
     return (
-        <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={handleAttemptClose} >
-            <SafeAreaView style={styles.safeArea}>
-                <View style={styles.container}>
-                    {/* Header remains fixed */}
-                    <View style={styles.header}>
-                        <TouchableOpacity style={styles.headerButton} onPress={handleAttemptClose} hitSlop={hitSlop}>
-                            <FontAwesomeIcon icon={faTimes} size={20} color={whiteColor} />
-                        </TouchableOpacity>
-                        <View style={styles.titleContainer}><Text style={styles.title}>Parental Controls</Text></View>
-                        <TouchableOpacity
-                            style={styles.headerButton}
-                            onPress={handleSaveChanges}
-                            disabled={isSaving || !hasUnsavedChanges}
-                            hitSlop={hitSlop}
-                         >
-                             {isSaving
-                                ? <ActivityIndicator size="small" color={whiteColor} />
-                                : <FontAwesomeIcon icon={faCheck} size={20} color={hasUnsavedChanges ? whiteColor : disabledButtonColor} />
-                             }
-                        </TouchableOpacity>
+        <SafeAreaView style={styles.safeArea}>
+            <View style={styles.container}>
+                {/* Header */}
+                <View style={styles.header}>
+                    <TouchableOpacity style={styles.headerButton} onPress={handleAttemptClose} hitSlop={hitSlop} accessibilityLabel="Close Parental Controls">
+                        <FontAwesomeIcon icon={faArrowLeft} size={20} color={whiteColor} />
+                    </TouchableOpacity>
+                    <View style={styles.titleContainer}>
+                        <Text style={styles.title}>Parental Controls</Text>
                     </View>
-
-                    {/* ScrollView wraps content below header */}
-                    <ScrollView
-                        style={styles.scrollView}
-                        contentContainerStyle={styles.scrollContainer} // Uses padding
-                        keyboardShouldPersistTaps="handled"
-                     >
-
-                        {/* Content Filtering */}
-                        <View style={styles.sectionCard}>
-                            <View style={styles.cardHeader}>
-                                <FontAwesomeIcon icon={faShieldAlt} size={18} color={primaryColor} style={styles.cardIcon}/>
-                                <Text style={styles.sectionTitle}>Content Filtering</Text>
-                            </View>
-                            <View style={styles.settingRow}>
-                                <FontAwesomeIcon icon={faBan} size={20} color={darkGrey} style={styles.settingIcon}/>
-                                <Text style={styles.settingLabel}>Block Violent Content</Text>
-                                <Switch value={localSettings.blockViolence} onValueChange={(v) => handleSettingChange('blockViolence', v)} {...switchStyles}/>
-                            </View>
-                             <View style={styles.settingRow}>
-                                 <FontAwesomeIcon icon={faEyeSlash} size={20} color={darkGrey} style={styles.settingIcon}/>
-                                <Text style={styles.settingLabel}>Block Inappropriate Content</Text>
-                                <Switch value={localSettings.blockInappropriate} onValueChange={(v) => handleSettingChange('blockInappropriate', v)} {...switchStyles} />
-                            </View>
-                            <View style={styles.cardFooter}>
-                                <TouchableOpacity style={styles.featureRow} onPress={handleConfigureWeb} activeOpacity={0.6}>
-                                    <FontAwesomeIcon icon={faGlobe} size={18} color={darkGrey} style={styles.featureIcon}/>
-                                    <Text style={styles.featureLabel}>Web Filtering Rules</Text>
-                                    <FontAwesomeIcon icon={faChevronRight} size={16} color={placeholderColor} />
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-
-                         {/* App Management */}
-                         <View style={styles.sectionCard}>
-                             <View style={styles.cardHeader}>
-                                 <FontAwesomeIcon icon={faMobileAlt} size={18} color={primaryColor} style={styles.cardIcon}/>
-                                <Text style={styles.sectionTitle}>App Management</Text>
-                             </View>
-                             <View style={styles.cardFooter}>
-                                <TouchableOpacity style={styles.featureRow} onPress={handleConfigureApps} activeOpacity={0.6}>
-                                    <FontAwesomeIcon icon={faMobileAlt} size={18} color={darkGrey} style={styles.featureIcon}/>
-                                    <Text style={styles.featureLabel}>Allowed Apps & Limits</Text>
-                                    <FontAwesomeIcon icon={faChevronRight} size={16} color={placeholderColor} />
-                                </TouchableOpacity>
-                             </View>
-                        </View>
-
-                        {/* Screen Time */}
-                        <View style={styles.sectionCard}>
-                             <View style={styles.cardHeader}>
-                                 <FontAwesomeIcon icon={faClock} size={18} color={primaryColor} style={styles.cardIcon}/>
-                                <Text style={styles.sectionTitle}>Screen Time</Text>
-                             </View>
-                            <View style={styles.settingRow}>
-                                 <FontAwesomeIcon icon={faHourglassHalf} size={20} color={darkGrey} style={styles.settingIcon}/>
-                                <Text style={styles.settingLabel}>Daily Usage Limit</Text>
-                                <View style={styles.timeInputContainer}>
-                                    <TextInput
-                                        style={styles.timeInput}
-                                        value={localSettings.dailyLimitHours}
-                                        onChangeText={(text) => handleSettingChange('dailyLimitHours', text)}
-                                        keyboardType="number-pad"
-                                        placeholder="-"
-                                        placeholderTextColor={placeholderColor}
-                                        maxLength={2}
-                                    />
-                                    <Text style={styles.timeInputLabel}>hours / day</Text>
-                                 </View>
-                            </View>
-                            <View style={styles.settingRow}>
-                                 <FontAwesomeIcon icon={faBed} size={20} color={darkGrey} style={styles.settingIcon}/>
-                                <Text style={styles.settingLabel}>Downtime Schedule</Text>
-                                <Switch value={localSettings.downtimeEnabled} onValueChange={(v) => handleSettingChange('downtimeEnabled', v)} {...switchStyles}/>
-                             </View>
-                             {localSettings.downtimeEnabled && (
-                                 <View style={styles.downtimeDetails}>
-                                     <Text style={styles.fieldLabel}>Active Downtime Days:</Text>
-                                     <View style={styles.daySelector}>
-                                        {daysOfWeek.map(day => {
-                                            const isDaySelected = localSettings.downtimeDays.includes(day);
-                                            return (
-                                                <TouchableOpacity
-                                                    key={day}
-                                                    style={[styles.dayButton, isDaySelected && styles.dayButtonSelected]}
-                                                    onPress={() => handleDowntimeDayToggle(day)}
-                                                    activeOpacity={0.7}
-                                                >
-                                                    <Text style={[styles.dayButtonText, isDaySelected && styles.dayButtonTextSelected]}>{day}</Text>
-                                                </TouchableOpacity>
-                                            );
-                                        })}
-                                     </View>
-                                      <Text style={styles.fieldLabel}>Downtime Hours:</Text>
-                                      <View style={styles.timeSelectionRow}>
-                                          <TouchableOpacity style={styles.timeDisplayBox} onPress={() => showTimePickerModal('start')} activeOpacity={0.7}>
-                                              <Text style={styles.timeDisplayLabel}>From</Text>
-                                              <Text style={styles.timeDisplayText}>{localSettings.downtimeStart}</Text>
-                                          </TouchableOpacity>
-                                           <Text style={styles.timeSeparator}>to</Text>
-                                           <TouchableOpacity style={styles.timeDisplayBox} onPress={() => showTimePickerModal('end')} activeOpacity={0.7}>
-                                              <Text style={styles.timeDisplayLabel}>Until</Text>
-                                              <Text style={styles.timeDisplayText}>{localSettings.downtimeEnd}</Text>
-                                           </TouchableOpacity>
-                                      </View>
-                                 </View>
-                             )}
-                        </View>
-
-                        {/* Child Profile / Support Needs */}
-                        <View style={styles.sectionCard}>
-                            <View style={styles.cardHeader}>
-                                <FontAwesomeIcon icon={faChild} size={18} color={primaryColor} style={styles.cardIcon}/>
-                                <Text style={styles.sectionTitle}>Child Profile (Optional)</Text>
-                             </View>
-                             <Text style={styles.infoText}>Select a profile to tailor communication aids.</Text>
-                            <View style={styles.optionsList}>
-                                {([
-                                    { level: 'high', label: "Level 3 Support Needs", icon: faHeart },
-                                    { level: 'medium', label: "Level 2 Support Needs", icon: faChild },
-                                    { level: 'low', label: "Level 1 Support Needs", icon: faUserShield },
-                                    { level: 'noAsd', label: "No Specific Needs", icon: faChild }
-                                ] as {level: AsdLevel, label: string, icon: any}[]).map(({ level, label, icon }) => {
-                                    const isSelected = localSettings.asdLevel === level;
-                                    return (
-                                        <TouchableOpacity key={level} style={[styles.optionCard, isSelected && styles.optionCardSelected]} onPress={() => handleSettingChange('asdLevel', level)} activeOpacity={0.8} >
-                                             <FontAwesomeIcon icon={icon} size={20} color={isSelected ? primaryColor : darkGrey} style={styles.optionIcon}/>
-                                            <Text style={[styles.optionLabel, isSelected && styles.optionLabelSelected]}>{label}</Text>
-                                            <View style={[styles.radioOuter, isSelected && styles.radioOuterSelected]}>{isSelected && <View style={styles.radioInner} />}</View>
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                                {localSettings.asdLevel !== null && (
-                                    <TouchableOpacity style={styles.clearButton} onPress={() => handleSettingChange('asdLevel', null)} >
-                                        <Text style={styles.clearButtonText}>Clear Selection</Text>
-                                    </TouchableOpacity>
-                                )}
-                            </View>
-                        </View>
-
-                        {/* Security */}
-                         <View style={styles.sectionCard}>
-                              <View style={styles.cardHeader}>
-                                <FontAwesomeIcon icon={faLock} size={18} color={primaryColor} style={styles.cardIcon}/>
-                                <Text style={styles.sectionTitle}>Security</Text>
-                              </View>
-                             <View style={styles.settingRow}>
-                                <FontAwesomeIcon icon={faUserShield} size={20} color={darkGrey} style={styles.settingIcon}/>
-                                <Text style={styles.settingLabel}>Require Parent Passcode</Text>
-                                <Switch value={localSettings.requirePasscode} onValueChange={(v) => handleSettingChange('requirePasscode', v)} {...switchStyles}/>
-                            </View>
-                             <View style={styles.cardFooter}>
-                                <TouchableOpacity style={styles.featureRow} onPress={handleConfigurePasscode} activeOpacity={0.6}>
-                                    <FontAwesomeIcon icon={faUserShield} size={18} color={darkGrey} style={styles.featureIcon}/>
-                                    <Text style={styles.featureLabel}>Set/Change Passcode</Text>
-                                    <FontAwesomeIcon icon={faChevronRight} size={16} color={placeholderColor} />
-                                </TouchableOpacity>
-                             </View>
-                         </View>
-
-                         {/* Reset Button */}
-                         <TouchableOpacity
-                            style={[styles.resetButton, !hasUnsavedChanges && styles.buttonDisabled]}
-                            onPress={handleReset}
-                            disabled={isSaving || !hasUnsavedChanges}
-                          >
-                            <FontAwesomeIcon icon={faUndo} size={14} color={hasUnsavedChanges ? darkGrey : mediumGrey} style={styles.buttonIcon}/>
-                             <Text style={[styles.resetButtonText, !hasUnsavedChanges && styles.textDisabled]}>Discard Changes</Text>
-                         </TouchableOpacity>
-
-                    </ScrollView>
+                    <TouchableOpacity
+                        style={styles.headerButton}
+                        onPress={handleSaveChanges}
+                        disabled={isSaving || !hasUnsavedChanges}
+                        hitSlop={hitSlop}
+                        accessibilityLabel="Save Parental Controls settings"
+                        accessibilityState={{ disabled: isSaving || !hasUnsavedChanges }}
+                    >
+                        {isSaving ? <ActivityIndicator size="small" color={whiteColor} /> : <FontAwesomeIcon icon={faSave} size={20} color={hasUnsavedChanges ? whiteColor : disabledButtonColor} />}
+                    </TouchableOpacity>
                 </View>
-            </SafeAreaView>
 
-            {/* Time Picker Modal */}
-            {showTimePicker && (
-                <DateTimePicker
-                    testID="dateTimePicker"
-                    value={timePickerValue}
-                    mode="time"
-                    is24Hour={true}
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    onChange={onTimeChange}
-                />
-            )}
-        </Modal>
+                {/* Scrollable Content Area */}
+                <ScrollView
+                    style={styles.scrollView}
+                    contentContainerStyle={styles.scrollContainer}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
+                    {/* Render Sub-Components */}
+                    <ContentFilteringSection
+                        settings={localSettings}
+                        onSettingChange={handleSettingChange}
+                        onConfigureWeb={handleConfigureWeb}
+                        switchStyles={switchStyles}
+                        styles={componentStyles}
+                    />
+
+                    <AppManagementSection
+                        onConfigureApps={handleConfigureApps}
+                        styles={componentStyles}
+                    />
+
+                    <ScreenTimeSection
+                        settings={localSettings}
+                        onSettingChange={handleSettingChange}
+                        onDayToggle={handleDowntimeDayToggle}
+                        onShowTimePicker={showTimePickerModal}
+                        switchStyles={switchStyles}
+                        styles={componentStyles}
+                        daysOfWeek={daysOfWeek}
+                    />
+
+                    <ChildProfileSection
+                         settings={localSettings}
+                         onSettingChange={handleSettingChange}
+                         styles={componentStyles}
+                    />
+
+                    <UsageReportingSection
+                        settings={localSettings}
+                        showAddEmailInput={showAddEmailInput}
+                        newNotifyEmail={newNotifyEmail}
+                        // Removed onSettingChange as direct prop
+                        onNewEmailChange={setNewNotifyEmail}
+                        onToggleAddEmail={toggleAddEmailInput}
+                        onAddEmail={handleAddNotifyEmail}
+                        onDeleteEmail={handleDeleteNotifyEmail}
+                        styles={componentStyles}
+                    />
+
+                    <SecuritySection
+                        settings={localSettings}
+                        onSettingChange={handleSettingChange}
+                        onConfigurePasscode={handleConfigurePasscode}
+                        switchStyles={switchStyles}
+                        styles={componentStyles}
+                     />
+
+                    {/* Reset Button */}
+                    <TouchableOpacity
+                        style={[styles.resetButton, !hasUnsavedChanges && styles.buttonDisabled]}
+                        onPress={handleReset}
+                        disabled={isSaving || !hasUnsavedChanges}
+                        accessibilityRole="button"
+                        accessibilityLabel="Discard changes"
+                    >
+                        <FontAwesomeIcon icon={faUndo} size={14} color={hasUnsavedChanges ? darkGrey : mediumGrey} style={styles.buttonIcon}/>
+                        <Text style={[styles.resetButtonText, !hasUnsavedChanges && styles.textDisabled]}>Discard Changes</Text>
+                    </TouchableOpacity>
+
+                </ScrollView>
+
+                 {/* Time Picker rendered conditionally */}
+                {showTimePicker && (
+                    <DateTimePicker
+                        testID="dateTimePicker"
+                        value={timePickerValue}
+                        mode="time"
+                        is24Hour={true}
+                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                        onChange={onTimeChange}
+                    />
+                )}
+            </View>
+        </SafeAreaView>
     );
 };
 
@@ -439,115 +296,37 @@ const darkGrey = '#636e72';
 const mediumGrey = '#b2bec3';
 const lightGrey = '#dfe6e9';
 const placeholderColor = '#adb5bd';
-const dangerColor = '#d63031';
+const errorColor = '#dc3545'; // Define error color if needed by sub-components via styles._errorColor
 const disabledButtonColor = '#a9d6e9';
 
-const switchStyles = {
-    trackColor: { false: mediumGrey, true: secondaryColor },
-    thumbColor: Platform.OS === 'android' ? primaryColor : undefined,
-    ios_backgroundColor: mediumGrey,
-};
+const switchStyles = { trackColor: { false: mediumGrey, true: secondaryColor }, thumbColor: Platform.OS === 'android' ? primaryColor : undefined, ios_backgroundColor: mediumGrey, };
 const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
 
 // --- Stylesheet ---
 const styles = StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: primaryColor },
     container: { flex: 1, backgroundColor: screenBackgroundColor },
-    header: {
-        backgroundColor: primaryColor,
-        paddingVertical: 12,
-        paddingHorizontal: 10,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.1)',
-     },
+    header: { backgroundColor: primaryColor, paddingVertical: 12, paddingHorizontal: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)', },
     titleContainer: { flex: 1, alignItems: 'center', marginHorizontal: 5 },
     title: { fontSize: 18, fontWeight: '600', color: whiteColor, textAlign: 'center' },
     headerButton: { padding: 10, minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
-    scrollView: { // Added style
-        flex: 1,
-    },
-    scrollContainer: { // Content padding
-        padding: 15,
-        paddingBottom: 20, // Reduced bottom padding
-    },
-    sectionCard: {
-        backgroundColor: cardBackgroundColor,
-        borderRadius: 12,
-        paddingHorizontal: 0,
-        paddingTop: 0,
-        paddingBottom: 0,
-        marginBottom: 20,
-        borderWidth: 1,
-        borderColor: lightGrey,
-        overflow: 'hidden',
-    },
-    cardHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 18,
-        paddingTop: 15,
-        paddingBottom: 10,
-        marginBottom: 15,
-        borderBottomWidth: 1,
-        borderBottomColor: lightGrey,
-     },
-    cardIcon: {
-        marginRight: 12,
-        width: 20,
-        textAlign: 'center',
-     },
-     sectionTitle: {
-        fontSize: 17,
-        fontWeight: '600',
-        color: textColor,
-        flex: 1,
-    },
-    cardFooter: {
-        borderTopWidth: 1,
-        borderTopColor: lightGrey,
-        marginTop: 5,
-        paddingTop: 0,
-        paddingHorizontal: 18,
-        paddingBottom: 5,
-    },
-    settingRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 10,
-        minHeight: 44,
-        paddingHorizontal: 18,
-    },
-    featureRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 14,
-    },
-     featureIcon: {
-         marginRight: 18,
-         width: 25,
-         textAlign: 'center',
-     },
-     featureLabel: {
-        flex: 1,
-        fontSize: 15,
-        color: darkGrey,
-        marginRight: 10,
-    },
+    scrollView: { flex: 1, },
+    scrollContainer: { padding: 15, paddingBottom: 40, },
+    sectionCard: { backgroundColor: cardBackgroundColor, borderRadius: 12, paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0, marginBottom: 20, borderWidth: 1, borderColor: lightGrey, overflow: 'hidden', },
+    cardHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingTop: 15, paddingBottom: 10, /* marginBottom: 15, // Let content push down */ borderBottomWidth: 1, borderBottomColor: lightGrey, },
+    cardIcon: { marginRight: 12, width: 20, textAlign: 'center', },
+    sectionTitle: { fontSize: 17, fontWeight: '600', color: textColor, flex: 1, },
+    cardFooter: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: lightGrey, marginTop: 10, paddingTop: 0, paddingHorizontal: 18, paddingBottom: 0, }, // Reduced paddingBottom
+    settingRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, minHeight: 44, paddingHorizontal: 18, },
+    featureRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, },
+    featureIcon: { marginRight: 18, width: 25, textAlign: 'center', },
+    featureLabel: { flex: 1, fontSize: 15, color: darkGrey, marginRight: 10, },
     settingIcon: { marginRight: 18, width: 25, textAlign: 'center' },
     settingLabel: { flex: 1, fontSize: 15, color: textColor, marginRight: 10 },
     timeInputContainer: { flexDirection: 'row', alignItems: 'center', marginLeft: 'auto' },
     timeInput: { height: 40, width: 55, borderWidth: 1, borderColor: mediumGrey, borderRadius: 8, paddingHorizontal: 8, backgroundColor: whiteColor, fontSize: 15, color: textColor, textAlign: 'center' },
     timeInputLabel: { marginLeft: 8, fontSize: 14, color: darkGrey },
-    downtimeDetails: {
-        marginTop: 15,
-        paddingTop: 15,
-        borderTopWidth: 1,
-        borderTopColor: lightGrey,
-        paddingHorizontal: 18,
-    },
+    downtimeDetails: { marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: lightGrey, paddingHorizontal: 18, paddingBottom: 10 },
     fieldLabel: { fontSize: 14, color: darkGrey, fontWeight: '500', marginBottom: 12 },
     daySelector: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-around', marginBottom: 20 },
     dayButton: { minWidth: 42, height: 42, borderRadius: 21, borderWidth: 1.5, borderColor: mediumGrey, justifyContent: 'center', alignItems: 'center', marginBottom: 10, backgroundColor: whiteColor, paddingHorizontal: 5 },
@@ -559,28 +338,9 @@ const styles = StyleSheet.create({
     timeDisplayLabel: { fontSize: 12, color: darkGrey, marginBottom: 4 },
     timeDisplayText: { fontSize: 18, fontWeight: '600', color: primaryColor },
     timeSeparator: { fontSize: 14, color: darkGrey, marginHorizontal: 5 },
-    infoText: {
-        fontSize: 13,
-        color: darkGrey,
-        marginBottom: 15,
-        textAlign: 'left',
-        paddingHorizontal: 18,
-    },
-    optionsList: {
-         marginTop: 0,
-         paddingHorizontal: 18,
-     },
-    optionCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: whiteColor,
-        paddingVertical: 12,
-        paddingHorizontal: 15,
-        borderRadius: 10,
-        borderWidth: 1.5,
-        borderColor: mediumGrey,
-        marginBottom: 10,
-     },
+    infoText: { fontSize: 13, color: darkGrey, paddingVertical: 15, textAlign: 'left', paddingHorizontal: 18, }, // Added vertical padding
+    optionsList: { marginTop: 0, paddingHorizontal: 18, paddingBottom: 10 },
+    optionCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: whiteColor, paddingVertical: 12, paddingHorizontal: 15, borderRadius: 10, borderWidth: 1.5, borderColor: mediumGrey, marginBottom: 10, },
     optionCardSelected: { borderColor: primaryColor, backgroundColor: '#e7f5ff' },
     optionIcon: { marginRight: 15, width: 25, textAlign: 'center'},
     optionLabel: { flex: 1, fontSize: 15, fontWeight: '500', color: textColor },
@@ -590,27 +350,24 @@ const styles = StyleSheet.create({
     radioInner: { height: 12, width: 12, borderRadius: 6, backgroundColor: primaryColor },
     clearButton: { marginTop: 5, alignSelf: 'flex-end', paddingVertical: 6, paddingHorizontal: 12 },
     clearButtonText: { fontSize: 14, color: primaryColor, fontWeight: '500' },
-    resetButton: {
-        flexDirection: 'row',
-        alignSelf: 'center',
-        marginTop: 15, // Reduced margin
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-    },
-    resetButtonText: {
-        fontSize: 14,
-        color: darkGrey,
-        fontWeight: '600',
-        textDecorationLine: 'underline',
-    },
-    buttonIcon: {
-        marginRight: 8,
-     },
-     buttonDisabled: { },
-     textDisabled: {
-         color: mediumGrey,
-         textDecorationLine: 'none',
-     }
+    resetButton: { flexDirection: 'row', alignSelf: 'center', marginTop: 15, paddingVertical: 10, paddingHorizontal: 20, },
+    resetButtonText: { fontSize: 14, color: darkGrey, fontWeight: '600', textDecorationLine: 'underline', },
+    buttonIcon: { marginRight: 8, }, // Used by Reset button and Add Email toggle
+    buttonDisabled: { opacity: 0.6 },
+    textDisabled: { color: mediumGrey, textDecorationLine: 'none', },
+    modalButtonDisabled: { backgroundColor: mediumGrey, opacity: 0.7 }, // Style shared with sub-components
+
+    // --- Styles potentially used by UsageReportingSection (defined here for clarity, passed down) ---
+    emailListContainer: { paddingHorizontal: 18, paddingBottom: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: lightGrey, paddingTop: 10, marginTop: 15 },
+    emailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#eee', },
+    emailText: { flex: 1, fontSize: 15, color: textColor, marginRight: 10, },
+    deleteEmailButton: { padding: 5, },
+    noEmailsText: { fontStyle: 'italic', color: darkGrey, textAlign: 'center', paddingVertical: 15, },
+    addEmailContainer: { flexDirection: 'row', paddingHorizontal: 18, paddingTop: 15, paddingBottom: 15, alignItems: 'center', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#eee', },
+    addEmailInput: { flex: 1, height: 44, borderColor: mediumGrey, borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, marginRight: 10, fontSize: 15, backgroundColor: whiteColor, },
+    addEmailConfirmButton: { backgroundColor: primaryColor, padding: 10, height: 44, width: 44, borderRadius: 8, justifyContent: 'center', alignItems: 'center', },
+    addEmailToggleButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, justifyContent: 'center' },
+    addEmailToggleText: { fontSize: 15, color: primaryColor, fontWeight: '500', },
 });
 
 export default ParentalControls;

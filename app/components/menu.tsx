@@ -11,7 +11,8 @@ import {
 // --- Import Corrected Components and Types --- (Adjust paths as necessary)
 import DisplayOptionsScreen, { DisplaySettingsData } from './DisplayOptionsScreen';
 import SelectionModeScreen from './SelectionModeScreen'; // Use correct export name
-import ParentalControls, { ParentalSettingsData } from './ParentalControls';
+import ParentalControls from './ParentalControls';
+import { ParentalSettingsData } from './parental/types'; 
 import SymbolVoiceOverScreen, { VoiceSettingData } from './SymbolVoiceOverScreen';
 import AboutScreen from './AboutScreen';
 
@@ -21,7 +22,10 @@ type Mode = 'drag' | 'longClick';
 // --- Default Values --- (Keep as before)
 const defaultDisplaySettingsData: DisplaySettingsData = { layout: 50, brightness: 50, layoutLocked: false, brightnessLocked: false, textSize: 'medium', darkModeEnabled: false };
 const defaultSelectionMode: Mode | null = 'drag';
-const defaultParentalSettings: ParentalSettingsData = { blockViolence: false, blockInappropriate: false, dailyLimitHours: '', asdLevel: null, downtimeEnabled: false, downtimeDays: [], downtimeStart: '21:00', downtimeEnd: '07:00', requirePasscode: false };
+const defaultParentalSettings: ParentalSettingsData = {
+    blockViolence: false, blockInappropriate: false, dailyLimitHours: '', asdLevel: null, downtimeEnabled: false, downtimeDays: [], downtimeStart: '21:00', downtimeEnd: '07:00', requirePasscode: false,
+    notifyEmails: []
+};
 // Removed defaultVoiceSettings - initial value comes from props
 
 // --- Constants ---
@@ -198,8 +202,7 @@ const Menu: React.FC<MenuProps> = ({
                     <ParentalControls
                         onClose={handleCloseSubModal}
                         initialSettings={memoizedParentalSettings} // Use internal state
-                        onSave={handleParentalSave} // Use internal save handler
-                        visible={false}                    />
+                        onSave={handleParentalSave} />
                  )}
             </Modal>
 

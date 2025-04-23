@@ -1,30 +1,33 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+// src/components/SelectionModeScreen.tsx
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-    View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Platform,
-    ScrollView,
-    Alert,
-    ActivityIndicator
+    View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
+    Platform, ScrollView, ActivityIndicator, Alert
 } from 'react-native';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import {
-    faArrowLeft, faSave, faArrowsUpDown, faHandPointer, faCheckCircle,
+    faArrowLeft, faSave, faArrowsUpDown, faHandPointer, faCheckCircle, // Keep check circle or use radio style
     faTimesCircle
 } from '@fortawesome/free-solid-svg-icons';
+// Removed GridContext import as this component manages its own state now
+// import { useGrid, GridLayoutType } from '../context/GridContext';
 
 // Define the possible selection modes
 type Mode = 'drag' | 'longClick';
 
-// Interface for the component's props
+// --- Interface for the component's props ---
+// --- REINSTATED onSave and initialMode ---
 export interface SelectionModeScreenProps {
-  initialMode?: Mode | null;
-  onSave: (mode: Mode | null) => Promise<void> | void;
-  onClose: () => void;
+  initialMode?: Mode | null; // Starting mode value
+  onSave: (mode: Mode | null) => Promise<void> | void; // Function to save the selection
+  onClose: () => void; // Function to close the screen
 }
+// -----------------------------------------
 
 // --- Component ---
 const SelectionModeScreen: React.FC<SelectionModeScreenProps> = ({
-  initialMode: initialPropMode = null,
-  onSave,
+  initialMode: initialPropMode = 'drag', // Default to 'drag' if null/undefined passed
+  onSave, // Use the passed onSave function
   onClose,
 }) => {
   // State
@@ -32,7 +35,7 @@ const SelectionModeScreen: React.FC<SelectionModeScreenProps> = ({
   const [originalMode, setOriginalMode] = useState<Mode | null>(initialPropMode);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Effects
+  // Effects - Sync local state if initial prop changes
   useEffect(() => {
      setSelectedMode(initialPropMode);
      setOriginalMode(initialPropMode);
@@ -42,21 +45,29 @@ const SelectionModeScreen: React.FC<SelectionModeScreenProps> = ({
   const hasChanged = useMemo(() => selectedMode !== originalMode, [selectedMode, originalMode]);
 
   // Handlers
-  const handleSelectOption = (mode: Mode) => { setSelectedMode(mode); };
-  const handleClearSelection = () => { setSelectedMode(null); };
+  const handleSelectOption = (mode: Mode) => {
+      setSelectedMode(mode);
+  };
+  const handleClearSelection = () => {
+      setSelectedMode(null); // Allow clearing to null
+  };
 
   const handleSave = async () => {
-     if (!hasChanged) return;
+     if (!hasChanged) {
+         onClose(); // Just close if no changes
+         return;
+     }
      setIsSaving(true);
      try {
-        await onSave(selectedMode);
-        setOriginalMode(selectedMode);
-        onClose();
+        await onSave(selectedMode); // Call the parent's save function
+        setOriginalMode(selectedMode); // Update original state after successful save
+        onClose(); // Close after successful save
      } catch(error) {
         console.error("Failed to save selection mode:", error);
         Alert.alert("Error", "Could not save selection.");
-        setIsSaving(false);
+        setIsSaving(false); // Reset saving state on error
      }
+     // No finally needed if closing on success
   };
 
   const handleAttemptClose = useCallback(() => {
@@ -76,284 +87,155 @@ const SelectionModeScreen: React.FC<SelectionModeScreenProps> = ({
     }
   };
 
+  // Selection options data
+  const selectionOptions: { type: Mode; label: string; icon: any; description: string }[] = [
+      { type: 'drag', label: 'Drag and Drop', icon: faArrowsUpDown, description: 'Press, hold, and drag symbol.' },
+      { type: 'longClick', label: 'Tap to Select', icon: faHandPointer, description: 'Single tap adds symbol instantly.' },
+  ];
+
+
   // --- Render ---
   return (
-    <SafeAreaView style={styles.screenContainer}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.headerButton} onPress={handleAttemptClose} hitSlop={hitSlop}>
-            <FontAwesomeIcon icon={faArrowLeft} size={20} color={whiteColor} />
-          </TouchableOpacity>
-          <View style={styles.titleContainer}>
-            <Text style={styles.title} numberOfLines={1}>Selection Method</Text>
-          </View>
-          <TouchableOpacity
-             style={styles.headerButton}
-             onPress={handleSave}
-             disabled={!hasChanged || isSaving}
-             hitSlop={hitSlop}
-           >
-             {isSaving
-                ? <ActivityIndicator size="small" color={whiteColor}/>
-                : <FontAwesomeIcon icon={faSave} size={20} color={hasChanged ? whiteColor : disabledButtonColor} />
-             }
-          </TouchableOpacity>
-        </View>
-
-        {/* Scrollable Content */}
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
-
-            {/* Instruction Text */}
-            <Text style={styles.instructionText}>
-                Select your preferred method:
-            </Text>
-
-            {/* Option Card: Drag and Drop */}
-            {/* Using a wrapper View to apply card style, TouchableOpacity is inside */}
-            <View style={[ styles.sectionCard, selectedMode === 'drag' && styles.selectedOptionCard ]}>
-                <TouchableOpacity
-                    style={styles.optionContentRow} // Style for the touchable content row
-                    onPress={() => handleSelectOption('drag')}
-                    activeOpacity={0.7}
-                    accessibilityRole="radio"
-                    accessibilityState={{ checked: selectedMode === 'drag' }}
-                    accessibilityLabel="Select Drag and Drop method"
-                >
-                    <FontAwesomeIcon
-                        icon={faArrowsUpDown}
-                        size={20} // Consistent icon size
-                        color={selectedMode === 'drag' ? primaryColor : darkGrey}
-                        style={styles.optionIcon}
-                    />
-                    <View style={styles.optionTextContainer}>
-                        <Text style={[styles.optionLabel, selectedMode === 'drag' && styles.selectedOptionLabel]}>
-                            Drag and Drop
-                        </Text>
-                        <Text style={styles.optionDescription}>
-                            Press, hold, and drag symbol.
-                        </Text>
-                    </View>
-                    {/* Use Radio button style from Parental Controls */}
-                    <View style={[styles.radioOuter, selectedMode === 'drag' && styles.radioOuterSelected]}>
-                        {selectedMode === 'drag' && <View style={styles.radioInner} />}
-                    </View>
-                </TouchableOpacity>
+    <SafeAreaView style={styles.safeArea}>
+        <View style={styles.container}>
+            {/* Header */}
+            <View style={styles.header}>
+              <TouchableOpacity style={styles.headerButton} onPress={handleAttemptClose} hitSlop={hitSlop}>
+                <FontAwesomeIcon icon={faArrowLeft} size={20} color={whiteColor} />
+              </TouchableOpacity>
+              <View style={styles.titleContainer}>
+                <Text style={styles.title} numberOfLines={1}>Selection Method</Text>
+              </View>
+              <TouchableOpacity
+                 style={styles.headerButton}
+                 onPress={handleSave} // Use the corrected handleSave
+                 disabled={!hasChanged || isSaving}
+                 hitSlop={hitSlop}
+                 accessibilityLabel="Save selection method"
+                 accessibilityState={{disabled: !hasChanged || isSaving}}
+               >
+                 {isSaving
+                    ? <ActivityIndicator size="small" color={whiteColor}/>
+                     // Show Save Icon instead of text to match other screens
+                    : <FontAwesomeIcon icon={faSave} size={20} color={hasChanged ? whiteColor : disabledButtonColor} />
+                 }
+              </TouchableOpacity>
             </View>
 
+            {/* Scrollable Content */}
+            <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
 
-            {/* Option Card: Tap to Select */}
-             <View style={[ styles.sectionCard, selectedMode === 'longClick' && styles.selectedOptionCard ]}>
-                <TouchableOpacity
-                    style={styles.optionContentRow}
-                    onPress={() => handleSelectOption('longClick')}
-                    activeOpacity={0.7}
-                    accessibilityRole="radio"
-                    accessibilityState={{ checked: selectedMode === 'longClick' }}
-                    accessibilityLabel="Select Tap to Select method"
+                {/* Instruction Text */}
+                <Text style={styles.instructionText}>
+                    Select your preferred method:
+                </Text>
+
+                {/* Option Cards */}
+                {selectionOptions.map((option) => {
+                    const isSelected = selectedMode === option.type;
+                    return (
+                        <View key={option.type} style={[ styles.sectionCard, isSelected && styles.selectedOptionCard ]}>
+                            <TouchableOpacity
+                                style={styles.optionContentRow}
+                                onPress={() => handleSelectOption(option.type)}
+                                activeOpacity={0.7}
+                                accessibilityRole="radio"
+                                accessibilityState={{ checked: isSelected }}
+                                accessibilityLabel={`Select ${option.label} method. ${option.description}`}
+                                disabled={isSaving}
+                            >
+                                <FontAwesomeIcon
+                                    icon={option.icon}
+                                    size={24} // Slightly larger icon
+                                    color={isSelected ? primaryColor : darkGrey}
+                                    style={styles.optionIcon}
+                                />
+                                <View style={styles.optionTextContainer}>
+                                    <Text style={[styles.optionLabel, isSelected && styles.selectedOptionLabel]}>
+                                        {option.label}
+                                    </Text>
+                                    <Text style={[styles.optionDescription, isSelected && styles.selectedOptionDescription]}>
+                                        {option.description}
+                                    </Text>
+                                </View>
+                                {/* Radio button style indicator */}
+                                <View style={[styles.radioOuter, isSelected && styles.radioOuterSelected]}>
+                                    {isSelected && <View style={styles.radioInner} />}
+                                </View>
+                            </TouchableOpacity>
+                        </View>
+                    );
+                })}
+
+                {/* Helper text area */}
+                <View style={styles.helperTextContainer}>
+                    <Text style={styles.helperText}>{getHelperText()}</Text>
+                </View>
+
+                {/* Clear Selection Button */}
+                {selectedMode !== null && (
+                    <TouchableOpacity
+                        style={styles.clearButton}
+                        onPress={handleClearSelection}
+                        hitSlop={hitSlop}
+                        disabled={isSaving}
+                        accessibilityRole="button"
+                        accessibilityLabel="Clear current selection"
                     >
-                    <FontAwesomeIcon
-                        icon={faHandPointer}
-                        size={20} // Consistent icon size
-                        color={selectedMode === 'longClick' ? primaryColor : darkGrey}
-                        style={styles.optionIcon}
-                    />
-                    <View style={styles.optionTextContainer}>
-                        <Text style={[styles.optionLabel, selectedMode === 'longClick' && styles.selectedOptionLabel]}>
-                            Tap to Select
-                        </Text>
-                        <Text style={styles.optionDescription}>
-                            Single tap adds symbol instantly.
-                        </Text>
-                    </View>
-                     <View style={[styles.radioOuter, selectedMode === 'longClick' && styles.radioOuterSelected]}>
-                        {selectedMode === 'longClick' && <View style={styles.radioInner} />}
-                    </View>
-                </TouchableOpacity>
-            </View>
+                        <FontAwesomeIcon icon={faTimesCircle} size={14} color={darkGrey} style={styles.clearIcon}/>
+                        <Text style={styles.clearButtonText}>Clear Selection</Text>
+                    </TouchableOpacity>
+                )}
 
-            {/* Helper text area */}
-            <View style={styles.helperTextContainer}>
-                <Text style={styles.helperText}>{getHelperText()}</Text>
-            </View>
-
-            {/* Clear Selection Button */}
-            {selectedMode !== null && (
-                <TouchableOpacity
-                    style={styles.clearButton}
-                    onPress={handleClearSelection}
-                    hitSlop={hitSlop}
-                    accessibilityRole="button"
-                    accessibilityLabel="Clear current selection"
-                >
-                    <FontAwesomeIcon icon={faTimesCircle} size={14} color={darkGrey} style={styles.clearIcon}/>
-                    <Text style={styles.clearButtonText}>Clear Selection</Text>
-                </TouchableOpacity>
-            )}
-
-        </ScrollView>
+            </ScrollView>
+        </View>
     </SafeAreaView>
   );
 };
 
-// --- Constants & Styles - Adapted from ParentalControls Simple ---
+// --- Constants & Styles ---
 const primaryColor = '#0077b6';
-const secondaryColor = '#90e0ef'; // Used for radio button selected state potentially
+const whiteColor = '#ffffff';
 const screenBackgroundColor = '#f4f7f9';
 const cardBackgroundColor = '#ffffff';
-const whiteColor = '#ffffff';
 const textColor = '#2d3436';
-const darkGrey = '#636e72'; // Use for inactive icons/text
-const mediumGrey = '#b2bec3'; // Use for borders, disabled text
-const lightGrey = '#dfe6e9'; // Use for lighter borders/dividers
-const lighterBlueBackground = '#e7f5ff'; // Background for selected card
+const darkGrey = '#636e72';
+const mediumGrey = '#b2bec3';
+const lightGrey = '#dfe6e9';
+const lighterBlueBackground = '#e7f5ff';
 const disabledButtonColor = '#a9d6e9';
 
 const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
 
 const styles = StyleSheet.create({
-  screenContainer: {
-    flex: 1,
-    backgroundColor: screenBackgroundColor
-  },  
-  header: {
-    backgroundColor: primaryColor,
-    paddingTop: Platform.OS === 'android' ? 10 : 0,
-    paddingBottom: 12,
-    paddingHorizontal: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
-  },
-  titleContainer: {
-    flex: 1,
-    alignItems: 'center',
-    marginHorizontal: 5,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: whiteColor,
-    textAlign: 'center',
-  },
-  headerButton: {
-    padding: 10,
-    minWidth: 44,
-    minHeight: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  scrollView: { // Style for the ScrollView component itself
-      flex: 1,
-  },
-  scrollContainer: { // Style for the CONTENT *inside* the ScrollView
-      padding: 15,
-      paddingBottom: 20, // Consistent padding
-  },
-  instructionText: {
-    fontSize: 16,
-    color: darkGrey, // Use darker grey for instructions
-    marginBottom: 25,
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  sectionCard: { // Simplified Card Style (Wrapper View)
-    backgroundColor: cardBackgroundColor,
-    borderRadius: 12,
-    marginBottom: 15, // Consistent spacing
-    borderWidth: 1.5, // Use border for selection indication primarily
-    borderColor: lightGrey, // Default border color
-    overflow: 'hidden', // Clip content
-    // NO SHADOW
-  },
-  selectedOptionCard: { // Style applied to the card View when selected
-    borderColor: primaryColor,
-    backgroundColor: lighterBlueBackground, // Highlight background
-  },
-  optionContentRow: { // The TouchableOpacity content inside the card
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 15, // Internal padding for content row
-    paddingHorizontal: 18,
-    minHeight: 70,
-  },
-  optionIcon: {
-    marginRight: 18,
-    width: 25, // Keep consistent size
-    textAlign: 'center',
-  },
-  optionTextContainer: {
-       flex: 1,
-       marginRight: 10,
-   },
-  optionLabel: {
-    fontSize: 16, // Standard label size
-    fontWeight: '500',
-    color: textColor,
-    marginBottom: 3,
-  },
-  selectedOptionLabel: {
-      fontWeight: '600', // Make selected label bolder
-      color: primaryColor, // Use primary color for selected text
-  },
-  optionDescription: {
-      fontSize: 13, // Slightly smaller description
-      color: darkGrey, // Use darker grey
-  },
-  // Radio Button Styles (like Parental Controls ASD selection)
-  radioOuter: {
-      height: 22, width: 22, borderRadius: 11,
-      borderWidth: 2, borderColor: mediumGrey, // Use medium grey border
-      alignItems: 'center', justifyContent: 'center',
-      marginLeft: 'auto', // Push to the right
-   },
+  safeArea: { flex: 1, backgroundColor: primaryColor }, // Header color for notch area
+  container: { flex: 1, backgroundColor: screenBackgroundColor },
+  header: { backgroundColor: primaryColor, paddingTop: Platform.OS === 'android' ? 10 : 0, paddingBottom: 12, paddingHorizontal: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)', },
+  titleContainer: { flex: 1, alignItems: 'center', marginHorizontal: 5, },
+  title: { fontSize: 18, fontWeight: '600', color: whiteColor, textAlign: 'center', },
+  headerButton: { padding: 10, minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center', },
+  saveButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' }, // Style for potential text save button
+  saveButtonTextDisabled: { color: 'rgba(255, 255, 255, 0.5)' }, // Style for potential disabled text save button
+  scrollView: { flex: 1, },
+  scrollContainer: { padding: 15, paddingBottom: 40, },
+  instructionText: { fontSize: 16, color: darkGrey, marginBottom: 25, textAlign: 'center', fontWeight: '500', lineHeight: 22 },
+  sectionCard: { backgroundColor: cardBackgroundColor, borderRadius: 12, marginBottom: 15, borderWidth: 1.5, borderColor: lightGrey, overflow: 'hidden', },
+  selectedOptionCard: { borderColor: primaryColor, backgroundColor: lighterBlueBackground, },
+  optionContentRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, paddingHorizontal: 18, minHeight: 70, },
+  optionIcon: { marginRight: 18, width: 25, textAlign: 'center', },
+  optionTextContainer: { flex: 1, marginRight: 10, },
+  optionLabel: { fontSize: 16, fontWeight: '600', color: textColor, marginBottom: 3, }, // Increased boldness
+  selectedOptionLabel: { color: primaryColor, },
+  optionDescription: { fontSize: 13, color: darkGrey, lineHeight: 18 }, // Adjusted line height
+  selectedOptionDescription: { color: darkGrey }, // Keep description color consistent maybe? Or change to primaryColor?
+  radioOuter: { height: 22, width: 22, borderRadius: 11, borderWidth: 2, borderColor: mediumGrey, alignItems: 'center', justifyContent: 'center', marginLeft: 'auto', backgroundColor: whiteColor }, // Push radio to right
   radioOuterSelected: { borderColor: primaryColor },
   radioInner: { height: 12, width: 12, borderRadius: 6, backgroundColor: primaryColor },
-  // Removed checkIcon style
-
-  helperTextContainer: {
-    marginTop: 15, // Space above helper
-    paddingVertical: 15,
-    paddingHorizontal: 10,
-    minHeight: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
-    // Removed borders, simpler design
-    marginBottom: 10, // Space below helper text before clear button
-  },
-  helperText: {
-    color: darkGrey, // Use darker grey
-    fontSize: 14, // Standard helper text size
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  clearButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: 10,
-      paddingHorizontal: 15,
-      alignSelf: 'center',
-      marginTop: 10, // Margin above clear button
-  },
-  clearButtonText: {
-      fontSize: 14,
-      color: darkGrey, // Use darker grey
-      fontWeight: '500', // Match reset button style
-      textDecorationLine: 'underline',
-  },
-  clearIcon: {
-      marginRight: 6,
-      color: darkGrey, // Match text color
-  },
-   buttonDisabled: { // Style for disabled elements (like reset/clear button text)
-       // Applied via textDisabled style
-   },
-   textDisabled: { // Style for text within a disabled element (e.g., reset button)
-       color: mediumGrey,
-       textDecorationLine: 'none',
-   }
+  helperTextContainer: { marginTop: 15, paddingVertical: 15, paddingHorizontal: 10, minHeight: 50, alignItems: 'center', justifyContent: 'center', marginBottom: 10, },
+  helperText: { color: darkGrey, fontSize: 14, textAlign: 'center', lineHeight: 20, },
+  clearButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, paddingHorizontal: 15, alignSelf: 'center', marginTop: 10, },
+  clearButtonText: { fontSize: 14, color: darkGrey, fontWeight: '500', textDecorationLine: 'underline', },
+  clearIcon: { marginRight: 6, color: darkGrey, },
 });
 
 export default SelectionModeScreen;

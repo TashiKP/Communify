@@ -1,25 +1,21 @@
 // src/navigation/AppNavigator.tsx
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-// --- Screen Imports --- (Adjust paths as needed)
 import LoginScreen from '../Screens/LoginScreen';
 import HomeScreen from '../Screens/HomeScreen'; 
 import SignupScreen from '../Screens/Signup'; 
 import SigninTwo from '../Screens/SigninTwo';
 
-// --- Root Stack Parameter List Definition ---
 export type RootStackParamList = {
   Login: undefined;
   Home: undefined;
-  // CustomPage: undefined; // <-- COMMENT OUT if used
   Signup: undefined;
   SigninTwo: { email?: string };
+  SetPasscode: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-
-// --- App Navigator Component ---
 export default function AppNavigator() {
   return (
     <Stack.Navigator initialRouteName="Login">

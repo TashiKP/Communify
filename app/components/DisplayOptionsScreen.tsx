@@ -1,278 +1,419 @@
+// src/components/DisplayOptionsScreen.tsx
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Platform,
     ScrollView, Alert, Switch, ActivityIndicator
 } from 'react-native';
-import Slider from '@react-native-community/slider';
+import Slider from '@react-native-community/slider'; // Ensure installed: npm install @react-native-community/slider
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import {
     faArrowLeft, faSave, faUndo, faColumns, faSun, faLock, faLockOpen,
-    faTextHeight, // Icon for text size
-    faMoon,       // Icon for dark mode
-    faFont       // Alternative text size icon
+    faTextHeight, faMoon, faFont,
+    faThLarge, faTh, faGripVertical, faCheckCircle, faAdjust
 } from '@fortawesome/free-solid-svg-icons';
 
-// --- Types ---
-type TextSizeType = 'small' | 'medium' | 'large';
+// --- Import Context Hooks & Types ---
+import { useGrid, GridLayoutType } from '../context/GridContext'; // Adjust path if needed
+import {
+    useAppearance,
+    TextSizeType,
+    ContrastModeType,
+    ThemeColors, // Type for theme colors
+    FontSizes // Type for font sizes
+} from '../context/AppearanceContext'; // Adjust path if needed
 
-export interface DisplaySettingsData {
-  layout: 0 | 50 | 100;
-  brightness: 0 | 50 | 100;
-  layoutLocked: boolean;
-  brightnessLocked: boolean;
+// --- Re-export types for convenience if needed by parent (Menu) ---
+export type { TextSizeType, ContrastModeType };
+
+// --- Define the settings managed locally by this screen FOR TRACKING CHANGES ---
+// These mirror the AppearanceSettings from the context, plus the local lock state
+interface DisplayLocalSettingsData {
+  brightness: number; // 0-100
+  brightnessLocked: boolean; // Local state for the lock UI, not saved globally
   textSize: TextSizeType;
   darkModeEnabled: boolean;
+  contrastMode: ContrastModeType;
 }
 
+// --- Component Props ---
 interface DisplayOptionsScreenProps {
-  initialSettings: DisplaySettingsData;
-  onSave: (settings: DisplaySettingsData) => Promise<void> | void;
-  onClose: () => void; // Function to navigate back/close
+  // No initialSettings or onSave needed - reads/writes directly to context
+  onClose: () => void;
 }
 
-// --- Default Values ---
-const defaultSettings: DisplaySettingsData = {
-  layout: 50,
+// --- Default Values (only for initial state before context loads) ---
+const defaultLocalSettings: DisplayLocalSettingsData = {
   brightness: 50,
-  layoutLocked: false,
   brightnessLocked: false,
   textSize: 'medium',
   darkModeEnabled: false,
+  contrastMode: 'default',
 };
 
+// --- Shared Constants ---
+const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
+
 // --- Component ---
-const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({
-  initialSettings: initialPropsSettings,
-  onSave,
-  onClose,
-}) => {
+const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) => {
+    // --- Context Hooks ---
+    const { gridLayout: contextLayout, setGridLayout, isLoadingLayout } = useGrid();
+    const {
+        settings: appearanceSettings, // Current settings from context
+        theme, // Current theme colors
+        fonts, // Current font sizes
+        isLoadingAppearance,
+        updateAppearanceSetting // Function to save settings to context
+    } = useAppearance();
+
     // --- State ---
-    const [localSettings, setLocalSettings] = useState<DisplaySettingsData>(
-        { ...defaultSettings, ...initialPropsSettings }
-    );
-    const [originalSettings, setOriginalSettings] = useState<DisplaySettingsData>(
-        { ...defaultSettings, ...initialPropsSettings }
-    );
+    // Local state mirrors context settings *for editing and change tracking*
+    const [localSettings, setLocalSettings] = useState<DisplayLocalSettingsData>(() => ({
+        // Initialize from context if already loaded, otherwise use defaults temporarily
+        brightness: isLoadingAppearance ? defaultLocalSettings.brightness : appearanceSettings.brightness,
+        brightnessLocked: false, // Lock state always starts false locally
+        textSize: isLoadingAppearance ? defaultLocalSettings.textSize : appearanceSettings.textSize,
+        darkModeEnabled: isLoadingAppearance ? defaultLocalSettings.darkModeEnabled : appearanceSettings.darkModeEnabled,
+        contrastMode: isLoadingAppearance ? defaultLocalSettings.contrastMode : appearanceSettings.contrastMode,
+    }));
+     // Separate state for the brightness lock UI element (doesn't persist globally)
+     const [isBrightnessLocked, setIsBrightnessLocked] = useState(false);
+
+    // Saving state for the main Save button action
     const [isSaving, setIsSaving] = useState(false);
 
+    // --- Effect to sync local state when context settings load/change ---
+     useEffect(() => {
+        // Update local state ONLY when context is NOT loading, prevents overwriting edits
+        if (!isLoadingAppearance) {
+            setLocalSettings({
+                 brightness: appearanceSettings.brightness,
+                 brightnessLocked: isBrightnessLocked, // Keep local lock state separate
+                 textSize: appearanceSettings.textSize,
+                 darkModeEnabled: appearanceSettings.darkModeEnabled,
+                 contrastMode: appearanceSettings.contrastMode,
+            });
+        }
+        // We don't reset isBrightnessLocked here, it's purely local UI state
+    }, [appearanceSettings, isLoadingAppearance, isBrightnessLocked]); // Sync if context settings, loading state, or local lock changes
+
     // --- Memoize Check for Unsaved Changes ---
+    // Compare local editable state against the *current* context settings
     const hasChanged = useMemo(() => {
-        return JSON.stringify(localSettings) !== JSON.stringify(originalSettings);
-    }, [localSettings, originalSettings]);
-
-    // --- Effect to update local state if initial props change ---
-    // (Less critical for a screen, but good practice)
-    useEffect(() => {
-        const mergedInitial = { ...defaultSettings, ...initialPropsSettings };
-        setLocalSettings(mergedInitial);
-        setOriginalSettings(mergedInitial);
-    }, [initialPropsSettings]);
-
+        if (isLoadingAppearance) return false; // No changes considered while loading
+        return (
+            localSettings.brightness !== appearanceSettings.brightness ||
+            localSettings.textSize !== appearanceSettings.textSize ||
+            localSettings.darkModeEnabled !== appearanceSettings.darkModeEnabled ||
+            localSettings.contrastMode !== appearanceSettings.contrastMode
+            // Note: isBrightnessLocked changes don't trigger save, it's local UI state only
+        );
+    }, [localSettings, appearanceSettings, isLoadingAppearance]);
 
     // --- Handlers ---
-    // Generic setting change handler
-    const handleSettingChange = <K extends keyof DisplaySettingsData>(
+    // Update local state when an editable setting changes
+    const handleLocalSettingChange = useCallback(<K extends keyof Omit<DisplayLocalSettingsData, 'brightnessLocked'>>( // Exclude brightnessLocked
         key: K,
-        value: DisplaySettingsData[K]
+        value: DisplayLocalSettingsData[K]
     ) => {
         setLocalSettings(prev => ({ ...prev, [key]: value }));
-    };
+    }, []);
 
-    // Map slider value to labels
-    const mapLayoutValueToLabel = (value: 0 | 50 | 100): string => {
-        if (value === 0) return 'Simple';
-        if (value === 50) return 'Standard';
-        return 'Dense';
-    };
-    const mapBrightnessValueToLabel = (value: 0 | 50 | 100): string => {
-        if (value === 0) return 'Low';
-        if (value === 50) return 'Medium';
+     // Toggle local brightness lock state only
+     const handleBrightnessLockToggle = useCallback(() => {
+        setIsBrightnessLocked(prev => !prev);
+        // Do NOT modify localSettings.brightnessLocked here, it's separate state
+    }, []);
+
+    // Layout selection calls GridContext directly
+    const handleLayoutSelect = useCallback(async (layout: GridLayoutType) => {
+        if (layout === contextLayout || isLoadingLayout) return;
+        try {
+            await setGridLayout(layout); // Update context (which saves)
+            // Optionally provide user feedback if needed, though context might handle it
+        } catch (error) {
+            console.error("DisplayOptionsScreen: Error calling setGridLayout", error);
+            // Alert handled by context potentially
+        }
+    }, [setGridLayout, contextLayout, isLoadingLayout]);
+
+    // Utility to map brightness value to labels
+    const mapBrightnessValueToLabel = (value: number): string => {
+        if (value < 34) return 'Low';
+        if (value < 67) return 'Medium';
         return 'High';
     };
 
-    // Reset to original settings
+    // Reset local changes back to match the current context settings
     const handleReset = () => {
-        Alert.alert(
-            "Reset Changes?",
-            "Discard changes and revert to last saved settings?",
-            [
-                { text: "Cancel", style: "cancel" },
-                { text: "Reset", style: "destructive", onPress: () => setLocalSettings(originalSettings) }
-            ]
-        );
+        if (!hasChanged || isLoadingAppearance) return;
+        Alert.alert("Reset Changes?", "Discard changes to Appearance and Text Size?", [
+            { text: "Cancel", style: "cancel" },
+            {
+                text: "Reset",
+                style: "destructive",
+                onPress: () => {
+                    // Reset local state to match context's current settings
+                    setLocalSettings({
+                        brightness: appearanceSettings.brightness,
+                        brightnessLocked: isBrightnessLocked, // Keep current local lock state
+                        textSize: appearanceSettings.textSize,
+                        darkModeEnabled: appearanceSettings.darkModeEnabled,
+                        contrastMode: appearanceSettings.contrastMode,
+                    });
+                    // Optionally reset the brightness lock state as well if desired:
+                    // setIsBrightnessLocked(false);
+                }
+            }
+        ]);
     };
 
-    // Save changes
+    // Save local changes by calling the AppearanceContext update function
     const handleSave = async () => {
-        if (!hasChanged) return;
+        if (!hasChanged || isSaving || isLoadingAppearance) return;
         setIsSaving(true);
+
+        // Collect update promises for only the changed settings
+        const promises: Promise<void>[] = [];
+        if (localSettings.brightness !== appearanceSettings.brightness) {
+            promises.push(updateAppearanceSetting('brightness', localSettings.brightness));
+        }
+        if (localSettings.textSize !== appearanceSettings.textSize) {
+            promises.push(updateAppearanceSetting('textSize', localSettings.textSize));
+        }
+        if (localSettings.darkModeEnabled !== appearanceSettings.darkModeEnabled) {
+            promises.push(updateAppearanceSetting('darkModeEnabled', localSettings.darkModeEnabled));
+        }
+        if (localSettings.contrastMode !== appearanceSettings.contrastMode) {
+            promises.push(updateAppearanceSetting('contrastMode', localSettings.contrastMode));
+        }
+        // Note: Brightness lock (isBrightnessLocked) is NOT saved via context
+
         try {
-            await onSave(localSettings);
-            setOriginalSettings(localSettings); // Update baseline
-            onClose(); // Close after save
+            await Promise.all(promises); // Wait for all context updates to complete
+            setIsSaving(false);
+            Alert.alert("Settings Saved", "Display options updated."); // Provide feedback
+            onClose(); // Close screen after successful save
         } catch (error) {
-            console.error("Failed to save display settings:", error);
-            Alert.alert("Error", "Could not save display settings.");
-            setIsSaving(false); // Reset saving state on error
+            // Context's update function likely shows an alert on failure
+            console.error("DisplayOptionsScreen: Failed to save settings via context", error);
+            setIsSaving(false); // Ensure saving state is reset
+            // Optionally show a generic fallback error alert here
+            // Alert.alert("Error", "An error occurred while saving settings.");
         }
     };
 
-    // Handle closing/going back
+    // Handle closing attempt, check for unsaved local changes
     const handleAttemptClose = useCallback(() => {
         if (hasChanged) {
-        Alert.alert(
-            "Unsaved Changes",
-            "Discard changes and go back?",
-            [
-            { text: "Cancel", style: "cancel" },
-            { text: "Discard", style: "destructive", onPress: onClose }
-            ]
-        );
+            Alert.alert("Unsaved Changes", "Discard changes to Appearance and Text Size?", [
+                { text: "Cancel", style: "cancel" },
+                { text: "Discard", style: "destructive", onPress: onClose }
+            ]);
         } else {
-        onClose();
+            onClose();
         }
     }, [hasChanged, onClose]);
 
+    // --- Static Data for Options ---
+    const layoutOptions: { type: GridLayoutType; label: string; icon: any; }[] = [
+        { type: 'simple', label: 'Simple', icon: faGripVertical },
+        { type: 'standard', label: 'Standard', icon: faTh },
+        { type: 'dense', label: 'Dense', icon: faThLarge },
+    ];
+     const contrastOptions: { type: ContrastModeType; label: string; }[] = [
+        { type: 'default', label: 'Default' },
+        { type: 'high-contrast-light', label: 'High Contrast (Light)' },
+        { type: 'high-contrast-dark', label: 'High Contrast (Dark)' },
+    ];
+
+    // --- Dynamic Styles ---
+    const styles = useMemo(() => createThemedStyles(theme, fonts), [theme, fonts]);
+
+    // --- Loading State ---
+     if (isLoadingAppearance) {
+         return (
+            <SafeAreaView style={[styles.screenContainer, { justifyContent: 'center', alignItems: 'center'}]}>
+                 <ActivityIndicator size="large" color={theme.primary} />
+                 <Text style={{ color: theme.text, marginTop: 15, fontSize: fonts.body }}>Loading Display Settings...</Text>
+             </SafeAreaView>
+         );
+     }
+
+    // --- Determine Button States ---
+    const isSaveDisabled = !hasChanged || isSaving || isLoadingAppearance;
+    const isResetDisabled = !hasChanged || isSaving || isLoadingAppearance;
 
     // --- Render ---
     return (
     <SafeAreaView style={styles.screenContainer}>
-        {/* Screen Header */}
+        {/* Header */}
         <View style={styles.header}>
-            <TouchableOpacity style={styles.headerButton} onPress={handleAttemptClose} hitSlop={hitSlop}>
-                <FontAwesomeIcon icon={faArrowLeft} size={20} color={whiteColor} />
-            </TouchableOpacity>
-            <View style={styles.titleContainer}>
-                <Text style={styles.title} numberOfLines={1}>Display Options</Text>
-            </View>
+             <TouchableOpacity style={styles.headerButton} onPress={handleAttemptClose} hitSlop={hitSlop} accessibilityLabel="Go back">
+                <FontAwesomeIcon icon={faArrowLeft} size={fonts.h2} color={theme.white} />
+             </TouchableOpacity>
+            <View style={styles.titleContainer}><Text style={styles.title}>Display Options</Text></View>
             <TouchableOpacity
-                style={styles.headerButton}
+                style={[styles.headerButton, isSaveDisabled && styles.buttonDisabled]}
                 onPress={handleSave}
-                disabled={!hasChanged || isSaving}
+                disabled={isSaveDisabled}
                 hitSlop={hitSlop}
+                accessibilityLabel="Save display settings"
+                accessibilityState={{ disabled: isSaveDisabled }}
             >
-                {isSaving
-                    ? <ActivityIndicator size="small" color={whiteColor}/>
-                    : <FontAwesomeIcon icon={faSave} size={20} color={hasChanged ? whiteColor : disabledButtonColor} />
-                }
+                {isSaving ? <ActivityIndicator size="small" color={theme.white}/> : <FontAwesomeIcon icon={faSave} size={fonts.h2} color={!isSaveDisabled ? theme.white : theme.disabled} />}
             </TouchableOpacity>
         </View>
 
-        {/* Scrollable Content Area */}
+        {/* Content */}
         <ScrollView contentContainerStyle={styles.scrollContentContainer} keyboardShouldPersistTaps="handled">
 
-            {/* --- Layout Section --- */}
+            {/* Layout Section */}
             <View style={styles.sectionCard}>
                 <View style={styles.sectionHeader}>
-                  <FontAwesomeIcon icon={faColumns} size={18} color={primaryColor} style={styles.sectionIcon} />
-                  <Text style={styles.sectionTitle}>Layout Density</Text>
+                    <FontAwesomeIcon icon={faColumns} size={fonts.h2 * 0.8} color={theme.primary} style={styles.sectionIcon} />
+                    <Text style={styles.sectionTitle}>Layout Density</Text>
+                    {isLoadingLayout && <ActivityIndicator size="small" color={theme.primary} style={{marginLeft: 10}}/>}
                 </View>
-                <View style={styles.sliderControlRow}>
-                    <TouchableOpacity style={styles.lockButton} onPress={() => handleSettingChange('layoutLocked', !localSettings.layoutLocked)} hitSlop={hitSlop} accessibilityLabel={localSettings.layoutLocked ? "Unlock layout density" : "Lock layout density"}>
-                        <FontAwesomeIcon icon={localSettings.layoutLocked ? faLock : faLockOpen} size={20} color={localSettings.layoutLocked ? primaryColor : darkGrey}/>
-                    </TouchableOpacity>
-                    <Slider
-                        style={styles.slider}
-                        minimumValue={0} maximumValue={100} step={50}
-                        value={localSettings.layout}
-                        onValueChange={(value) => handleSettingChange('layout', value as 0 | 50 | 100)}
-                        disabled={localSettings.layoutLocked}
-                        {...sliderStyles}
-                        accessibilityLabel="Layout density slider"
-                    />
-                    <Text style={styles.valueText} accessibilityLabel={`Current layout ${mapLayoutValueToLabel(localSettings.layout)}`}>{mapLayoutValueToLabel(localSettings.layout)}</Text>
+                <View style={styles.layoutOptionsContainer}>
+                    {layoutOptions.map((option) => {
+                        const isSelected = contextLayout === option.type;
+                        const isDisabled = isLoadingLayout;
+                        return (
+                            <TouchableOpacity
+                                key={option.type}
+                                style={[styles.layoutOptionButton, isSelected && styles.layoutOptionButtonActive, isDisabled && styles.buttonDisabled]}
+                                onPress={() => handleLayoutSelect(option.type)}
+                                activeOpacity={0.8}
+                                disabled={isDisabled}
+                                accessibilityLabel={`Set layout to ${option.label}`}
+                                accessibilityRole="radio"
+                                accessibilityState={{ selected: isSelected, disabled: isDisabled }}
+                            >
+                                <FontAwesomeIcon icon={option.icon} size={fonts.h1 * 0.9} color={isSelected ? theme.white : theme.primary} style={styles.layoutOptionIcon} />
+                                <View style={styles.layoutOptionTextContainer}>
+                                    <Text style={[styles.layoutOptionLabel, isSelected && styles.layoutOptionLabelActive]}>{option.label}</Text>
+                                </View>
+                                {isSelected && !isDisabled && (<FontAwesomeIcon icon={faCheckCircle} size={fonts.h2 * 0.8} color={theme.white} style={styles.layoutCheckIcon}/>)}
+                            </TouchableOpacity>
+                        );
+                    })}
                 </View>
-                 <Text style={styles.infoTextSmall}>Adjusts the amount of content shown on screen.</Text>
+                 <Text style={styles.infoTextSmall}>Select the density for the symbol grid display. Changes are saved immediately.</Text>
             </View>
 
-            {/* --- Appearance Section --- */}
+             {/* Appearance Section */}
             <View style={styles.sectionCard}>
                 <View style={styles.sectionHeader}>
-                  <FontAwesomeIcon icon={faSun} size={18} color={primaryColor} style={styles.sectionIcon} />
-                  <Text style={styles.sectionTitle}>Appearance</Text>
+                    <FontAwesomeIcon icon={faSun} size={fonts.h2 * 0.8} color={theme.primary} style={styles.sectionIcon} />
+                    <Text style={styles.sectionTitle}>Appearance</Text>
                 </View>
-
                 {/* Brightness */}
                 <View style={styles.settingItem}>
-                    <Text style={styles.settingLabel}>Brightness</Text>
+                    <Text style={styles.settingLabel}>App Brightness</Text>
                     <View style={styles.sliderControlRow}>
-                        <TouchableOpacity style={styles.lockButton} onPress={() => handleSettingChange('brightnessLocked', !localSettings.brightnessLocked)} hitSlop={hitSlop} accessibilityLabel={localSettings.brightnessLocked ? "Unlock brightness" : "Lock brightness"}>
-                            <FontAwesomeIcon icon={localSettings.brightnessLocked ? faLock : faLockOpen} size={20} color={localSettings.brightnessLocked ? primaryColor : darkGrey}/>
+                        <TouchableOpacity style={styles.lockButton} onPress={handleBrightnessLockToggle} hitSlop={hitSlop} accessibilityLabel={isBrightnessLocked ? "Unlock brightness editing" : "Lock brightness editing"}>
+                            <FontAwesomeIcon icon={isBrightnessLocked ? faLock : faLockOpen} size={fonts.h2 * 0.9} color={isBrightnessLocked ? theme.primary : theme.textSecondary}/>
                         </TouchableOpacity>
                         <Slider
                             style={styles.slider}
-                            minimumValue={0} maximumValue={100} step={50}
+                            minimumValue={0}
+                            maximumValue={100}
+                            step={1} // Allow fine-grained control
                             value={localSettings.brightness}
-                            onValueChange={(value) => handleSettingChange('brightness', value as 0 | 50 | 100)}
-                            disabled={localSettings.brightnessLocked}
-                            {...sliderStyles}
-                            accessibilityLabel="Brightness slider"
+                            onValueChange={(value) => handleLocalSettingChange('brightness', Math.round(value))}
+                            disabled={isBrightnessLocked} // Use local lock state
+                            minimumTrackTintColor={theme.primary}
+                            maximumTrackTintColor={theme.border}
+                            thumbTintColor={Platform.OS === 'android' ? theme.primary : undefined}
+                            accessibilityLabel="App brightness slider"
+                            accessibilityValue={{ text: mapBrightnessValueToLabel(localSettings.brightness) }}
+                            accessibilityState={{ disabled: isBrightnessLocked }}
                         />
                         <Text style={styles.valueText} accessibilityLabel={`Current brightness ${mapBrightnessValueToLabel(localSettings.brightness)}`}>{mapBrightnessValueToLabel(localSettings.brightness)}</Text>
                     </View>
+                    <Text style={styles.infoTextSmall}>Adjusts a filter overlay within the app.</Text>
                 </View>
-
-                 {/* Dark Mode */}
-                 <View style={styles.switchRow}>
+                {/* Dark Mode */}
+                <View style={styles.switchRow}>
                     <View style={styles.switchLabelContainer}>
-                        <FontAwesomeIcon icon={faMoon} size={18} color={darkGrey} style={styles.switchIcon}/>
+                        <FontAwesomeIcon icon={faMoon} size={fonts.h2 * 0.8} color={theme.textSecondary} style={styles.switchIcon}/>
                         <Text style={styles.switchLabel}>Dark Mode</Text>
                     </View>
                     <Switch
                         value={localSettings.darkModeEnabled}
-                        onValueChange={(v) => handleSettingChange('darkModeEnabled', v)}
-                        {...switchStyles}
+                        onValueChange={(v) => handleLocalSettingChange('darkModeEnabled', v)}
+                        trackColor={{ false: theme.disabled, true: theme.secondary }}
+                        thumbColor={Platform.OS === 'android' ? theme.primary : undefined}
+                        ios_backgroundColor={theme.disabled}
                         accessibilityLabel="Dark mode switch"
+                        accessibilityState={{ checked: localSettings.darkModeEnabled }}
                     />
-                 </View>
+                </View>
+                {/* Contrast Mode */}
+                <View style={styles.contrastSection}>
+                    <View style={styles.contrastHeader}>
+                        <FontAwesomeIcon icon={faAdjust} size={fonts.h2 * 0.8} color={theme.textSecondary} style={styles.switchIcon}/>
+                        <Text style={styles.switchLabel}>Contrast</Text>
+                    </View>
+                    <View style={styles.contrastOptionsContainer}>
+                         {contrastOptions.map((option) => {
+                             const isSelected = localSettings.contrastMode === option.type;
+                             return (
+                                 <TouchableOpacity
+                                     key={option.type}
+                                     style={[styles.contrastOptionButton, isSelected && styles.contrastOptionButtonActive]}
+                                     onPress={() => handleLocalSettingChange('contrastMode', option.type)}
+                                     accessibilityRole="radio"
+                                     accessibilityState={{ checked: isSelected }}
+                                     accessibilityLabel={`Set contrast mode to ${option.label}`}
+                                >
+                                     <Text style={[styles.contrastOptionLabel, isSelected && styles.contrastOptionLabelActive]}>{option.label}</Text>
+                                 </TouchableOpacity>
+                             );
+                         })}
+                    </View>
+                </View>
             </View>
 
-            {/* --- Text Size Section --- */}
+            {/* Text Size Section */}
             <View style={styles.sectionCard}>
                 <View style={styles.sectionHeader}>
-                  <FontAwesomeIcon icon={faTextHeight} size={18} color={primaryColor} style={styles.sectionIcon} />
-                  <Text style={styles.sectionTitle}>Text Size</Text>
+                    <FontAwesomeIcon icon={faTextHeight} size={fonts.h2 * 0.8} color={theme.primary} style={styles.sectionIcon} />
+                    <Text style={styles.sectionTitle}>Text Size</Text>
                 </View>
                 <View style={styles.textSizeOptionsContainer}>
                     {(['small', 'medium', 'large'] as TextSizeType[]).map((size) => (
                         <TouchableOpacity
                             key={size}
-                            style={[
-                                styles.textSizeButton,
-                                localSettings.textSize === size && styles.textSizeButtonActive
-                            ]}
-                            onPress={() => handleSettingChange('textSize', size)}
+                            style={[styles.textSizeButton, localSettings.textSize === size && styles.textSizeButtonActive]}
+                            onPress={() => handleLocalSettingChange('textSize', size)}
                             accessibilityRole="radio"
                             accessibilityState={{ checked: localSettings.textSize === size }}
                             accessibilityLabel={`Set text size to ${size}`}
                         >
-                            <Text
-                                style={[
-                                    styles.textSizeButtonText,
-                                    localSettings.textSize === size && styles.textSizeButtonTextActive
-                                ]}
-                             >
-                                {/* Example dynamic font size for label */}
-                                <FontAwesomeIcon icon={faFont} size={size === 'small' ? 12 : size === 'medium' ? 16 : 20} color={localSettings.textSize === size ? whiteColor : primaryColor}/>
-                                {/* Or static text */}
-                                {/* {size.charAt(0).toUpperCase() + size.slice(1)} */}
-                            </Text>
+                            <FontAwesomeIcon
+                                icon={faFont}
+                                size={size === 'small' ? fonts.caption * 1.1 : size === 'medium' ? fonts.body * 1.1 : fonts.h2 * 1.1} // Use calculated font sizes for icon size
+                                color={localSettings.textSize === size ? theme.white : theme.primary}
+                            />
                         </TouchableOpacity>
                     ))}
                 </View>
+                 <Text style={styles.infoTextSmall}>Adjusts the base size for text throughout the app.</Text>
             </View>
 
-             {/* --- Actions --- */}
+            {/* Actions */}
              <View style={styles.actionsContainer}>
                 <TouchableOpacity
-                    style={[styles.resetButton, !hasChanged && styles.buttonDisabled]}
+                    style={[styles.resetButton, isResetDisabled && styles.buttonDisabled]}
                     onPress={handleReset}
-                    disabled={isSaving || !hasChanged}
+                    disabled={isResetDisabled}
                     accessibilityRole="button"
-                    accessibilityLabel="Reset changes to last saved settings"
+                    accessibilityLabel="Reset appearance and text size changes"
+                    accessibilityState={{ disabled: isResetDisabled }}
                 >
-                    <FontAwesomeIcon icon={faUndo} size={14} color={hasChanged ? darkGrey : mediumGrey} style={styles.buttonIcon}/>
-                    <Text style={[styles.resetButtonText, !hasChanged && styles.textDisabled]}>Reset Changes</Text>
+                    <FontAwesomeIcon icon={faUndo} size={fonts.label} color={!isResetDisabled ? theme.textSecondary : theme.disabled} style={styles.buttonIcon}/>
+                    <Text style={[styles.resetButtonText, isResetDisabled && styles.textDisabled]}>Reset Changes</Text>
                 </TouchableOpacity>
             </View>
 
@@ -281,224 +422,54 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({
     );
 };
 
-// --- Constants & Styles ---
-const primaryColor = '#0077b6';
-const secondaryColor = '#90e0ef'; // For slider/switch tracks
-const screenBackgroundColor = '#f8f9fa'; // Slightly off-white screen background
-const cardBackgroundColor = '#ffffff';
-const whiteColor = '#ffffff';
-const textColor = '#343a40';
-const darkGrey = '#6c757d';
-const mediumGrey = '#adb5bd'; // Used for disabled text/icons
-const lightGrey = '#e9ecef'; // Borders
-const disabledButtonColor = '#a9d6e9'; // Muted primary for disabled header button icon
-
-const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
-
-const sliderStyles = {
-    minimumTrackTintColor: primaryColor,
-    maximumTrackTintColor: secondaryColor,
-    thumbTintColor: Platform.OS === 'android' ? primaryColor : undefined
-};
-const switchStyles = {
-    trackColor: { false: mediumGrey, true: secondaryColor },
-    thumbColor: Platform.OS === 'android' ? primaryColor : undefined,
-    ios_backgroundColor: mediumGrey,
-};
-
-const styles = StyleSheet.create({
-  screenContainer: {
-    flex: 1,
-    backgroundColor: primaryColor,
-  },
-  header: {
-    backgroundColor: primaryColor,
-    paddingTop: Platform.OS === 'android' ? 10 : 0,
-    paddingBottom: 12,
-    paddingHorizontal: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
-  },
-  titleContainer: {
-    flex: 1,
-    alignItems: 'center',
-    marginHorizontal: 5,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: whiteColor,
-    textAlign: 'center',
-  },
-  headerButton: {
-    padding: 10,
-    minWidth: 44,
-    minHeight: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  scrollContentContainer: {
-    flexGrow: 1,
-    backgroundColor: screenBackgroundColor,
-    padding: 15,
-    paddingBottom: 40, // Ensure space below last element
-  },
-  sectionCard: {
-    backgroundColor: cardBackgroundColor,
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 18, // More space below header
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: lightGrey,
-  },
-  sectionIcon: {
-    marginRight: 12,
-    width: 20,
-    textAlign: 'center',
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: textColor,
-    flex: 1,
-  },
-  settingItem: { // Added for spacing within a card
-     marginBottom: 15,
-  },
-  settingLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: textColor,
-    marginBottom: 8,
-  },
-  sliderControlRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  lockButton: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    marginRight: 8, // Slightly more space
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  slider: {
-    flex: 1,
-    height: 40,
-  },
-  valueText: {
-    fontSize: 15,
-    color: primaryColor,
-    fontWeight: '600',
-    minWidth: 75, // Ensure space for "Standard"
-    textAlign: 'center',
-    marginLeft: 12, // Slightly more space
-  },
-  infoTextSmall: {
-    fontSize: 12,
-    color: darkGrey,
-    marginTop: 6,
-    textAlign: 'center',
-    paddingHorizontal: 5,
-  },
-  switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    marginTop: 10, // Add margin top for spacing from brightness
-    borderTopWidth: 1, // Separator line
-    borderTopColor: lightGrey,
-  },
-  switchLabelContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      flex: 1, // Allow label to take space
-      marginRight: 10,
-  },
-   switchIcon: {
-       marginRight: 15,
-       width: 20,
-       textAlign: 'center',
-   },
-  switchLabel: {
-      fontSize: 16,
-      color: textColor,
-      fontWeight: '500',
-  },
-  // Text Size Options
-  textSizeOptionsContainer: {
-      flexDirection: 'row',
-      justifyContent: 'space-around', // Distribute buttons evenly
-      marginTop: 5,
-      marginBottom: 5,
-  },
-  textSizeButton: {
-      paddingVertical: 10,
-      paddingHorizontal: 20,
-      borderRadius: 20, // Rounded buttons
-      borderWidth: 1.5,
-      borderColor: lightGrey,
-      alignItems: 'center',
-      justifyContent: 'center',
-      minWidth: 70, // Ensure minimum width
-  },
-  textSizeButtonActive: {
-      backgroundColor: primaryColor,
-      borderColor: primaryColor,
-  },
-  textSizeButtonText: {
-      fontSize: 14, // Base size, adjust as needed
-      fontWeight: '500',
-      color: primaryColor,
-  },
-  textSizeButtonTextActive: {
-      color: whiteColor,
-  },
-  // Actions Container (for Reset Button)
-   actionsContainer: {
-      marginTop: 20, // Space above reset button
-      alignItems: 'center', // Center button horizontally
-  },
-  resetButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 10,
-      paddingHorizontal: 20,
-      // Add background or border if desired
-      // backgroundColor: lightGrey,
-      // borderRadius: 8,
-  },
-  resetButtonText: {
-      fontSize: 14,
-      color: darkGrey,
-      fontWeight: '500',
-      textDecorationLine: 'underline',
-  },
-  buttonIcon: { // Used for reset button icon
-      marginRight: 6,
-  },
-  buttonDisabled: { // Generic style for disabled interactive elements
-      // Applied via conditional style props
-  },
-  textDisabled: { // Style for text within a disabled element
-      color: mediumGrey,
-      textDecorationLine: 'none',
-  }
+// --- Helper Function to Create Themed Styles ---
+const createThemedStyles = (theme: ThemeColors, fonts: FontSizes) => StyleSheet.create({
+  screenContainer: { flex: 1, backgroundColor: theme.primary },
+  header: { backgroundColor: theme.primary, paddingTop: Platform.OS === 'android' ? 10 : 0, paddingBottom: 12, paddingHorizontal: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' },
+  titleContainer: { flex: 1, alignItems: 'center', marginHorizontal: 5 },
+  title: { fontSize: fonts.h2, fontWeight: '600', color: theme.white, textAlign: 'center' },
+  headerButton: { padding: 10, minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
+  scrollContentContainer: { flexGrow: 1, backgroundColor: theme.background, padding: 15, paddingBottom: 40 },
+  sectionCard: { backgroundColor: theme.card, borderRadius: 12, padding: 15, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: theme.isDark ? 0.3 : 0.1, shadowRadius: 3, elevation: 2, borderWidth: theme.isDark ? StyleSheet.hairlineWidth : 0, borderColor: theme.border },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 18, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: theme.border },
+  sectionIcon: { marginRight: 12, width: 20, textAlign: 'center' },
+  sectionTitle: { fontSize: fonts.h2, fontWeight: '600', color: theme.text, flex: 1 },
+  settingItem: { marginBottom: 15 },
+  settingLabel: { fontSize: fonts.label, fontWeight: '500', color: theme.text, marginBottom: 8 },
+  sliderControlRow: { flexDirection: 'row', alignItems: 'center', marginTop: 5 },
+  lockButton: { paddingHorizontal: 10, paddingVertical: 5, marginRight: 10 },
+  slider: { flex: 1, height: 40 },
+  valueText: { fontSize: fonts.label, color: theme.primary, fontWeight: '600', minWidth: 80, textAlign: 'center', marginLeft: 14 },
+  infoTextSmall: { fontSize: fonts.caption, color: theme.textSecondary, marginTop: 8, textAlign: 'center', paddingHorizontal: 5 },
+  switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, marginTop: 15, borderTopWidth: 1, borderTopColor: theme.border },
+  switchLabelContainer: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 10 },
+  switchIcon: { marginRight: 15, width: 20, textAlign: 'center' },
+  switchLabel: { fontSize: fonts.label, color: theme.text, fontWeight: '500' },
+  textSizeOptionsContainer: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', marginTop: 10, marginBottom: 5 },
+  textSizeButton: { paddingVertical: 12, paddingHorizontal: 18, borderRadius: 22, borderWidth: 1.5, borderColor: theme.border, backgroundColor: theme.card, alignItems: 'center', justifyContent: 'center', minWidth: 70, minHeight: 44 },
+  textSizeButtonActive: { backgroundColor: theme.primary, borderColor: theme.primary },
+  actionsContainer: { marginTop: 25, alignItems: 'center' },
+  resetButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 20 },
+  resetButtonText: { fontSize: fonts.label, color: theme.textSecondary, fontWeight: '500', textDecorationLine: 'underline' },
+  buttonIcon: { marginRight: 6 },
+  buttonDisabled: { opacity: 0.5 },
+  textDisabled: { color: theme.disabled, textDecorationLine: 'none' },
+  layoutOptionsContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'stretch', marginTop: 10, marginBottom: 5, gap: 10 },
+  layoutOptionButton: { flex: 1, flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingVertical: 15, paddingHorizontal: 5, borderRadius: 10, borderWidth: 1.5, borderColor: theme.border, backgroundColor: theme.card, minHeight: 90 },
+  layoutOptionButtonActive: { backgroundColor: theme.primary, borderColor: theme.primary },
+  layoutOptionIcon: { marginBottom: 8 },
+  layoutOptionTextContainer: { alignItems: 'center' },
+  layoutOptionLabel: { fontSize: fonts.label, fontWeight: '600', color: theme.primary, textAlign: 'center' },
+  layoutOptionLabelActive: { color: theme.white },
+  layoutCheckIcon: { position: 'absolute', top: 8, right: 8 },
+  contrastSection: { marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: theme.border },
+  contrastHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  contrastOptionsContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10 },
+  contrastOptionButton: { flexBasis: '48%', paddingVertical: 12, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1.5, borderColor: theme.border, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.card, minHeight: 50 },
+  contrastOptionButtonActive: { borderColor: theme.primary, backgroundColor: theme.primaryMuted }, // Use primaryMuted for active bg
+  contrastOptionLabel: { fontSize: fonts.label, fontWeight: '500', color: theme.text, textAlign: 'center' },
+  contrastOptionLabelActive: { color: theme.primary, fontWeight: 'bold' }, // Keep primary color text
+  // hitSlop defined outside component
 });
 
 export default DisplayOptionsScreen;

@@ -1,5 +1,6 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform, ScrollView } from 'react-native'; // Added ScrollView
+// src/components/IconInputComponent.tsx
+import React, { useMemo } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, ScrollView } from 'react-native';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import {
   faVolumeUp,
@@ -7,14 +8,8 @@ import {
   faTrash,
 } from '@fortawesome/free-solid-svg-icons';
 
-// --- Colors (Using the professional palette) ---
-const primaryColor = '#0077b6';
-const whiteColor = '#ffffff';
-const placeholderColor = '#6c757d'; // Placeholder grey
-const lightGrey = '#e9ecef';      // Subtle borders or backgrounds
-const mediumGrey = '#ced4da';    // Borders
-const iconColorActive = whiteColor;
-const iconColorInactive = 'rgba(255, 255, 255, 0.7)'; // Slightly muted icon if needed
+// --- Import Appearance Context ---
+import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext'; // Adjust path
 
 // --- Props ---
 interface IconInputComponentProps {
@@ -25,7 +20,7 @@ interface IconInputComponentProps {
   /** Function to call when the clear button is pressed */
   onClearPress?: () => void;
   /** The actual content (e.g., selected symbols/text) to display in the middle */
-  children?: React.ReactNode; // Use children prop for content flexibility
+  children?: React.ReactNode;
   /** Optional: Disable speak button (e.g., if input is empty) */
   isSpeakDisabled?: boolean;
   /** Optional: Disable backspace button (e.g., if input is empty) */
@@ -34,19 +29,37 @@ interface IconInputComponentProps {
   isClearDisabled?: boolean;
 }
 
+// --- Shared Constants ---
+const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
+
 // --- Component ---
 const IconInputComponent: React.FC<IconInputComponentProps> = ({
   onSpeakPress,
   onBackspacePress,
   onClearPress,
-  children, // Receive content via children
+  children,
   isSpeakDisabled = false,
   isBackspaceDisabled = false,
   isClearDisabled = false,
 }) => {
+  // --- Consume Appearance Context ---
+  const { theme, fonts } = useAppearance();
+
+  // --- Dynamic Styles ---
+  // Recalculate styles only when theme or fonts change
+  const styles = useMemo(() => createThemedStyles(theme, fonts), [theme, fonts]);
+
+  // --- Determine Icon Colors Based on Theme and Disabled State ---
+  const iconColorActive = theme.white; // Active icons use theme's white color
+  const iconColorInactive = theme.disabled; // Use theme's disabled color for inactive icons
+
   const speakIconColor = isSpeakDisabled ? iconColorInactive : iconColorActive;
   const backspaceIconColor = isBackspaceDisabled ? iconColorInactive : iconColorActive;
   const clearIconColor = isClearDisabled ? iconColorInactive : iconColorActive;
+
+  // Calculate icon sizes based on theme fonts
+  const iconSize = fonts.h2 * 1.1; // Example: Base size on h2 font size
+  const smallIconSize = fonts.h2; // Slightly smaller for trash icon maybe
 
   return (
     <View style={styles.container}>
@@ -58,22 +71,21 @@ const IconInputComponent: React.FC<IconInputComponentProps> = ({
             disabled={isSpeakDisabled}
             accessibilityLabel="Speak sentence"
             accessibilityState={{ disabled: isSpeakDisabled }}
-            hitSlop={styles.hitSlop} // Use defined hitSlop
+            hitSlop={hitSlop}
         >
-          <FontAwesomeIcon icon={faVolumeUp} size={26} color={speakIconColor} />
+          <FontAwesomeIcon icon={faVolumeUp} size={iconSize} color={speakIconColor} />
         </TouchableOpacity>
       </View>
 
       {/* Central Input Area */}
       <View style={styles.inputArea}>
-        {/* Render children passed to the component */}
-        {/* Wrap children in ScrollView for horizontal scrolling if content overflows */}
         <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.inputContentContainer}
-            keyboardShouldPersistTaps="handled" // Good practice if text input is ever used here
+            keyboardShouldPersistTaps="handled"
         >
+            {/* Render children or themed placeholder */}
             {children ? children : <Text style={styles.placeholderText}>Selected items appear here</Text>}
         </ScrollView>
       </View>
@@ -86,11 +98,11 @@ const IconInputComponent: React.FC<IconInputComponentProps> = ({
             disabled={isBackspaceDisabled}
             accessibilityLabel="Delete last item"
             accessibilityState={{ disabled: isBackspaceDisabled }}
-            hitSlop={styles.hitSlop}
+            hitSlop={hitSlop}
         >
-          <FontAwesomeIcon icon={faBackspace} size={26} color={backspaceIconColor} />
+          <FontAwesomeIcon icon={faBackspace} size={iconSize} color={backspaceIconColor} />
         </TouchableOpacity>
-        {/* Spacer View for consistent spacing */}
+        {/* Spacer */}
         <View style={styles.buttonSpacer} />
         <TouchableOpacity
             style={styles.iconButton}
@@ -98,72 +110,66 @@ const IconInputComponent: React.FC<IconInputComponentProps> = ({
             disabled={isClearDisabled}
             accessibilityLabel="Clear all items"
             accessibilityState={{ disabled: isClearDisabled }}
-            hitSlop={styles.hitSlop}
+            hitSlop={hitSlop}
         >
-          <FontAwesomeIcon icon={faTrash} size={24} color={clearIconColor} />
+          <FontAwesomeIcon icon={faTrash} size={smallIconSize} color={clearIconColor} />
         </TouchableOpacity>
       </View>
     </View>
   );
 };
 
-// --- Styles --- (Refined Professional Look)
-const styles = StyleSheet.create({
+// --- Helper Function for Themed Styles ---
+const createThemedStyles = (theme: ThemeColors, fonts: FontSizes) => StyleSheet.create({
   container: {
     flexDirection: 'row',
-    alignItems: 'stretch', // Ensure children fill height
+    alignItems: 'stretch',
     width: '100%',
-    backgroundColor: primaryColor, // Primary color for the bar background
-    minHeight: Platform.select({ ios: 70, default: 65 }), // Slightly taller on iOS potentially
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.15)', // Subtle top border
-    // No shadow for a flatter look, relies on background contrast
+    backgroundColor: theme.primary, // Use theme primary for bar background
+    minHeight: Platform.select({ ios: 70, default: 65 }),
+    // Use theme border or a subtle overlay based on theme
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: theme.isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
   },
   actionSection: {
-    // Use padding to control width and center icon(s)
-    paddingHorizontal: 18, // Slightly more padding for better spacing
+    paddingHorizontal: 18,
     justifyContent: 'center',
     alignItems: 'center',
   },
   actionSectionRight: {
-    flexDirection: 'row', // Align right icons horizontally
-    paddingRight: 20, // Keep slightly more padding on the far right edge
+    flexDirection: 'row',
+    paddingRight: 20,
   },
   inputArea: {
-    flex: 1, // Take up the majority of the space
-    backgroundColor: whiteColor, // Clear white background for input
-    // No border needed, relies on background contrast
-    marginVertical: 6, // Creates inset effect and vertical padding
-    marginHorizontal: 0, // No horizontal margin needed usually
-    borderRadius: 8, // Soft rounded corners for the inset area
-    overflow: 'hidden', // Ensure ScrollView respects border radius
-    justifyContent: 'center', // Center content vertically if it's shorter than the area
+    flex: 1,
+    backgroundColor: theme.card, // Use theme card color for input background
+    marginVertical: 6,
+    marginHorizontal: 0,
+    borderRadius: 8,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth, // Add subtle border
+    borderColor: theme.border,          // Use theme border color
   },
   inputContentContainer: {
-    flexGrow: 1, // Allows content to grow horizontally
-    alignItems: 'center', // Vertically align items inside the ScrollView
-    paddingHorizontal: 12, // Internal padding for the content
+    flexGrow: 1,
+    alignItems: 'center',
+    paddingHorizontal: 12,
   },
   iconButton: {
-    padding: 8, // Smaller internal padding, hitSlop provides larger tap area
+    padding: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    // Icons themselves provide visual cue, no extra button styling needed
   },
   buttonSpacer: {
-    width: 15, // Consistent spacing between right-side buttons
+    width: 15,
   },
   placeholderText: {
-    color: placeholderColor,
-    fontSize: 16,
+    color: theme.disabled, // Use theme disabled color for placeholder
+    fontSize: fonts.body,   // Use theme font size
     fontStyle: 'italic',
   },
-  hitSlop: { // Define hitSlop centrally for consistency
-    top: 10,
-    bottom: 10,
-    left: 10,
-    right: 10,
-  },
+  // hitSlop defined outside styles
 });
 
 export default IconInputComponent;

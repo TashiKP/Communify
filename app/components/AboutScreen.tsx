@@ -1,86 +1,93 @@
-import React from 'react';
+// src/components/AboutScreen.tsx
+import React, { useMemo } from 'react'; // Added useMemo
 import {
     View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Platform,
-    ScrollView, Linking, Alert, Image // Added Image for potential logo
+    ScrollView, Linking, Alert, Image
 } from 'react-native';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import {
-    faArrowLeft, faUsers, faInfoCircle, faEnvelope, faGlobe,
-    faBuilding, // Example: Icon for Mission/Company
-    faCodeBranch, // Example: Icon for Version Info
-    faChevronRight // Icon for link rows
+    faArrowLeft, faUsers, faEnvelope, faGlobe,
+    faBuilding,
+    faCodeBranch,
+    faChevronRight
 } from '@fortawesome/free-solid-svg-icons';
-// Import FontAwesome brand icons if you add social media
-// import { faTwitter, faGithub, faLinkedin } from '@fortawesome/free-brands-svg-icons';
-import DeviceInfo from 'react-native-device-info';
-import LinearGradient from 'react-native-linear-gradient'; // Import LinearGradient
+// --- Import Appearance Context ---
+import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext'; // Adjust path
 
 // --- Props Interface ---
 interface AboutScreenProps {
-  onClose: () => void; // Function to navigate back
-  appName?: string; // Optional: Pass app name if not using DeviceInfo
-  contactEmail?: string; // Your support email
-  websiteUrl?: string; // Your website URL
-  // Add props for social links if needed
-  // twitterUrl?: string;
-  // githubUrl?: string;
+  onClose: () => void;
+  appName?: string;
+  appVersion?: string;
+  buildNumber?: string;
+  contactEmail?: string;
+  websiteUrl?: string;
 }
+
+// --- Shared Constants ---
+const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
 
 // --- Component ---
 const AboutScreen: React.FC<AboutScreenProps> = ({
   onClose,
-  appName: appNameProp,
-  contactEmail = 'support@example.com', // Default email
-  websiteUrl = 'https://www.example.com', // Default website
+  appName: appNameProp = 'Communify',
+  appVersion: appVersionProp = '1.0.0',
+  buildNumber: buildNumberProp = '1',
+  contactEmail = 'support@communify.app',
+  websiteUrl = 'https://communify.app',
 }) => {
-  // --- Get App Info ---
-  const appName = appNameProp || DeviceInfo.getApplicationName(); // Use prop or DeviceInfo
-  const appVersion = DeviceInfo.getVersion();
-  const buildNumber = DeviceInfo.getBuildNumber();
+    // --- Consume Appearance Context ---
+    const { theme, fonts } = useAppearance();
 
-  // --- Handlers ---
-  const handleOpenLink = async (url: string | undefined, type: 'email' | 'web') => {
-    if (!url) return; // Don't attempt if URL is undefined
-    const finalUrl = type === 'email' ? `mailto:${url}` : url;
-    try {
-        const canOpen = await Linking.canOpenURL(finalUrl);
-        if (canOpen) {
-            await Linking.openURL(finalUrl);
-        } else {
-            Alert.alert('Error', `Could not open ${type === 'email' ? 'email client' : 'link'}.`);
+    // --- Use Theme and Fonts in Styles ---
+    const styles = useMemo(() => createThemedStyles(theme, fonts), [theme, fonts]);
+
+    // --- App Info (remains the same logic) ---
+    const appName = appNameProp; // || DeviceInfo.getApplicationName();
+    const appVersion = appVersionProp; // || DeviceInfo.getVersion();
+    const buildNumber = buildNumberProp; // || DeviceInfo.getBuildNumber();
+
+    // --- Handlers (remains the same logic) ---
+    const handleOpenLink = async (url: string | undefined, type: 'email' | 'web') => {
+        if (!url) return;
+        const finalUrl = type === 'email' ? `mailto:${url}` : url;
+        try {
+            const canOpen = await Linking.canOpenURL(finalUrl);
+            if (canOpen) {
+                await Linking.openURL(finalUrl);
+            } else {
+                Alert.alert('Error', `Could not open ${type === 'email' ? 'email client' : 'link'}. Please check if you have a ${type === 'email' ? 'mail app' : 'web browser'} installed.`);
+                console.warn(`Cannot open URL: ${finalUrl}`);
+            }
+        } catch (error) {
+             Alert.alert('Error', `An error occurred while trying to open the link.`);
+             console.error("Linking error:", error);
         }
-    } catch (error) {
-         Alert.alert('Error', `An error occurred while trying to open the link.`);
-         console.error("Linking error:", error)
-    }
-  };
+    };
 
   return (
+    // Use theme primary color for SafeAreaView to color notch area
     <SafeAreaView style={styles.screenContainer}>
-        {/* Screen Header with Gradient */}
-        <LinearGradient
-            colors={[headerGradientStart, headerGradientEnd]} // Define gradient colors
-            style={styles.header}
-        >
-          <TouchableOpacity style={styles.headerButton} onPress={onClose} hitSlop={hitSlop}>
-            <FontAwesomeIcon icon={faArrowLeft} size={20} color={whiteColor} />
+        {/* Screen Header - Use solid theme color */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.headerButton} onPress={onClose} hitSlop={hitSlop} accessibilityLabel="Go back">
+            <FontAwesomeIcon icon={faArrowLeft} size={fonts.h2 * 0.9} color={theme.white} />
           </TouchableOpacity>
           <View style={styles.titleContainer}>
             <Text style={styles.title} numberOfLines={1}>About</Text>
           </View>
           <View style={styles.headerButtonPlaceholder} />
-        </LinearGradient>
+        </View>
 
-        {/* Scrollable Content */}
+        {/* Scrollable Content - Uses theme background */}
         <ScrollView contentContainerStyle={styles.scrollContentContainer}>
 
             {/* App Info Card */}
             <View style={styles.appInfoCard}>
-                 {/* Optional Logo */}
-                 {/* <Image source={require('./path/to/your/logo.png')} style={styles.logo} /> */}
+                 {/* <Image source={require('../assets/logo.png')} style={styles.logo} /> */}
                  <Text style={styles.appName}>{appName}</Text>
                  <View style={styles.versionContainer}>
-                    <FontAwesomeIcon icon={faCodeBranch} size={14} color={secondaryTextColor} style={styles.versionIcon}/>
+                    <FontAwesomeIcon icon={faCodeBranch} size={fonts.caption} color={theme.textSecondary} style={styles.versionIcon}/>
                     <Text style={styles.appVersion}>Version {appVersion} (Build {buildNumber})</Text>
                  </View>
             </View>
@@ -88,7 +95,7 @@ const AboutScreen: React.FC<AboutScreenProps> = ({
             {/* Mission Card */}
             <View style={styles.card}>
                 <View style={styles.cardHeader}>
-                     <FontAwesomeIcon icon={faBuilding} size={20} color={primaryColor} style={styles.cardIcon}/>
+                     <FontAwesomeIcon icon={faBuilding} size={fonts.h2} color={theme.primary} style={styles.cardIcon}/>
                      <Text style={styles.cardTitle}>Our Mission</Text>
                 </View>
                 <Text style={styles.paragraph}>
@@ -99,7 +106,7 @@ const AboutScreen: React.FC<AboutScreenProps> = ({
             {/* Team Card */}
              <View style={styles.card}>
                  <View style={styles.cardHeader}>
-                     <FontAwesomeIcon icon={faUsers} size={20} color={primaryColor} style={styles.cardIcon}/>
+                    <FontAwesomeIcon icon={faUsers} size={fonts.h2} color={theme.primary} style={styles.cardIcon}/>
                     <Text style={styles.cardTitle}>Our Team</Text>
                  </View>
                 <Text style={styles.paragraph}>
@@ -110,37 +117,37 @@ const AboutScreen: React.FC<AboutScreenProps> = ({
              {/* Links Card */}
             <View style={styles.card}>
                  <View style={styles.cardHeader}>
-                     <FontAwesomeIcon icon={faGlobe} size={20} color={primaryColor} style={styles.cardIcon}/>
+                     <FontAwesomeIcon icon={faGlobe} size={fonts.h2} color={theme.primary} style={styles.cardIcon}/>
                      <Text style={styles.cardTitle}>Connect With Us</Text>
                  </View>
 
                  {/* Website Link Row */}
                  {websiteUrl && (
                     <TouchableOpacity
-                        style={[styles.linkRow, !contactEmail && styles.linkRowLast]} // Remove bottom border if it's the last item
+                        style={[styles.linkRow, !contactEmail && styles.linkRowLast]}
                         onPress={() => handleOpenLink(websiteUrl, 'web')}
                         accessibilityRole="link"
+                        accessibilityLabel="Visit our website"
                      >
-                        <FontAwesomeIcon icon={faGlobe} size={18} color={primaryColor} style={styles.linkIcon} />
+                        <FontAwesomeIcon icon={faGlobe} size={fonts.body} color={theme.primary} style={styles.linkIcon} />
                         <Text style={styles.linkText}>Visit Our Website</Text>
-                        <FontAwesomeIcon icon={faChevronRight} size={14} color={mediumGrey} style={styles.linkChevron}/>
+                        <FontAwesomeIcon icon={faChevronRight} size={fonts.label} color={theme.textSecondary} style={styles.linkChevron}/>
                     </TouchableOpacity>
                  )}
 
                  {/* Contact Email Link Row */}
                  {contactEmail && (
                     <TouchableOpacity
-                        style={[styles.linkRow, styles.linkRowLast]} // Always last item in this example
+                        style={[styles.linkRow, styles.linkRowLast]}
                         onPress={() => handleOpenLink(contactEmail, 'email')}
                         accessibilityRole="link"
+                        accessibilityLabel="Contact support via email"
                     >
-                         <FontAwesomeIcon icon={faEnvelope} size={18} color={primaryColor} style={styles.linkIcon} />
+                         <FontAwesomeIcon icon={faEnvelope} size={fonts.body} color={theme.primary} style={styles.linkIcon} />
                         <Text style={styles.linkText}>Contact Support</Text>
-                         <FontAwesomeIcon icon={faChevronRight} size={14} color={mediumGrey} style={styles.linkChevron}/>
+                         <FontAwesomeIcon icon={faChevronRight} size={fonts.label} color={theme.textSecondary} style={styles.linkChevron}/>
                     </TouchableOpacity>
                  )}
-
-                {/* Add Social Media Row(s) here if needed */}
 
             </View>
 
@@ -152,35 +159,22 @@ const AboutScreen: React.FC<AboutScreenProps> = ({
   );
 };
 
-// --- Constants & Styles ---
-const primaryColor = '#0077b6';
-const primaryColorLight = '#4db1e8'; // Lighter shade for gradient
-const headerGradientStart = primaryColor;
-const headerGradientEnd = primaryColorLight; // Gradient end color
-
-const screenBackgroundColor = '#f4f7f9'; // Slightly different background
-const cardBackgroundColor = '#ffffff';
-const whiteColor = '#ffffff';
-const textColor = '#2d3436'; // Darker grey for text
-const secondaryTextColor = '#636e72'; // Medium grey
-const lightGrey = '#e9ecef'; // Borders / dividers
-const mediumGrey = '#b2bec3'; // Chevron color
-const lightBorderColor = '#e0e0e0'; // Slightly darker border for flatter look
-
-const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
-
-const styles = StyleSheet.create({
+// --- Helper Function to Create Themed Styles ---
+const createThemedStyles = (theme: ThemeColors, fonts: FontSizes) => StyleSheet.create({
   screenContainer: {
     flex: 1,
-    backgroundColor: headerGradientStart, // Match gradient start for status bar area
+    backgroundColor: theme.primary, // Use theme primary for safe area notch/status bar
   },
-  header: { // Style applied by LinearGradient component
-    paddingTop: Platform.OS === 'android' ? 15 : 10, // Adjusted padding
+  header: {
+    paddingTop: Platform.OS === 'android' ? 15 : 10,
     paddingBottom: 15,
     paddingHorizontal: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    backgroundColor: theme.primary, // Use theme primary for header background
+    borderBottomWidth: StyleSheet.hairlineWidth, // Add subtle border
+    borderBottomColor: theme.isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' // Subtle border based on theme
   },
   titleContainer: {
     flex: 1,
@@ -188,9 +182,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
   },
   title: {
-    fontSize: 19, // Slightly larger title
-    fontWeight: 'bold', // Bolder title
-    color: whiteColor,
+    fontSize: fonts.h2,
+    fontWeight: 'bold', // Keep title bold
+    color: theme.white, // Keep header text white
     textAlign: 'center',
   },
   headerButton: {
@@ -206,30 +200,30 @@ const styles = StyleSheet.create({
   },
   scrollContentContainer: {
     flexGrow: 1,
-    backgroundColor: screenBackgroundColor,
-    padding: 20, // Overall padding
+    backgroundColor: theme.background, // Use theme background
+    padding: 20,
+    paddingBottom: 30,
   },
-  appInfoCard: { // Specific card styling for App Info
-      alignItems: 'center', // Center content in this specific card
+  appInfoCard: {
+      alignItems: 'center',
       paddingVertical: 25,
-      // Base card styles (No Shadow)
-      backgroundColor: cardBackgroundColor,
+      backgroundColor: theme.card,
       borderRadius: 12,
       padding: 20,
       marginBottom: 20,
-      borderWidth: 1, // Add or adjust border for separation
-      borderColor: lightBorderColor, // Use border color
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border,
   },
-  logo: { // Style for your logo image
+  logo: {
       width: 80,
       height: 80,
-      borderRadius: 15, // Optional: rounded logo
+      borderRadius: 15,
       marginBottom: 15,
   },
   appName: {
-    fontSize: 26, // Larger app name
-    fontWeight: 'bold', // Bold app name
-    color: textColor,
+    fontSize: fonts.h1,
+    fontWeight: 'bold',
+    color: theme.text,
     textAlign: 'center',
     marginBottom: 6,
   },
@@ -242,74 +236,71 @@ const styles = StyleSheet.create({
        marginRight: 5,
    },
   appVersion: {
-    fontSize: 14,
-    color: secondaryTextColor,
+    fontSize: fonts.caption,
+    color: theme.textSecondary,
     textAlign: 'center',
   },
-  card: { // Reusable card style - SIMPLIFIED (No Shadow)
-    backgroundColor: cardBackgroundColor,
+  card: {
+    backgroundColor: theme.card,
     borderRadius: 12,
-    padding: 20, // Card internal padding
-    marginBottom: 20, // Space between cards
-    borderWidth: 1, // Add or adjust border for separation
-    borderColor: lightBorderColor, // Use border color
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.border,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 15, // Space below header within card
-    paddingBottom: 10, // Space below title text
-    borderBottomWidth: 1, // Separator line in card header
-    borderBottomColor: lightGrey,
+    marginBottom: 15,
+    paddingBottom: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.border,
   },
   cardIcon: {
-    marginRight: 12, // Space between icon and title
+    marginRight: 12,
   },
   cardTitle: {
-    fontSize: 18, // Title size within card
-    fontWeight: '600', // Semi-bold
-    color: textColor,
-    flex: 1, // Allow title to take space
+    fontSize: fonts.h2,
+    fontWeight: '600',
+    color: theme.text,
+    flex: 1,
   },
   paragraph: {
-    fontSize: 15, // Slightly smaller paragraph text
-    color: secondaryTextColor,
-    lineHeight: 23, // Adjust line height
-    textAlign: 'left', // Left align paragraphs within cards
+    fontSize: fonts.body,
+    color: theme.textSecondary,
+    lineHeight: fonts.body * 1.5,
+    textAlign: 'left',
   },
-  linksContainer: {
-    // No specific container style needed if rows handle it
-  },
-  linkRow: { // Style for each tappable link row
+  linkRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14, // Vertical padding for tap area
-    borderBottomWidth: 1, // Separator between links
-    borderBottomColor: lightGrey,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.border,
   },
-  linkRowLast: { // Apply this style manually to the last link row if needed
+  linkRowLast: {
      borderBottomWidth: 0,
   },
   linkIcon: {
-    marginRight: 15, // More space for icon
-    width: 20, // Fixed width
+    marginRight: 15,
+    width: 20,
     textAlign: 'center',
   },
   linkText: {
-    flex: 1, // Text takes available space
-    fontSize: 16,
-    color: primaryColor,
+    flex: 1,
+    fontSize: fonts.label,
+    color: theme.primary, // Keep links primary color
     fontWeight: '500',
   },
   linkChevron: {
-    marginLeft: 10, // Space before chevron
-    color: mediumGrey,
+    marginLeft: 10,
+    color: theme.textSecondary,
   },
   footerText: {
-      marginTop: 20, // More space above footer
-      paddingBottom: 10, // Padding at the very bottom
-      fontSize: 12,
-      color: secondaryTextColor,
+      marginTop: 20,
+      paddingBottom: 10,
+      fontSize: fonts.caption,
+      color: theme.textSecondary,
       textAlign: 'center',
       opacity: 0.8,
   },

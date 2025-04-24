@@ -1,55 +1,93 @@
 // src/App.tsx
 import React, { useEffect } from 'react';
-import { SafeAreaView, StyleSheet, StatusBar, Platform } from 'react-native';
+import { SafeAreaView, StyleSheet, StatusBar, Platform, View, ActivityIndicator } from 'react-native'; // Added View, ActivityIndicator
 import { NavigationContainer } from '@react-navigation/native';
 import Orientation from 'react-native-orientation-locker';
 
-// Import the context provider and navigator (adjust paths if necessary)
+// Import Context Providers
 import { GridProvider } from './context/GridContext';
-import AppNavigator from './Navigation/AppNavigator';
+import { AppearanceProvider, useAppearance } from './context/AppearanceContext'; 
+import AppNavigator from './Navigation/AppNavigator'; // Adjust path if necessary
 
-export default function App() {
-  // Lock orientation to landscape on mount 
-  useEffect(() => {
-    Orientation.lockToLandscape();
-    // Optional: Hide status bar in landscape for more screen space
-    if (Platform.OS !== 'web') { // react-native-orientation-locker might not work on web
-      StatusBar.setHidden(true, 'slide');
+// --- Component to Apply Theme and Overlay ---
+const ThemedAppContent: React.FC = () => {
+    const { theme, isLoadingAppearance, brightnessOverlayOpacity, statusBarStyle } = useAppearance();
+
+    // Show loading indicator while appearance settings are being loaded
+    if (isLoadingAppearance) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#0077b6" /> {/* Use a default color or theme primary if available early */}
+            </View>
+        );
     }
 
-    // Unlock on unmount (optional, depends if you want portrait elsewhere)
+    // Render the main app content with theme and overlay
+    return (
+        <View style={[styles.appContainer, { backgroundColor: theme.background }]}>
+            <StatusBar
+                barStyle={statusBarStyle}
+                backgroundColor={theme.primary} // Set status bar background (Android)
+            />
+            {/* NavigationContainer handles navigation state */}
+            <NavigationContainer>
+                {/* AppNavigator contains your screens */}
+                <AppNavigator />
+            </NavigationContainer>
+
+            {/* Brightness Overlay - Renders on top if opacity > 0 */}
+            {brightnessOverlayOpacity > 0 && (
+                <View
+                    style={[
+                        styles.brightnessOverlay,
+                        { backgroundColor: `rgba(0, 0, 0, ${brightnessOverlayOpacity})` }
+                    ]}
+                    pointerEvents="none" // Allow touches to pass through
+                />
+            )}
+        </View>
+    );
+};
+
+
+// --- Main App Component ---
+export default function App() {
+  useEffect(() => {
+    Orientation.lockToLandscape();
+
     return () => {
         Orientation.unlockAllOrientations();
-        if (Platform.OS !== 'web') {
-            StatusBar.setHidden(false, 'slide');
-        }
     };
   }, []);
 
   return (
-    // The GridProvider wraps everything that needs access to the grid layout state
+    // Wrap with Context Providers
     <GridProvider>
-        {/*
-          It's generally recommended to have NavigationContainer handle the top-level
-          safe area, especially if your navigator has headers that need padding.
-          The SafeAreaView here might cause double padding issues depending on your navigator setup.
-          Consider removing this outer SafeAreaView if you manage safe areas within AppNavigator or its screens.
-        */}
-        <SafeAreaView style={styles.container}>
-          {/* NavigationContainer is necessary for react-navigation */}
-          <NavigationContainer>
-            <AppNavigator />
-          </NavigationContainer>
-        </SafeAreaView>
+        <AppearanceProvider>
+            <SafeAreaView style={styles.safeAreaContainer}>
+                 <ThemedAppContent />
+            </SafeAreaView>
+        </AppearanceProvider>
     </GridProvider>
   );
 }
 
+// --- Styles ---
 const styles = StyleSheet.create({
-  container: {
+  safeAreaContainer: {
     flex: 1,
-    // Background color for the safe area padding itself (notch/island areas)
-    // You might want this to match your Navbar color or be transparent
-    backgroundColor: '#0077b6', // Example: Match Navbar color
+    backgroundColor: '#f8f9fa', // Default light background
+  },
+  appContainer: {
+    flex: 1, // Ensure it fills the SafeAreaView
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa', // Or a default loading background
+  },
+  brightnessOverlay: {
+    ...StyleSheet.absoluteFillObject, // Cover the entire screen
   },
 });

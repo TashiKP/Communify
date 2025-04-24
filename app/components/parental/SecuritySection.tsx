@@ -1,114 +1,127 @@
 // src/components/parental/SecuritySection.tsx
-import React from 'react';
-import { View, Text, Switch, TouchableOpacity, Alert, ActivityIndicator, StyleSheet } from 'react-native'; // Added ActivityIndicator, StyleSheet
+import React, { useMemo } from 'react'; // Added useMemo
+import { View, Text, Switch, TouchableOpacity, Alert, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import { faLock, faUserShield, faChevronRight } from '@fortawesome/free-solid-svg-icons';
+
+// --- Import Context ---
+import { useAppearance, ThemeColors, FontSizes } from '../../context/AppearanceContext'; // Adjust path
+
+// --- Import Local Types ---
 import { ParentalSettingsData } from './types';
 
-// Define props including the new optional loading state
+// --- Component Props ---
 interface SecuritySectionProps {
     settings: ParentalSettingsData;
     passcodeExists: boolean;
     onSettingChange: <K extends keyof ParentalSettingsData>(key: K, value: ParentalSettingsData[K]) => void;
     onTogglePasscodeSetup: () => void;
-    switchStyles: any; // Consider creating a more specific type
-    styles: any; // Consider creating a more specific type (e.g., StyleSheet.NamedStyles<any>)
-    isLoadingPasscodeStatus?: boolean; // Add the optional loading prop
+    isLoadingPasscodeStatus?: boolean;
+    // switchStyles and styles props are no longer needed
 }
 
+// --- Component ---
 const SecuritySection: React.FC<SecuritySectionProps> = ({
     settings,
     passcodeExists,
     onSettingChange,
     onTogglePasscodeSetup,
-    isLoadingPasscodeStatus = false, // Destructure and provide default value
-    switchStyles,
-    styles // This object should contain all needed styles from ParentalControls
+    isLoadingPasscodeStatus = false,
 }) => {
+    // --- Consume Context ---
+    const { theme, fonts } = useAppearance();
 
-    // Determine if the user *can* enable the 'Require Passcode' switch.
-    // They can only enable it if a passcode already exists.
-    // They can always *disable* it if it's currently on.
+    // --- Dynamic Styles ---
+    const styles = useMemo(() => createThemedStyles(theme, fonts), [theme, fonts]);
+    const switchStyles = useMemo(() => ({ // Generate switch styles from theme
+        trackColor: { false: theme.disabled, true: theme.secondary },
+        thumbColor: Platform.OS === 'android' ? theme.primary : undefined,
+        ios_backgroundColor: theme.disabled,
+    }), [theme]);
+
+    // --- Logic ---
     const canEnablePasscodeRequirement = passcodeExists;
 
-    // Handler for the Require Passcode switch
     const handleRequirePasscodeToggle = (value: boolean) => {
-        // Prevent enabling if no passcode exists
         if (value && !canEnablePasscodeRequirement) {
              Alert.alert(
                  "Set Passcode First",
                  "Please set a passcode using the option below before requiring it."
              );
-             // Don't change the state, return early
-             return;
+             return; // Prevent toggle ON if no passcode exists
         }
-        // If valid, call the parent's handler
          onSettingChange('requirePasscode', value);
     };
 
-    // Determine if the switch should be visually and functionally disabled
+    // Combined disabled state logic
     const isSwitchDisabled =
-        isLoadingPasscodeStatus || // Disable if loading
-        (!settings.requirePasscode && !canEnablePasscodeRequirement); // Disable if trying to enable without a passcode
+        isLoadingPasscodeStatus ||
+        (!settings.requirePasscode && !canEnablePasscodeRequirement);
 
-    // Determine if the Set/Change button should be disabled
     const isConfigureButtonDisabled = isLoadingPasscodeStatus;
 
+    // Determine colors based on disabled state and theme
+    const switchRowTextColor = isSwitchDisabled ? theme.disabled : theme.text;
+    const switchRowIconColor = isSwitchDisabled ? theme.disabled : theme.textSecondary;
+    const configureButtonTextColor = isConfigureButtonDisabled ? theme.disabled : theme.textSecondary;
+    const configureButtonIconColor = isConfigureButtonDisabled ? theme.disabled : theme.textSecondary;
+    const chevronColor = isConfigureButtonDisabled ? theme.disabled : theme.textSecondary;
 
     return (
         <View style={styles.sectionCard}>
+             {/* Card Header */}
              <View style={styles.cardHeader}>
-               <FontAwesomeIcon icon={faLock} size={18} color={styles._primaryColor} style={styles.cardIcon}/>
+               <FontAwesomeIcon icon={faLock} size={fonts.h2 * 0.9} color={theme.primary} style={styles.cardIcon}/>
                <Text style={styles.sectionTitle}>Security</Text>
-               {/* Optional: Show loading indicator in header */}
                {isLoadingPasscodeStatus && (
-                    <ActivityIndicator size="small" color={styles._primaryColor} style={localStyles.headerLoader} />
+                    <ActivityIndicator size="small" color={theme.primary} style={styles.headerLoader} />
                )}
              </View>
 
             {/* --- Require Passcode Switch Row --- */}
-            <View style={[styles.settingRow, isSwitchDisabled && localStyles.disabledOverlay]}>
-               <FontAwesomeIcon icon={faUserShield} size={20} color={isSwitchDisabled ? styles._mediumGrey : styles._darkGrey} style={styles.settingIcon}/>
-               <Text style={[styles.settingLabel, isSwitchDisabled && localStyles.disabledText]}>
+            {/* Apply opacity directly if needed, or rely on color changes */}
+            <View style={[styles.settingRow, isSwitchDisabled && styles.disabledOverlay]}>
+               <FontAwesomeIcon icon={faUserShield} size={fonts.body * 1.1} color={switchRowIconColor} style={styles.settingIcon}/>
+               <Text style={[styles.settingLabel, { color: switchRowTextColor }]}>
                    Require Parent Passcode
                 </Text>
                <Switch
                    value={settings.requirePasscode}
                    onValueChange={handleRequirePasscodeToggle}
-                   disabled={isSwitchDisabled} // Use the combined disabled logic
-                   trackColor={isSwitchDisabled ? { false: styles._lightGrey, true: styles._lightGrey } : switchStyles.trackColor}
-                   thumbColor={isSwitchDisabled ? styles._mediumGrey : switchStyles.thumbColor}
-                   ios_backgroundColor={isSwitchDisabled ? styles._lightGrey : switchStyles.ios_backgroundColor} // Use lightGrey when disabled on iOS too
+                   disabled={isSwitchDisabled}
+                   // Use themed switchStyles, disabled state handled by the component
+                   trackColor={switchStyles.trackColor}
+                   thumbColor={switchStyles.thumbColor}
+                   ios_backgroundColor={switchStyles.ios_backgroundColor}
                    accessibilityLabel="Require Parent Passcode"
                    accessibilityState={{ disabled: isSwitchDisabled, checked: settings.requirePasscode }}
                />
            </View>
 
             {/* --- Set/Change Passcode Link Row --- */}
-            {/* Wrap the footer content to easily apply overlay if needed, though disabling button might be enough */}
-            <View style={[styles.cardFooter, isConfigureButtonDisabled && localStyles.disabledOverlay]}>
+            <View style={[styles.cardFooter, isConfigureButtonDisabled && styles.disabledOverlay]}>
                <TouchableOpacity
-                    style={styles.featureRow} // Assuming featureRow exists in parent styles
+                    style={styles.featureRow}
                     onPress={onTogglePasscodeSetup}
-                    activeOpacity={isConfigureButtonDisabled ? 1 : 0.6} // Reduce feedback when disabled
-                    disabled={isConfigureButtonDisabled} // Disable button during load
+                    activeOpacity={isConfigureButtonDisabled ? 1 : 0.7} // Adjust opacity
+                    disabled={isConfigureButtonDisabled}
                     accessibilityLabel={passcodeExists ? 'Change Passcode' : 'Set Passcode'}
                     accessibilityRole="button"
                     accessibilityState={{ disabled: isConfigureButtonDisabled }}
                >
                    <FontAwesomeIcon
                         icon={faUserShield}
-                        size={18}
-                        color={isConfigureButtonDisabled ? styles._mediumGrey : styles._darkGrey}
-                        style={styles.featureIcon} // Assuming featureIcon exists
+                        size={fonts.body} // Adjust size based on fonts
+                        color={configureButtonIconColor}
+                        style={styles.featureIcon}
                     />
-                   <Text style={[styles.featureLabel, isConfigureButtonDisabled && localStyles.disabledText]}>
+                   <Text style={[styles.featureLabel, { color: configureButtonTextColor }]}>
                        {passcodeExists ? 'Change Passcode' : 'Set Passcode'}
                    </Text>
                    <FontAwesomeIcon
                         icon={faChevronRight}
-                        size={16}
-                        color={isConfigureButtonDisabled ? styles._lightGrey : styles._placeholderColor}
+                        size={fonts.label} // Adjust size based on fonts
+                        color={chevronColor}
                     />
                </TouchableOpacity>
             </View>
@@ -116,19 +129,85 @@ const SecuritySection: React.FC<SecuritySectionProps> = ({
     );
 };
 
-// Optional: Local styles specific to this component's disabled states if not covered by parent styles
-const localStyles = StyleSheet.create({
-    disabledOverlay: {
-        opacity: 0.6, // Make section look faded when loading/disabled
-        // backgroundColor: '#f0f0f0', // Optional subtle background change
+// --- Helper Function for Themed Styles ---
+const createThemedStyles = (theme: ThemeColors, fonts: FontSizes) => StyleSheet.create({
+    sectionCard: {
+        backgroundColor: theme.card,
+        borderRadius: 12,
+        marginBottom: 20,
+        borderWidth: StyleSheet.hairlineWidth,
+        borderColor: theme.border,
+        overflow: 'hidden', // Keep overflow hidden
     },
-    disabledText: {
-        color: '#a0a0a0', // Use a specific grey for disabled text if needed
+    cardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 18,
+        paddingTop: 15,
+        paddingBottom: 10,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: theme.border,
     },
-    headerLoader: {
-        marginLeft: 10, // Space between title and loader
-    }
+    cardIcon: {
+        marginRight: 12,
+        // size/color set dynamically
+    },
+    sectionTitle: {
+        fontSize: fonts.h2 * 0.9,
+        fontWeight: '600',
+        color: theme.text,
+        flex: 1,
+    },
+    headerLoader: { // Style for loader in header
+        marginLeft: 10,
+    },
+    settingRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 10,
+        minHeight: 44,
+        paddingHorizontal: 18,
+    },
+    settingIcon: {
+        marginRight: 18,
+        width: fonts.body * 1.1,
+        textAlign: 'center',
+        // color set dynamically
+    },
+    settingLabel: {
+        flex: 1,
+        fontSize: fonts.body,
+        // color set dynamically based on disabled state
+        marginRight: 10,
+    },
+    cardFooter: {
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: theme.border,
+    },
+    featureRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 14,
+        minHeight: 44,
+        paddingHorizontal: 18,
+    },
+    featureIcon: {
+        marginRight: 18,
+        width: fonts.body,
+        textAlign: 'center',
+         // color set dynamically
+    },
+    featureLabel: {
+        flex: 1,
+        fontSize: fonts.body,
+        // color set dynamically based on disabled state
+        marginRight: 10,
+    },
+    // Chevron color set dynamically
+    disabledOverlay: { // Optional style for disabled rows
+        opacity: 0.6,
+    },
+    // disabledText style removed - handled inline with {color: ...}
 });
-
 
 export default SecuritySection;

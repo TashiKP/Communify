@@ -1,23 +1,25 @@
 // src/App.tsx
 import React, { useEffect } from 'react';
-import { SafeAreaView, StyleSheet, StatusBar, Platform, View, ActivityIndicator } from 'react-native'; // Added View, ActivityIndicator
+import { SafeAreaView, StyleSheet, StatusBar, Platform, View, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import Orientation from 'react-native-orientation-locker';
 
 // Import Context Providers
 import { GridProvider } from './context/GridContext';
-import { AppearanceProvider, useAppearance } from './context/AppearanceContext'; 
+import { AppearanceProvider, useAppearance } from './context/AppearanceContext';
+import { LanguageProvider } from './context/LanguageContext'; // Import LanguageProvider
 import AppNavigator from './Navigation/AppNavigator'; // Adjust path if necessary
 
 // --- Component to Apply Theme and Overlay ---
 const ThemedAppContent: React.FC = () => {
+    // useAppearance must be called within AppearanceProvider
     const { theme, isLoadingAppearance, brightnessOverlayOpacity, statusBarStyle } = useAppearance();
 
     // Show loading indicator while appearance settings are being loaded
     if (isLoadingAppearance) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#0077b6" /> {/* Use a default color or theme primary if available early */}
+                <ActivityIndicator size="large" color="#0077b6" /> {/* Default color or theme primary if available early */}
             </View>
         );
     }
@@ -29,9 +31,7 @@ const ThemedAppContent: React.FC = () => {
                 barStyle={statusBarStyle}
                 backgroundColor={theme.primary} // Set status bar background (Android)
             />
-            {/* NavigationContainer handles navigation state */}
             <NavigationContainer>
-                {/* AppNavigator contains your screens */}
                 <AppNavigator />
             </NavigationContainer>
 
@@ -54,21 +54,21 @@ const ThemedAppContent: React.FC = () => {
 export default function App() {
   useEffect(() => {
     Orientation.lockToLandscape();
-
     return () => {
         Orientation.unlockAllOrientations();
     };
   }, []);
 
   return (
-    // Wrap with Context Providers
-    <GridProvider>
-        <AppearanceProvider>
-            <SafeAreaView style={styles.safeAreaContainer}>
-                 <ThemedAppContent />
-            </SafeAreaView>
-        </AppearanceProvider>
-    </GridProvider>
+    <AppearanceProvider>
+        <GridProvider>
+            <LanguageProvider> {/* LanguageProvider is added here */}
+                <SafeAreaView style={styles.safeAreaContainer}>
+                     <ThemedAppContent />
+                </SafeAreaView>
+            </LanguageProvider>
+        </GridProvider>
+    </AppearanceProvider>
   );
 }
 
@@ -76,7 +76,7 @@ export default function App() {
 const styles = StyleSheet.create({
   safeAreaContainer: {
     flex: 1,
-    backgroundColor: '#f8f9fa', // Default light background
+    backgroundColor: '#FFFFFF', // A neutral default background
   },
   appContainer: {
     flex: 1, // Ensure it fills the SafeAreaView
@@ -85,9 +85,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa', // Or a default loading background
+    backgroundColor: '#FFFFFF', // Consistent with safeAreaContainer default for loading
   },
   brightnessOverlay: {
     ...StyleSheet.absoluteFillObject, // Cover the entire screen
+    zIndex: 9999, // Ensure it's on top of everything else if needed
   },
 });

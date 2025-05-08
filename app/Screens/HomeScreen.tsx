@@ -34,8 +34,7 @@ const ANIMATION_DURATION_IN = 250;
 const ANIMATION_DURATION_OUT = 350;
 const BOTTOM_BAR_HEIGHT = 65;
 // --- API Endpoint ---
-const PHRASE_GENERATION_API_URL = 'https://cfc0-34-142-188-177.ngrok-free.app/generate_aac_phrase';
-// --- NOTE: ngrok URLs are temporary. Replace with your permanent backend URL ---
+const PHRASE_GENERATION_API_URL = 'https://b9c6-34-142-188-177.ngrok-free.app/generate_aac_phrase';
 
 const HomeScreen = () => {
     // --- State ---

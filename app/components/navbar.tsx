@@ -1,138 +1,118 @@
 // src/components/Navbar.tsx
-import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'; // Added useMemo, useCallback
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity, Platform, Animated,
-    Easing, Alert // Added Alert for potential logout errors
+    Easing, Alert
 } from 'react-native';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import { faUserCircle } from '@fortawesome/free-solid-svg-icons';
-import ProfileModal from './ProfileModal'; // Assuming './ProfileModal' is the correct path
+import ProfileModal from './ProfileModal';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage'; // Keep for logout example
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// --- Import Appearance Context ---
-import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext'; // Adjust path
+import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext';
+import { useLanguage, LanguageCode } from '../context/LanguageContext'; // <-- Import Language Context
 
-// --- Define Navigation Param List ---
-// Replace with your actual stack parameters if using typed navigation
-type RootStackParamList = {
-  Login: undefined; // Route name for the Login screen
-};
-
-// --- Shared Constants ---
+type RootStackParamList = { Login: undefined; };
 const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
-const AUTH_TOKEN_KEY = '@MyApp:AuthToken'; // **IMPORTANT: Use your actual storage key**
+const AUTH_TOKEN_KEY = '@MyApp:AuthToken';
 
-// --- Component ---
 const Navbar = () => {
-    // --- Context ---
-    const { theme, fonts } = useAppearance(); // Get theme and fonts
+    const { theme, fonts } = useAppearance();
+    const { currentLanguage, changeLanguage, isTranslating } = useLanguage(); // <-- Use Language Context
+    const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
-    // --- State ---
-    const [isEnglish, setIsEnglish] = useState(true); // Language state
-    const [profileModalVisible, setProfileModalVisible] = useState(false); // Profile modal visibility
-    const navigation = useNavigation<NavigationProp<RootStackParamList>>(); // Navigation hook
-    const toggleAnim = useRef(new Animated.Value(0)).current; // Animation value for language toggle
+    const [profileModalVisible, setProfileModalVisible] = useState(false);
+    const toggleAnim = useRef(new Animated.Value(currentLanguage === 'en' ? 0 : 1)).current;
 
-    // --- Dynamic Styles ---
-    // Memoize styles to avoid recalculation unless theme/fonts change
     const styles = useMemo(() => createThemedStyles(theme, fonts), [theme, fonts]);
 
-    // --- Effects ---
-    // Animate language toggle slider
     useEffect(() => {
         Animated.timing(toggleAnim, {
-            toValue: isEnglish ? 0 : 1,
+            toValue: currentLanguage === 'en' ? 0 : 1,
             duration: 250,
             easing: Easing.bezier(0.25, 0.1, 0.25, 1),
-            useNativeDriver: false, // 'left' style animation requires JS driver
+            useNativeDriver: false,
         }).start();
-    }, [isEnglish, toggleAnim]);
+    }, [currentLanguage, toggleAnim]);
 
-    // Interpolate slider position based on animation value
     const sliderPosition = toggleAnim.interpolate({
         inputRange: [0, 1],
-        outputRange: ['3%', '47%'], // Adjust percentages based on toggle design
+        outputRange: ['3%', '47%'],
     });
 
-    // --- Handlers ---
-    // Toggle language state and log (replace log with actual i18n logic)
-    const toggleLanguage = useCallback(() => {
-        setIsEnglish(previous => !previous);
-        // TODO: Implement actual language switching logic (e.g., i18next.changeLanguage)
-        console.log('Language toggled to:', !isEnglish ? 'English' : 'Dzongkha');
-    }, [isEnglish]); // Include isEnglish if logic depends on previous value directly
+    const toggleLanguageHandler = useCallback(() => {
+        const newLang: LanguageCode = currentLanguage === 'en' ? 'dzo' : 'en';
+        changeLanguage(newLang);
+    }, [currentLanguage, changeLanguage]);
 
-    // Open and close the profile modal
     const openProfileModal = useCallback(() => setProfileModalVisible(true), []);
     const closeProfileModal = useCallback(() => setProfileModalVisible(false), []);
 
-    const handleLogout = () => {
-        closeProfileModal(); // Close modal first
-        navigation.navigate('Login'); // Navigate after logout logic
+    const handleLogout = async () => {
+        closeProfileModal();
+        try {
+            await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+            navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+        } catch (e) {
+            console.error("Logout failed", e);
+            Alert.alert("Logout Error", "Could not log out. Please try again.");
+        }
     };
 
-    // --- Dummy Profile Data (Replace with actual user data source) ---
-    const userProfileData = useMemo(() => ({ // Memoize if data doesn't change often
-        name: 'User Name', // Replace with actual name
-        email: 'user@example.com', // Replace with actual email
-        avatar: '', // Replace with actual avatar URI or leave empty/undefined
+    const userProfileData = useMemo(() => ({
+        name: 'User Name', email: 'user@example.com', avatar: '',
     }), []);
 
     return (
         <>
-            {/* Navbar View - Uses themed styles */}
             <View style={styles.navbar}>
-                {/* Left Section: Language Toggle */}
                 <View style={styles.navSectionLeft}>
                     <TouchableOpacity
                         style={styles.toggleButton}
-                        onPress={toggleLanguage}
+                        onPress={toggleLanguageHandler}
                         activeOpacity={0.8}
-                        hitSlop={hitSlop} // Use defined hitSlop constant
+                        hitSlop={hitSlop}
                         accessibilityRole="switch"
-                        accessibilityLabel="Toggle language between English and Dzongkha"
-                        accessibilityState={{ checked: !isEnglish }}
+                        accessibilityLabel="Toggle language"
+                        accessibilityState={{ checked: currentLanguage === 'dzo' }}
+                        disabled={isTranslating} // <-- Disable while translating
                     >
                         <Text style={[styles.toggleText, styles.toggleTextInactive]}>Eng</Text>
                         <Text style={[styles.toggleText, styles.toggleTextInactive]}>Dzo</Text>
-                        <Animated.View style={[ styles.toggleSlider, { left: sliderPosition } ]} >
+                        <Animated.View style={[styles.toggleSlider, { left: sliderPosition }]}>
                             <Text style={styles.toggleTextActive}>
-                                {isEnglish ? 'Eng' : 'Dzo'}
+                                {currentLanguage === 'en' ? 'Eng' : 'རྫོང་ཁ'}
                             </Text>
                         </Animated.View>
                     </TouchableOpacity>
                 </View>
 
-                {/* Center Section: App Title */}
                 <View style={styles.navSectionCenter}>
                     <Text style={styles.navbarTitle}>Communify</Text>
                 </View>
 
-                {/* Right Section: Profile Icon */}
                 <View style={styles.navSectionRight}>
                     <TouchableOpacity
                         onPress={openProfileModal}
-                        hitSlop={hitSlop} // Use defined hitSlop constant
+                        hitSlop={hitSlop}
                         accessibilityRole="button"
                         accessibilityLabel="Open user profile"
                     >
                         <FontAwesomeIcon
                             icon={faUserCircle}
-                            size={fonts.h1 * 1.1} // Icon size based on fonts
-                            color={theme.white} // Icon color from theme (assuming white on primary bg)
+                            size={fonts.h1 * 1.1}
+                            color={theme.white}
                         />
                     </TouchableOpacity>
                 </View>
             </View>
 
-            {/* Profile Modal Component */}
             <ProfileModal
                 visible={profileModalVisible}
                 onClose={closeProfileModal}
-                onLogout={handleLogout} // Pass the logout handler
-                userProfile={userProfileData} // Pass user data
-                // ProfileModal uses useAppearance internally for styling
+                onLogout={handleLogout}
+                userProfile={userProfileData}
             />
         </>
     );

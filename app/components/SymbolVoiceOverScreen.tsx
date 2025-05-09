@@ -13,12 +13,14 @@ import {
     faClosedCaptioning,
     faHighlighter,
     faPlayCircle,
-    faSlidersH
+    faSlidersH,
+    faVolumeUp // Example, could use a specific volume icon
 } from '@fortawesome/free-solid-svg-icons';
 import Tts from 'react-native-tts';
+import { useTranslation } from 'react-i18next'; // <-- Import i18next hook
 
 // --- Import Context ---
-import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext'; // Adjust path
+import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext';
 
 // --- Types ---
 export interface VoiceSettingData {
@@ -33,8 +35,7 @@ const defaultSettings: VoiceSettingData = { pitch: 0.5, speed: 0.5, volume: 0.8,
 
 // --- Shared Constants ---
 const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
-// Define distinct colors if not part of the theme yet
-const errorColor = '#dc3545';
+const errorColor = '#dc3545'; // Consider adding this to theme if used elsewhere
 
 // --- Component ---
 const SymbolVoiceOverScreen: React.FC<SymbolVoiceOverScreenProps> = ({
@@ -42,11 +43,11 @@ const SymbolVoiceOverScreen: React.FC<SymbolVoiceOverScreenProps> = ({
     onSave,
     onClose,
 }) => {
-    // --- Context ---
-    // Get theme, fonts, and loading state from the context
+    // --- Hooks ---
     const { theme, fonts, isLoadingAppearance } = useAppearance();
+    const { t } = useTranslation(); // <-- Use the translation hook
 
-    // --- State (Keep as before) ---
+    // --- State ---
     const [localSettings, setLocalSettings] = useState<VoiceSettingData>(() => ({ ...defaultSettings, ...initialPropsSettings }));
     const [originalSettings, setOriginalSettings] = useState<VoiceSettingData>(() => ({ ...defaultSettings, ...initialPropsSettings }));
     const [availableVoices, setAvailableVoices] = useState<TtsVoice[]>([]);
@@ -55,7 +56,7 @@ const SymbolVoiceOverScreen: React.FC<SymbolVoiceOverScreenProps> = ({
     const [isSpeaking, setIsSpeaking] = useState(false);
     const isMountedRef = useRef(true);
 
-    // --- Dynamic Styles (Use theme and fonts from context) ---
+    // --- Dynamic Styles ---
     const styles = useMemo(() => createThemedStyles(theme, fonts), [theme, fonts]);
     const switchStyles = useMemo(() => ({
         trackColor: { false: theme.disabled, true: theme.secondary },
@@ -64,46 +65,169 @@ const SymbolVoiceOverScreen: React.FC<SymbolVoiceOverScreenProps> = ({
     }), [theme]);
     const sliderStyles = useMemo(() => ({
         minimumTrackTintColor: theme.primary,
-        maximumTrackTintColor: theme.border, // Use border or secondary
+        maximumTrackTintColor: theme.border,
         thumbTintColor: Platform.OS === 'android' ? theme.primary : undefined
     }), [theme]);
 
     // --- Memoize ---
     const hasUnsavedChanges = useMemo(() => JSON.stringify(localSettings) !== JSON.stringify(originalSettings), [localSettings, originalSettings]);
 
-    // --- Effects (Keep as before) ---
+    // --- Effects ---
     useEffect(() => { isMountedRef.current = true; return () => { isMountedRef.current = false; }; }, []);
-    useEffect(() => { /* Sync with initialPropsSettings */ const merged = { ...defaultSettings, ...initialPropsSettings }; setLocalSettings(merged); setOriginalSettings(merged); setIsSaving(false); }, [initialPropsSettings]);
-    useEffect(() => { /* Initialize TTS */
+    useEffect(() => { const merged = { ...defaultSettings, ...initialPropsSettings }; setLocalSettings(merged); setOriginalSettings(merged); setIsSaving(false); }, [initialPropsSettings]);
+    // This effect's dependencies and logic remain largely the same, but Alert messages inside should use t()
+    useEffect(() => {
         let isMounted = true; let startListener: any = null, finishListener: any = null, cancelListener: any = null;
-        const initTts = async () => { setIsLoadingVoices(true); try { await Tts.getInitStatus(); startListener = Tts.addEventListener('tts-start', (event) => { if (isMounted) setIsSpeaking(true); }); finishListener = Tts.addEventListener('tts-finish', (event) => { if (isMounted) setIsSpeaking(false); }); cancelListener = Tts.addEventListener('tts-cancel', (event) => { if (isMounted) setIsSpeaking(false); }); const voicesResult = await Tts.voices(); const usableVoices = voicesResult .filter(v => !(Platform.OS === 'android' && v.networkConnectionRequired && v.notInstalled)) .sort((a, b) => a.name.localeCompare(b.name)); if (isMounted) { setAvailableVoices(usableVoices as TtsVoice[]); const currentVoiceId = localSettings.selectedVoiceId; let voiceToSet: string | null = null; if (currentVoiceId && usableVoices.some(v => v.id === currentVoiceId)) { voiceToSet = currentVoiceId; } else if (usableVoices.length > 0) { const defaultUsEnglish = usableVoices.find(v => v.language.startsWith('en-US')); voiceToSet = defaultUsEnglish ? defaultUsEnglish.id : usableVoices[0].id; } if (voiceToSet !== localSettings.selectedVoiceId) { setLocalSettings(prev => ({ ...prev, selectedVoiceId: voiceToSet })); setOriginalSettings(prev => ({ ...prev, selectedVoiceId: voiceToSet })); } } } catch (error: any) { console.error("Failed TTS init/load:", error); if (error.message?.indexOf('TTS engine is not ready') === -1) { Alert.alert("TTS Error", `Could not initialize Text-to-Speech. (${error.message})`); } } finally { if (isMounted) setIsLoadingVoices(false); } };
+        const initTts = async () => {
+            setIsLoadingVoices(true);
+            try {
+                await Tts.getInitStatus();
+                startListener = Tts.addEventListener('tts-start', (event) => { if (isMountedRef.current) setIsSpeaking(true); });
+                finishListener = Tts.addEventListener('tts-finish', (event) => { if (isMountedRef.current) setIsSpeaking(false); });
+                cancelListener = Tts.addEventListener('tts-cancel', (event) => { if (isMountedRef.current) setIsSpeaking(false); });
+
+                const voicesResult = await Tts.voices();
+                const usableVoices = voicesResult
+                    .filter(v => !(Platform.OS === 'android' && v.networkConnectionRequired && v.notInstalled))
+                    .sort((a, b) => a.name.localeCompare(b.name));
+
+                if (isMountedRef.current) {
+                    setAvailableVoices(usableVoices as TtsVoice[]);
+                    // Logic to set default/selected voice (no text changes needed here)
+                    const currentVoiceId = localSettings.selectedVoiceId;
+                    let voiceToSet: string | null = null;
+                    if (currentVoiceId && usableVoices.some(v => v.id === currentVoiceId)) {
+                        voiceToSet = currentVoiceId;
+                    } else if (usableVoices.length > 0) {
+                        const defaultUsEnglish = usableVoices.find(v => v.language.startsWith('en-US')); // Prefer US English
+                        voiceToSet = defaultUsEnglish ? defaultUsEnglish.id : usableVoices[0].id;
+                    }
+                    // Avoid unnecessary state updates if the voice didn't actually change
+                    if (voiceToSet !== localSettings.selectedVoiceId) {
+                       setLocalSettings(prev => ({ ...prev, selectedVoiceId: voiceToSet }));
+                       // Don't update originalSettings here, let save handle that
+                    }
+                }
+            } catch (error: any) {
+                console.error("Failed TTS init/load:", error);
+                if (error.message?.indexOf('TTS engine is not ready') === -1 && isMountedRef.current) {
+                    // Use t() for Alert
+                    Alert.alert(t('voiceSettings.errors.ttsInitTitle'), t('voiceSettings.errors.ttsInitMessage', { message: error.message }));
+                }
+            } finally {
+                if (isMountedRef.current) setIsLoadingVoices(false);
+            }
+        };
         initTts();
-        return () => { isMounted = false; Tts.stop(); startListener?.remove(); finishListener?.remove(); cancelListener?.remove(); };
+        return () => {
+            isMounted = false; // Ensure the flag from initTts is used, or remove if isMountedRef handles all
+            Tts.stop();
+            startListener?.remove();
+            finishListener?.remove();
+            cancelListener?.remove();
+        };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [t]); // Add t to dependency array for Alert messages
 
 
-    // --- Handlers (Keep logic as before) ---
+    // --- Handlers ---
     const handleSettingChange = useCallback(<K extends keyof VoiceSettingData>(key: K, value: VoiceSettingData[K]) => { setLocalSettings(prev => ({ ...prev, [key]: value })); }, []);
-    const handlePreview = async () => { /* ... (TTS preview logic unchanged) ... */ if (isSpeaking) { Tts.stop(); return; } if (isLoadingVoices || availableVoices.length === 0) { Alert.alert("Preview Error", isLoadingVoices ? "Voices still loading." : "No voices available."); return; } let voiceIdToUse = localSettings.selectedVoiceId; if (!voiceIdToUse && availableVoices.length > 0) { voiceIdToUse = availableVoices[0].id; handleSettingChange('selectedVoiceId', voiceIdToUse); Alert.alert("Voice Selected", `Using voice: ${availableVoices[0].name}.`, [{text: "OK"}]); } else if (!voiceIdToUse) { Alert.alert("Preview Error", "No voice selected or available."); return; } const sampleText = "Hello, this is a preview of the selected voice settings."; try { setIsSpeaking(true); await Tts.setDefaultVoice(voiceIdToUse); await Tts.setDefaultPitch(localSettings.pitch * 1.5 + 0.5); await Tts.setDefaultRate(localSettings.speed * 0.9 + 0.05); Tts.speak(sampleText); } catch (error) { console.error("TTS Preview error:", error); Alert.alert("Preview Error", "Could not play speech preview."); setIsSpeaking(false); } };
-    const handleReset = () => { /* ... (logic unchanged) ... */ if (!hasUnsavedChanges || isSaving) return; Alert.alert( "Reset Changes?", "Discard changes and revert?", [ { text: "Cancel", style: "cancel" }, { text: "Reset", style: "destructive", onPress: () => setLocalSettings(originalSettings) } ]); };
-    const handleSave = async () => { /* ... (logic unchanged) ... */ if (!hasUnsavedChanges || isSaving) return; setIsSaving(true); Keyboard.dismiss(); try { await onSave(localSettings); setOriginalSettings(localSettings); onClose(); } catch (error) { console.error("Error saving voice settings:", error); Alert.alert("Error", "Could not save settings."); setIsSaving(false); } };
-    const handleAttemptClose = useCallback(() => { /* ... (logic unchanged) ... */ if (isSpeaking) Tts.stop(); if (hasUnsavedChanges) { Alert.alert( "Unsaved Changes", "Discard and go back?", [ { text: "Cancel", style: "cancel" }, { text: "Discard", style: "destructive", onPress: onClose } ]); } else { onClose(); } }, [hasUnsavedChanges, onClose, isSpeaking]);
+
+    const handlePreview = async () => {
+        if (isSpeaking) { Tts.stop(); return; }
+        if (isLoadingVoices || availableVoices.length === 0) {
+            Alert.alert(t('voiceSettings.errors.previewTitle'), isLoadingVoices ? t('voiceSettings.errors.voicesLoading') : t('voiceSettings.errors.noVoices'));
+            return;
+        }
+        let voiceIdToUse = localSettings.selectedVoiceId;
+        let selectedVoiceName = "default";
+
+        if (!voiceIdToUse && availableVoices.length > 0) {
+            voiceIdToUse = availableVoices[0].id;
+            selectedVoiceName = availableVoices[0].name;
+            handleSettingChange('selectedVoiceId', voiceIdToUse); // Update local state
+             Alert.alert(t('voiceSettings.voiceSelectedTitle'), t('voiceSettings.voiceSelectedMessage', { name: selectedVoiceName }), [{text: t('common.ok')}]);
+        } else if (!voiceIdToUse) {
+            Alert.alert(t('voiceSettings.errors.previewTitle'), t('voiceSettings.errors.noVoiceSelected'));
+            return;
+        }
+
+        // Get a sample text using t() - assuming English source for preview
+        const sampleText = t('voiceSettings.previewSampleText');
+        try {
+            setIsSpeaking(true); // Set speaking state locally
+            await Tts.setDefaultVoice(voiceIdToUse);
+            await Tts.setDefaultPitch(localSettings.pitch * 1.5 + 0.5); // Keep existing logic
+            await Tts.setDefaultRate(localSettings.speed * 0.9 + 0.05); // Keep existing logic
+            Tts.speak(sampleText);
+        } catch (error: any) {
+            console.error("TTS Preview error:", error);
+            Alert.alert(t('voiceSettings.errors.previewTitle'), t('voiceSettings.errors.previewFail'));
+            if (isMountedRef.current) setIsSpeaking(false); // Reset speaking state on error
+        }
+    };
+
+    const handleReset = () => {
+        if (!hasUnsavedChanges || isSaving) return;
+        Alert.alert(
+            t('voiceSettings.resetConfirmTitle'),
+            t('voiceSettings.resetConfirmMessage'),
+            [
+                { text: t('common.cancel'), style: "cancel" },
+                { text: t('common.reset'), style: "destructive", onPress: () => setLocalSettings(originalSettings) }
+            ]
+        );
+    };
+
+    const handleSave = async () => {
+        if (!hasUnsavedChanges || isSaving) return;
+        setIsSaving(true);
+        Keyboard.dismiss();
+        try {
+            await onSave(localSettings); // Call parent save function
+            setOriginalSettings(localSettings); // Update original settings baseline
+            // Optionally show a success message before closing
+            // Alert.alert(t('voiceSettings.saveSuccessTitle'), t('voiceSettings.saveSuccessMessage'));
+            onClose(); // Close the screen
+        } catch (error) {
+            console.error("Error saving voice settings:", error);
+            Alert.alert(t('common.error'), t('voiceSettings.errors.saveFail'));
+            if(isMountedRef.current) setIsSaving(false); // Reset saving state on error
+        }
+        // No finally block needed for setIsSaving(false) if onClose unmounts the component
+    };
+
+    const handleAttemptClose = useCallback(() => {
+        if (isSpeaking) Tts.stop();
+        if (hasUnsavedChanges) {
+            Alert.alert(
+                t('voiceSettings.unsavedChangesTitle'),
+                t('voiceSettings.unsavedChangesMessage'),
+                [
+                    { text: t('common.cancel'), style: "cancel" },
+                    { text: t('common.discard'), style: "destructive", onPress: onClose }
+                ]
+            );
+        } else {
+            onClose();
+        }
+    }, [hasUnsavedChanges, onClose, isSpeaking, t]); // Add t dependency for Alert
+
     const formatValue = (value: number) => `${Math.round(value * 100)}%`;
 
     // --- Determine Button States ---
     const isLoading = isLoadingAppearance || isLoadingVoices;
     const isSaveDisabled = !hasUnsavedChanges || isSaving || isLoading;
     const isResetDisabled = !hasUnsavedChanges || isSaving || isLoading;
-    const isPreviewDisabled = isSaving || isLoading;
+    const isPreviewDisabled = isSaving || isLoading || !localSettings.selectedVoiceId; // Also disable preview if no voice selected
 
     // --- Render ---
-     if (isLoading) { // Show full screen loader if *any* context is loading
+     if (isLoading) {
          return (
             <SafeAreaView style={[styles.safeArea]}>
                 <View style={[styles.screenContainer, styles.loadingContainer]}>
                     <ActivityIndicator size="large" color={theme.primary} />
-                    <Text style={styles.loadingText}>Loading Settings...</Text>
+                    <Text style={styles.loadingText}>{t('voiceSettings.loading')}</Text>
                 </View>
             </SafeAreaView>
          );
@@ -113,23 +237,23 @@ const SymbolVoiceOverScreen: React.FC<SymbolVoiceOverScreenProps> = ({
         <SafeAreaView style={styles.safeArea}>
             {/* Header */}
             <View style={styles.header}>
-              <TouchableOpacity style={styles.headerButton} onPress={handleAttemptClose} hitSlop={hitSlop} accessibilityLabel="Go back">
+              <TouchableOpacity style={styles.headerButton} onPress={handleAttemptClose} hitSlop={hitSlop} accessibilityLabel={t('common.goBack')}>
                 <FontAwesomeIcon icon={faArrowLeft} size={fonts.h2 * 0.9} color={theme.white} />
               </TouchableOpacity>
                <View style={styles.titleContainer}>
-                  <Text style={styles.title} numberOfLines={1}>Voice & Speech</Text>
+                  <Text style={styles.title} numberOfLines={1}>{t('voiceSettings.title')}</Text>
                </View>
               <TouchableOpacity
                 style={[styles.headerButton, isSaveDisabled && styles.buttonDisabled]}
                 onPress={handleSave}
                 disabled={isSaveDisabled}
                 hitSlop={hitSlop}
-                accessibilityLabel="Save voice settings"
+                accessibilityLabel={t('common.save')}
                 accessibilityState={{ disabled: isSaveDisabled }}
                >
                 {isSaving
                     ? <ActivityIndicator size="small" color={theme.white}/>
-                    : <FontAwesomeIcon icon={faSave} size={fonts.h2 * 0.9} color={!isSaveDisabled ? theme.white : theme.disabled} /> // Use themed disabled color
+                    : <FontAwesomeIcon icon={faSave} size={fonts.h2 * 0.9} color={!isSaveDisabled ? theme.white : theme.disabled} />
                 }
               </TouchableOpacity>
             </View>
@@ -141,7 +265,7 @@ const SymbolVoiceOverScreen: React.FC<SymbolVoiceOverScreenProps> = ({
                     <View style={styles.sectionCard}>
                         <View style={styles.cardHeader}>
                             <FontAwesomeIcon icon={faCommentDots} size={fonts.h2 * 0.9} color={theme.primary} style={styles.cardIcon} />
-                            <Text style={styles.sectionTitle}>Voice</Text>
+                            <Text style={styles.sectionTitle}>{t('voiceSettings.voiceSectionTitle')}</Text>
                         </View>
                         <View style={styles.cardContent}>
                             {isLoadingVoices ? (
@@ -154,24 +278,24 @@ const SymbolVoiceOverScreen: React.FC<SymbolVoiceOverScreenProps> = ({
                                             if(itemValue) handleSettingChange('selectedVoiceId', itemValue as string)
                                         }}
                                         style={styles.picker}
-                                        itemStyle={styles.pickerItem} // iOS only styling
-                                        mode="dropdown" // Android only
-                                        accessibilityLabel="Select a voice"
-                                        dropdownIconColor={theme.textSecondary} // Use themed color
-                                        prompt="Select Voice"
+                                        itemStyle={styles.pickerItem}
+                                        mode="dropdown"
+                                        accessibilityLabel={t('voiceSettings.voiceSelectAccessibilityLabel')}
+                                        dropdownIconColor={theme.textSecondary}
+                                        prompt={t('voiceSettings.voiceSelectPrompt')}
                                     >
                                         {availableVoices.map((voice) => (
                                             <Picker.Item
                                                 key={voice.id}
-                                                label={`${voice.name} (${voice.language})`}
+                                                label={`${voice.name} (${voice.language})`} // Keep voice name/lang as is
                                                 value={voice.id}
-                                                color={theme.text} // Use theme color for items
+                                                color={theme.text}
                                             />
                                         ))}
                                     </Picker>
                                 </View>
                             ) : (
-                                <Text style={styles.errorText}>No voices available on this device.</Text>
+                                <Text style={styles.errorText}>{t('voiceSettings.errors.noVoices')}</Text>
                             )}
                         </View>
                     </View>
@@ -180,42 +304,42 @@ const SymbolVoiceOverScreen: React.FC<SymbolVoiceOverScreenProps> = ({
                     <View style={styles.sectionCard}>
                         <View style={styles.cardHeader}>
                             <FontAwesomeIcon icon={faSlidersH} size={fonts.h2 * 0.9} color={theme.primary} style={styles.cardIcon} />
-                            <Text style={styles.sectionTitle}>Speech Parameters</Text>
+                            <Text style={styles.sectionTitle}>{t('voiceSettings.parametersSectionTitle')}</Text>
                         </View>
                         <View style={styles.cardContent}>
                             {/* Pitch */}
                             <View style={styles.settingSection}>
-                                <Text style={styles.settingLabel}>Pitch</Text>
+                                <Text style={styles.settingLabel}>{t('voiceSettings.pitchLabel')}</Text>
                                 <View style={styles.sliderControlRow}>
-                                    <TouchableOpacity style={styles.lockButton} onPress={() => handleSettingChange('pitchLocked', !localSettings.pitchLocked)} hitSlop={hitSlop} accessibilityLabel={localSettings.pitchLocked ? "Unlock pitch" : "Lock pitch"} disabled={isSaving}>
+                                    <TouchableOpacity style={styles.lockButton} onPress={() => handleSettingChange('pitchLocked', !localSettings.pitchLocked)} hitSlop={hitSlop} accessibilityLabel={localSettings.pitchLocked ? t('voiceSettings.unlockPitch') : t('voiceSettings.lockPitch')} disabled={isSaving}>
                                         <FontAwesomeIcon icon={localSettings.pitchLocked ? faLock : faLockOpen} size={fonts.body * 1.1} color={localSettings.pitchLocked ? theme.primary : theme.textSecondary}/>
                                     </TouchableOpacity>
-                                    <Slider accessibilityLabel="Pitch slider" style={styles.slider} minimumValue={0} maximumValue={1} value={localSettings.pitch} onValueChange={(v) => handleSettingChange('pitch', v)} disabled={localSettings.pitchLocked || isSaving} {...sliderStyles} />
-                                    <Text style={styles.valueText} accessibilityLabel={`Current pitch ${formatValue(localSettings.pitch)}`}>{formatValue(localSettings.pitch)}</Text>
+                                    <Slider accessibilityLabel={t('voiceSettings.pitchSliderAccessibilityLabel')} style={styles.slider} minimumValue={0} maximumValue={1} value={localSettings.pitch} onValueChange={(v) => handleSettingChange('pitch', v)} disabled={localSettings.pitchLocked || isSaving} {...sliderStyles} />
+                                    <Text style={styles.valueText} accessibilityLabel={t('voiceSettings.pitchValueAccessibilityLabel', { value: formatValue(localSettings.pitch) })}>{formatValue(localSettings.pitch)}</Text>
                                 </View>
                             </View>
                             {/* Speed */}
                             <View style={styles.settingSection}>
-                                <Text style={styles.settingLabel}>Speed</Text>
+                                <Text style={styles.settingLabel}>{t('voiceSettings.speedLabel')}</Text>
                                 <View style={styles.sliderControlRow}>
-                                    <TouchableOpacity style={styles.lockButton} onPress={() => handleSettingChange('speedLocked', !localSettings.speedLocked)} hitSlop={hitSlop} accessibilityLabel={localSettings.speedLocked ? "Unlock speed" : "Lock speed"} disabled={isSaving}>
+                                    <TouchableOpacity style={styles.lockButton} onPress={() => handleSettingChange('speedLocked', !localSettings.speedLocked)} hitSlop={hitSlop} accessibilityLabel={localSettings.speedLocked ? t('voiceSettings.unlockSpeed') : t('voiceSettings.lockSpeed')} disabled={isSaving}>
                                         <FontAwesomeIcon icon={localSettings.speedLocked ? faLock : faLockOpen} size={fonts.body * 1.1} color={localSettings.speedLocked ? theme.primary : theme.textSecondary}/>
                                     </TouchableOpacity>
-                                    <Slider accessibilityLabel="Speed slider" style={styles.slider} minimumValue={0} maximumValue={1} value={localSettings.speed} onValueChange={(v) => handleSettingChange('speed', v)} disabled={localSettings.speedLocked || isSaving} {...sliderStyles} />
-                                    <Text style={styles.valueText} accessibilityLabel={`Current speed ${formatValue(localSettings.speed)}`}>{formatValue(localSettings.speed)}</Text>
+                                    <Slider accessibilityLabel={t('voiceSettings.speedSliderAccessibilityLabel')} style={styles.slider} minimumValue={0} maximumValue={1} value={localSettings.speed} onValueChange={(v) => handleSettingChange('speed', v)} disabled={localSettings.speedLocked || isSaving} {...sliderStyles} />
+                                    <Text style={styles.valueText} accessibilityLabel={t('voiceSettings.speedValueAccessibilityLabel', { value: formatValue(localSettings.speed) })}>{formatValue(localSettings.speed)}</Text>
                                 </View>
                             </View>
                             {/* Volume */}
                             <View style={styles.settingSection}>
-                                <Text style={styles.settingLabel}>Volume</Text>
+                                <Text style={styles.settingLabel}>{t('voiceSettings.volumeLabel')}</Text>
                                 <View style={styles.sliderControlRow}>
-                                    <TouchableOpacity style={styles.lockButton} onPress={() => handleSettingChange('volumeLocked', !localSettings.volumeLocked)} hitSlop={hitSlop} accessibilityLabel={localSettings.volumeLocked ? "Unlock volume" : "Lock volume"} disabled={isSaving}>
+                                    <TouchableOpacity style={styles.lockButton} onPress={() => handleSettingChange('volumeLocked', !localSettings.volumeLocked)} hitSlop={hitSlop} accessibilityLabel={localSettings.volumeLocked ? t('voiceSettings.unlockVolume') : t('voiceSettings.lockVolume')} disabled={isSaving}>
                                         <FontAwesomeIcon icon={localSettings.volumeLocked ? faLock : faLockOpen} size={fonts.body * 1.1} color={localSettings.volumeLocked ? theme.primary : theme.textSecondary}/>
                                     </TouchableOpacity>
-                                    <Slider accessibilityLabel="Volume slider" style={styles.slider} minimumValue={0} maximumValue={1} value={localSettings.volume} onValueChange={(v) => handleSettingChange('volume', v)} disabled={localSettings.volumeLocked || isSaving} {...sliderStyles} />
-                                    <Text style={styles.valueText} accessibilityLabel={`Current volume ${formatValue(localSettings.volume)}`}>{formatValue(localSettings.volume)}</Text>
+                                    <Slider accessibilityLabel={t('voiceSettings.volumeSliderAccessibilityLabel')} style={styles.slider} minimumValue={0} maximumValue={1} value={localSettings.volume} onValueChange={(v) => handleSettingChange('volume', v)} disabled={localSettings.volumeLocked || isSaving} {...sliderStyles} />
+                                    <Text style={styles.valueText} accessibilityLabel={t('voiceSettings.volumeValueAccessibilityLabel', { value: formatValue(localSettings.volume) })}>{formatValue(localSettings.volume)}</Text>
                                 </View>
-                                <Text style={styles.infoTextSmall}>Note: Volume may primarily use system settings.</Text>
+                                <Text style={styles.infoTextSmall}>{t('voiceSettings.volumeNote')}</Text>
                             </View>
                         </View>
                     </View>
@@ -224,22 +348,22 @@ const SymbolVoiceOverScreen: React.FC<SymbolVoiceOverScreenProps> = ({
                     <View style={styles.sectionCard}>
                         <View style={styles.cardHeader}>
                             <FontAwesomeIcon icon={faClosedCaptioning} size={fonts.h2 * 0.9} color={theme.primary} style={styles.cardIcon} />
-                            <Text style={styles.sectionTitle}>Speech Behavior</Text>
+                            <Text style={styles.sectionTitle}>{t('voiceSettings.behaviorSectionTitle')}</Text>
                         </View>
                         <View style={styles.cardContent}>
                             {/* Highlight Word */}
                             <View style={styles.switchRow}>
                                 <FontAwesomeIcon icon={faHighlighter} size={fonts.body * 1.1} color={theme.textSecondary} style={styles.switchIcon}/>
-                                <Text style={styles.switchLabel}>Highlight Spoken Word</Text>
-                                <Switch value={localSettings.highlightWord} onValueChange={(v) => handleSettingChange('highlightWord', v)} {...switchStyles} disabled={isSaving} accessibilityLabel="Highlight spoken word switch"/>
+                                <Text style={styles.switchLabel}>{t('voiceSettings.highlightLabel')}</Text>
+                                <Switch value={localSettings.highlightWord} onValueChange={(v) => handleSettingChange('highlightWord', v)} {...switchStyles} disabled={isSaving} accessibilityLabel={t('voiceSettings.highlightAccessibilityLabel')}/>
                             </View>
                             {/* Speak Punctuation */}
                             <View style={styles.switchRow}>
                                 <FontAwesomeIcon icon={faClosedCaptioning} size={fonts.body * 1.1} color={theme.textSecondary} style={styles.switchIcon}/>
-                                <Text style={styles.switchLabel}>Speak Punctuation</Text>
-                                <Switch value={localSettings.speakPunctuation} onValueChange={(v) => handleSettingChange('speakPunctuation', v)} {...switchStyles} disabled={isSaving} accessibilityLabel="Speak punctuation switch"/>
+                                <Text style={styles.switchLabel}>{t('voiceSettings.punctuationLabel')}</Text>
+                                <Switch value={localSettings.speakPunctuation} onValueChange={(v) => handleSettingChange('speakPunctuation', v)} {...switchStyles} disabled={isSaving} accessibilityLabel={t('voiceSettings.punctuationAccessibilityLabel')}/>
                             </View>
-                            <Text style={styles.infoText}>Note: Highlighting and punctuation require custom app logic.</Text>
+                            <Text style={styles.infoText}>{t('voiceSettings.behaviorNote')}</Text>
                         </View>
                     </View>
 
@@ -250,10 +374,10 @@ const SymbolVoiceOverScreen: React.FC<SymbolVoiceOverScreenProps> = ({
                             onPress={handlePreview}
                             disabled={isPreviewDisabled || isSpeaking}
                             accessibilityRole="button"
-                            accessibilityLabel={isSpeaking ? "Stop speech preview" : "Preview voice settings"}
+                            accessibilityLabel={isSpeaking ? t('voiceSettings.stopPreview') : t('voiceSettings.preview')}
                         >
                             <FontAwesomeIcon icon={faPlayCircle} size={fonts.button * 1.1} color={theme.white} style={styles.buttonIcon}/>
-                            <Text style={styles.previewButtonText}>{isSpeaking ? 'Stop Preview' : 'Preview Voice'}</Text>
+                            <Text style={styles.previewButtonText}>{isSpeaking ? t('voiceSettings.stopPreview') : t('voiceSettings.preview')}</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
@@ -261,10 +385,10 @@ const SymbolVoiceOverScreen: React.FC<SymbolVoiceOverScreenProps> = ({
                             onPress={handleReset}
                             disabled={isResetDisabled}
                             accessibilityRole="button"
-                            accessibilityLabel="Reset changes to last saved settings"
+                            accessibilityLabel={t('common.resetChanges')}
                         >
                             <FontAwesomeIcon icon={faUndo} size={fonts.caption * 1.1} color={!isResetDisabled ? theme.textSecondary : theme.disabled} style={styles.buttonIcon}/>
-                            <Text style={[styles.resetButtonText, !isResetDisabled && styles.textEnabledUnderline, isResetDisabled && styles.textDisabled]}>Reset Changes</Text>
+                            <Text style={[styles.resetButtonText, !isResetDisabled && styles.textEnabledUnderline, isResetDisabled && styles.textDisabled]}>{t('common.resetChanges')}</Text>
                         </TouchableOpacity>
                     </View>
                 </>
@@ -274,10 +398,10 @@ const SymbolVoiceOverScreen: React.FC<SymbolVoiceOverScreenProps> = ({
 };
 
 
-// --- Helper Function for Themed Styles ---
+// --- Styles (Keep createThemedStyles as is) ---
 const createThemedStyles = (theme: ThemeColors, fonts: FontSizes) => StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: theme.background }, // Use theme for safe area
-    screenContainer: { flex: 1, backgroundColor: theme.background }, // Use theme for screen bg
+    safeArea: { flex: 1, backgroundColor: theme.background },
+    screenContainer: { flex: 1, backgroundColor: theme.background },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background },
     loadingText: { marginTop: 15, fontSize: fonts.body, color: theme.textSecondary },
     header: { backgroundColor: theme.primary, paddingTop: Platform.OS === 'android' ? 10 : 0, paddingBottom: 12, paddingHorizontal: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.1)', },
@@ -294,8 +418,8 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes) => StyleSheet.
     loadingIndicator: { marginVertical: 20, },
     errorText: { textAlign: 'center', color: errorColor, marginVertical: 15, paddingHorizontal: 10, fontSize: fonts.body, },
     pickerContainer: { borderWidth: 1, borderColor: theme.border, borderRadius: 8, marginBottom: 10, backgroundColor: theme.background, overflow: 'hidden', },
-    picker: { height: Platform.OS === 'ios' ? 200 : 50, color: theme.text, }, // Themed picker text color
-    pickerItem: { color: theme.text, fontSize: fonts.body, }, // Themed item text color (iOS)
+    picker: { height: Platform.OS === 'ios' ? 200 : 50, color: theme.text, },
+    pickerItem: { color: theme.text, fontSize: fonts.body, },
     settingSection: { marginBottom: 20, },
     settingLabel: { fontSize: fonts.label, fontWeight: '500', color: theme.text, marginBottom: 8, },
     sliderControlRow: { flexDirection: 'row', alignItems: 'center', },

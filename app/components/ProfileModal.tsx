@@ -3,17 +3,16 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     View, Text, TouchableOpacity, StyleSheet, Modal, SafeAreaView, Image, TextInput,
     Dimensions, ActivityIndicator, Keyboard, TouchableWithoutFeedback, Platform, ScrollView,
-    Alert // Ensure Alert is imported
+    Alert
 } from 'react-native';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import {
     faTimes, faSignOutAlt, faPen, faCheck, faCamera, faUserCircle
 } from '@fortawesome/free-solid-svg-icons';
-// Removed LinearGradient import
-// import LinearGradient from 'react-native-linear-gradient';
+import { useTranslation } from 'react-i18next'; // <-- Import i18next hook
 
 // --- Import Appearance Context ---
-import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext'; // Adjust path
+import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext';
 
 // --- Dummy Data & Constants ---
 const AVATAR_LIBRARY = [
@@ -26,8 +25,8 @@ const FALLBACK_AVATAR_ICON = faUserCircle;
 const screenWidth = Dimensions.get('window').width;
 const modalWidth = Math.min(screenWidth * 0.9, 400);
 const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
-const errorColor = '#dc3545'; // Keep distinct error color or add to theme
-const successColor = '#198754'; // Keep distinct success color or add to theme
+const errorColor = '#dc3545';
+const successColor = '#198754';
 
 // --- Component Props Interface ---
 interface ProfileModalProps {
@@ -36,7 +35,7 @@ interface ProfileModalProps {
     userProfile?: {
         name: string;
         email: string;
-        avatar?: string; // URI string
+        avatar?: string;
     };
     onLogout?: () => void;
     onSave?: (name: string, avatarUri?: string | null) => Promise<void> | void;
@@ -50,14 +49,16 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
     onLogout,
     onSave,
 }) => {
-    // --- Context ---
+    // --- Hooks ---
     const { theme, fonts } = useAppearance();
+    const { t } = useTranslation(); // <-- Use the translation hook
 
     // --- Dynamic Styles ---
     const styles = useMemo(() => createThemedStyles(theme, fonts), [theme, fonts]);
 
     // Default profile if none provided
-    const profile = userProfile || { name: 'User', email: 'user@example.com', avatar: undefined };
+    const defaultUserName = t('profile.defaultUserName'); // Get default name from translations
+    const profile = userProfile || { name: defaultUserName, email: 'user@example.com', avatar: undefined };
 
     // State
     const [currentName, setCurrentName] = useState(profile.name);
@@ -82,21 +83,31 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
     // Handlers
     const handleSave = async () => {
         const trimmedName = currentName.trim();
-        if (trimmedName === '') { setSaveError('Name cannot be empty.'); return; }
+        if (trimmedName === '') {
+            setSaveError(t('profile.errors.nameEmpty')); // Use t()
+            return;
+        }
         setSaveError(null);
         setIsSaving(true);
         Keyboard.dismiss();
         try {
             if (onSave) { await onSave(trimmedName, currentAvatarUri); }
-            setIsEditingName(false);
-        } catch (error) { console.error("Error saving profile:", error); setSaveError("Failed to save changes."); }
+            setIsEditingName(false); // Close editing mode on successful save
+        } catch (error) {
+            console.error("Error saving profile:", error);
+            setSaveError(t('profile.errors.saveFail')); // Use t()
+        }
         finally { setIsSaving(false); }
     };
 
     const dismissKeyboardAndReset = () => {
         Keyboard.dismiss();
-        if (isEditingName) { setIsEditingName(false); setCurrentName(profile.name); setSaveError(null); }
-        // onClose(); // Decide if background tap closes modal
+        if (isEditingName) {
+            setIsEditingName(false);
+            setCurrentName(profile.name); // Reset to original name if editing was cancelled
+            setSaveError(null);
+        }
+        // onClose(); // Removed direct close on background tap, can be added back if desired
     };
 
     const handleInternalLogout = () => { if (onLogout) { onLogout(); } };
@@ -113,25 +124,24 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                 <SafeAreaView style={styles.modalBackground}>
                     <TouchableWithoutFeedback accessible={false}>
                         <View style={styles.modalContainer}>
-                            {/* Header - Use solid color from theme */}
+                            {/* Header */}
                             <View style={styles.header}>
                                 <View style={styles.headerButtonPlaceholder} />
-                                <Text style={styles.title}>User Profile</Text>
+                                <Text style={styles.title}>{t('profile.title')}</Text>
                                 <TouchableOpacity
                                     style={styles.headerButton}
                                     onPress={onClose}
                                     hitSlop={hitSlop}
-                                    accessibilityLabel="Close profile">
+                                    accessibilityLabel={t('profile.closeAccessibilityLabel')}>
                                     <FontAwesomeIcon icon={faTimes} size={fonts.h2 * 0.9} color={theme.white} />
                                 </TouchableOpacity>
                             </View>
-                            {/* --- End Header --- */}
 
                             {/* Scrollable Content */}
                             <ScrollView contentContainerStyle={styles.contentContainer} keyboardShouldPersistTaps="handled">
                                 {/* Avatar Area */}
                                 <View style={styles.avatarSection}>
-                                    <TouchableOpacity style={styles.avatarTouchable} onPress={() => setShowAvatarOptions(true)} activeOpacity={0.8}>
+                                    <TouchableOpacity style={styles.avatarTouchable} onPress={() => setShowAvatarOptions(true)} activeOpacity={0.8} accessibilityLabel={t('profile.changeAvatarAccessibilityLabel')}>
                                         {currentAvatarUri ? (
                                             <Image source={{ uri: currentAvatarUri }} style={styles.avatarImage} />
                                         ) : (
@@ -147,13 +157,13 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
 
                                 {/* Name Edit Section */}
                                 <View style={styles.fieldContainer}>
-                                    <Text style={styles.fieldLabel}>Name</Text>
+                                    <Text style={styles.fieldLabel}>{t('profile.nameLabel')}</Text>
                                     <View style={styles.nameInputContainer}>
                                         <TextInput
                                             style={[styles.textInput, isEditingName && styles.textInputEditing]}
                                             value={currentName}
                                             onChangeText={(text) => { setCurrentName(text); if (saveError) setSaveError(null); }}
-                                            placeholder="Enter your name"
+                                            placeholder={t('profile.namePlaceholder')}
                                             placeholderTextColor={theme.disabled}
                                             maxLength={40}
                                             returnKeyType="done"
@@ -164,11 +174,11 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                                             keyboardAppearance={theme.isDark ? 'dark' : 'light'}
                                         />
                                         {isEditingName ? (
-                                             <TouchableOpacity style={styles.inlineEditButton} onPress={handleSave} disabled={!canSaveChanges || isSaving}>
+                                             <TouchableOpacity style={styles.inlineEditButton} onPress={handleSave} disabled={!canSaveChanges || isSaving} accessibilityLabel={t('profile.saveNameAccessibilityLabel')}>
                                                 {isSaving ? <ActivityIndicator size="small" color={theme.primary} /> : <FontAwesomeIcon icon={faCheck} size={fonts.body * 1.1} color={canSaveChanges ? successColor : theme.disabled} />}
                                             </TouchableOpacity>
                                         ) : (
-                                            <TouchableOpacity style={styles.inlineEditButton} onPress={() => setIsEditingName(true)} accessibilityLabel="Edit name">
+                                            <TouchableOpacity style={styles.inlineEditButton} onPress={() => setIsEditingName(true)} accessibilityLabel={t('profile.editNameAccessibilityLabel')}>
                                                 <FontAwesomeIcon icon={faPen} size={fonts.body * 0.9} color={theme.primary} />
                                             </TouchableOpacity>
                                         )}
@@ -177,14 +187,13 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
 
                                 {/* Email Display Section */}
                                 <View style={styles.fieldContainer}>
-                                    <Text style={styles.fieldLabel}>Email</Text>
+                                    <Text style={styles.fieldLabel}>{t('profile.emailLabel')}</Text>
                                     <Text style={styles.emailText}>{profile.email}</Text>
                                 </View>
 
                                 {/* Error Display */}
                                 {saveError && <Text style={styles.errorText}>{saveError}</Text>}
 
-                                {/* Divider */}
                                 <View style={styles.divider} />
 
                                 {/* Logout Button */}
@@ -193,10 +202,10 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                                     onPress={handleInternalLogout}
                                     activeOpacity={0.8}
                                     disabled={isSaving}
-                                    accessibilityLabel="Logout"
+                                    accessibilityLabel={t('profile.logout')}
                                 >
                                     <FontAwesomeIcon icon={faSignOutAlt} size={fonts.button} color={errorColor} style={styles.buttonIcon} />
-                                    <Text style={[styles.buttonText, styles.logoutText]}>Logout</Text>
+                                    <Text style={[styles.buttonText, styles.logoutText]}>{t('profile.logout')}</Text>
                                 </TouchableOpacity>
                             </ScrollView>
                         </View>
@@ -208,7 +217,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                             <View style={styles.avatarOptionsOverlay}>
                                 <TouchableWithoutFeedback accessible={false}>
                                     <View style={styles.avatarOptionsContainer}>
-                                        <Text style={styles.avatarOptionsTitle}>Select Avatar</Text>
+                                        <Text style={styles.avatarOptionsTitle}>{t('profile.selectAvatarTitle')}</Text>
                                         <View style={styles.avatarGrid}>
                                             {AVATAR_LIBRARY.map((avatar) => (
                                                 <TouchableOpacity
@@ -216,7 +225,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                                                     style={[styles.avatarOption, currentAvatarUri === avatar.uri && styles.avatarOptionSelected]}
                                                     onPress={() => handleAvatarSelect(avatar.uri)}
                                                     activeOpacity={0.7}
-                                                    accessibilityLabel={`Select avatar ${avatar.id}`}
+                                                    accessibilityLabel={t('profile.selectAvatarAccessibilityLabel', { id: avatar.id })}
                                                     accessibilityState={{selected: currentAvatarUri === avatar.uri}}
                                                 >
                                                     <Image source={{ uri: avatar.uri }} style={styles.avatarOptionImage} />
@@ -225,15 +234,15 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                                             <TouchableOpacity
                                                 style={styles.avatarUploadOption}
                                                 activeOpacity={0.7}
-                                                onPress={() => Alert.alert("Upload", "Image upload coming soon!")}
-                                                accessibilityLabel="Upload custom avatar (coming soon)"
+                                                onPress={() => Alert.alert(t('profile.uploadAvatarTitle'), t('profile.uploadAvatarMessage'))}
+                                                accessibilityLabel={t('profile.uploadAvatarAccessibilityLabel')}
                                             >
                                                 <FontAwesomeIcon icon={faCamera} size={fonts.h1 * 0.9} color={theme.disabled} />
-                                                <Text style={styles.uploadText}>(Upload)</Text>
+                                                <Text style={styles.uploadText}>{t('profile.uploadAvatarPlaceholder')}</Text>
                                             </TouchableOpacity>
                                         </View>
-                                        <TouchableOpacity style={styles.closeAvatarOptionsButton} onPress={() => setShowAvatarOptions(false)} accessibilityLabel="Cancel avatar selection">
-                                            <Text style={styles.closeAvatarOptionsText}>Cancel</Text>
+                                        <TouchableOpacity style={styles.closeAvatarOptionsButton} onPress={() => setShowAvatarOptions(false)} accessibilityLabel={t('common.cancel')}>
+                                            <Text style={styles.closeAvatarOptionsText}>{t('common.cancel')}</Text>
                                         </TouchableOpacity>
                                     </View>
                                 </TouchableWithoutFeedback>
@@ -246,12 +255,11 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
     );
 };
 
-// --- Helper Function for Themed Styles ---
-// (Keep createThemedStyles function exactly as it was in the previous correct answer)
+// --- Styles (Unchanged from your previous version) ---
 const createThemedStyles = (theme: ThemeColors, fonts: FontSizes) => StyleSheet.create({
     modalBackground: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.6)', },
     modalContainer: { width: modalWidth, backgroundColor: theme.background, borderRadius: 16, overflow: 'hidden', maxHeight: '90%', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 18, elevation: 15, borderWidth: theme.isDark ? 1 : 0, borderColor: theme.border, },
-    header: { paddingVertical: 15, paddingHorizontal: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: theme.primary, }, // Solid background
+    header: { paddingVertical: 15, paddingHorizontal: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: theme.primary, },
     title: { fontSize: fonts.h2, fontWeight: '600', color: theme.white, },
     headerButton: { padding: 6, minWidth: 35, alignItems: 'center' },
     headerButtonPlaceholder: { minWidth: 35 },

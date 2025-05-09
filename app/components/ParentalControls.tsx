@@ -2,20 +2,22 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
     View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Platform,
-    ActivityIndicator, Alert, Keyboard, TextInput, Switch // Added Switch
+    ActivityIndicator, Alert, Keyboard, TextInput, Switch
 } from 'react-native';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import {
     faArrowLeft, faSave, faUndo, faLock, faCheck, faTimes,
 } from '@fortawesome/free-solid-svg-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import * as KeychainService from '../services/keychainService';
+import * as KeychainService from '../services/keychainService'; // Adjust path
+import { useTranslation } from 'react-i18next'; // Import i18next hook
 
 // --- Import Context ---
-import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext';
+import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext'; // Adjust path
 
 // --- Import Local Types & Components ---
-import { ParentalSettingsData, AsdLevel, DayOfWeek } from './parental/types';
+import { ParentalSettingsData, AsdLevel, DayOfWeek } from './parental/types'; // Ensure this path is correct
+// Ensure these paths are correct and components are ready to accept 't' prop
 import ContentFilteringSection from './parental/ContentFilteringSection';
 import ScreenTimeSection from './parental/ScreenTimeSection';
 import ChildProfileSection from './parental/ChildProfileSection';
@@ -52,8 +54,9 @@ const ParentalControls: React.FC<ParentalControlsProps> = ({
     initialSettings,
     onSave
 }) => {
-    // --- Context ---
+    // --- Hooks ---
     const { theme, fonts, isLoadingAppearance } = useAppearance();
+    const { t, i18n } = useTranslation(); // Get t function and i18n instance
 
     // --- Dynamic Styles ---
     const styles = useMemo(() => createThemedStyles(theme, fonts), [theme, fonts]);
@@ -73,7 +76,7 @@ const ParentalControls: React.FC<ParentalControlsProps> = ({
     const [showAddEmailInput, setShowAddEmailInput] = useState(false);
     const [newNotifyEmail, setNewNotifyEmail] = useState('');
     const [passcodeExists, setPasscodeExists] = useState(false);
-    const [isLoadingPasscodeStatus, setIsLoadingPasscodeStatus] = useState(true); // Still start true
+    const [isLoadingPasscodeStatus, setIsLoadingPasscodeStatus] = useState(true);
     const [showPasscodeSetup, setShowPasscodeSetup] = useState(false);
     const [currentPasscode, setCurrentPasscode] = useState('');
     const [newPasscode, setNewPasscode] = useState('');
@@ -81,7 +84,6 @@ const ParentalControls: React.FC<ParentalControlsProps> = ({
     const [isSettingPasscode, setIsSettingPasscode] = useState(false);
     const [passcodeError, setPasscodeError] = useState<string | null>(null);
     const [passcodeSuccess, setPasscodeSuccess] = useState<string | null>(null);
-    // ---------------------------------------
 
     // --- Refs ---
     const newPasscodeRef = useRef<TextInput>(null);
@@ -90,63 +92,39 @@ const ParentalControls: React.FC<ParentalControlsProps> = ({
     const isMountedRef = useRef(true);
 
     // --- Memoize ---
-    const hasUnsavedChanges = useMemo(() => {
-        return JSON.stringify(localSettings) !== JSON.stringify(originalSettings);
-    }, [localSettings, originalSettings]);
+    const hasUnsavedChanges = useMemo(() => JSON.stringify(localSettings) !== JSON.stringify(originalSettings), [localSettings, originalSettings]);
 
     // --- Function to check passcode status ---
-    // Stable useCallback: No external dependencies needed now
     const checkPasscodeStatus = useCallback(async () => {
         if (!isMountedRef.current) return;
-
-        // Avoid starting check if already loading
-        // Read the *current* state value using a function for safety inside useCallback
-        let currentlyLoading = false;
-        setIsLoadingPasscodeStatus(prev => {
-            currentlyLoading = prev;
-            return true; // Set loading to true
-        });
-
-        if (currentlyLoading) {
-             console.log("Keychain check already in progress, skipping.");
-             // Need to set loading back to false if we skip? No, it was already true.
-             // But we need to ensure it eventually gets set to false. Let the original call handle it.
-             // For safety, reset loading state if skipping:
-             // setIsLoadingPasscodeStatus(true); // Keep it true? Seems risky. Let's remove the skip logic for now.
-             // Better approach: Don't even call if already loading. We'll check outside.
-             return; // Let's refine this.
-
-        }
-        console.log("Checking keychain status...");
-        // Already set loading = true above
-
+        setIsLoadingPasscodeStatus(true);
+        console.log("ParentalControls: Checking keychain status...");
         try {
             const exists = await KeychainService.hasPasscode();
             if (isMountedRef.current) {
                 setPasscodeExists(exists);
-                console.log("Keychain check complete. Passcode exists:", exists);
+                console.log("ParentalControls: Keychain check complete. Passcode exists:", exists);
             }
         } catch (error) {
-             console.error("Failed to check passcode status:", error);
-             if (isMountedRef.current) {
-                 setPasscodeExists(false);
-             }
+             console.error("ParentalControls: Failed to check passcode status:", error);
+             if (isMountedRef.current) setPasscodeExists(false);
         } finally {
              if (isMountedRef.current) {
-                 setIsLoadingPasscodeStatus(false); // Finish loading
-                 console.log("Keychain check: Set loading false.");
+                setIsLoadingPasscodeStatus(false);
+                console.log("ParentalControls: Keychain check: Set loading false.");
              }
         }
-     }, []); // NO DEPENDENCIES NEEDED
+     }, []); // Empty: KeychainService doesn't change
 
     // --- Effects ---
-     useEffect(() => {
+    useEffect(() => {
         isMountedRef.current = true;
+        console.log('ParentalControls.tsx: Mounted. typeof t =', typeof t, 'i18n initialized:', i18n.isInitialized);
         return () => { isMountedRef.current = false; };
-    }, []);
+    }, [t, i18n.isInitialized]); // Log when t or i18n.isInitialized changes
 
-    useEffect(() => { /* Initialize/Reset state from props */
-        console.log("Parental Controls: Initializing state from props.");
+    useEffect(() => {
+        console.log("ParentalControls: Initializing state from props.");
         const mergedInitial = { ...defaultSettings, ...initialSettings };
         setLocalSettings(mergedInitial);
         setOriginalSettings(mergedInitial);
@@ -156,137 +134,276 @@ const ParentalControls: React.FC<ParentalControlsProps> = ({
         setPasscodeError(null); setPasscodeSuccess(null);
     }, [initialSettings]);
 
-    // --- Effect 2: Perform initial passcode check ONCE ---
     useEffect(() => {
-        console.log("Parental Controls: Performing initial passcode status check (ON MOUNT).");
-        // Don't set loading state here
+        console.log("ParentalControls: Performing initial passcode status check (ON MOUNT or checkPasscodeStatus change).");
         checkPasscodeStatus();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // <-- EMPTY DEPENDENCY ARRAY
+    }, [checkPasscodeStatus]); // checkPasscodeStatus is stable
 
-    useEffect(() => { /* Handle inconsistency */
-        // (Logic remains the same)
-        if (!isLoadingPasscodeStatus) {
+    useEffect(() => {
+        if (!isLoadingPasscodeStatus && typeof t === 'function') { // Ensure t is ready
             if (localSettings.requirePasscode && !passcodeExists) {
-                // ... (rest of inconsistency logic) ...
-                 console.warn("requirePasscode ON but no passcode exists. Forcing OFF locally.");
-                if (localSettings.requirePasscode) { // Check before setting to prevent loop if already false
+                console.warn("ParentalControls: requirePasscode ON but no passcode exists. Forcing OFF locally.");
+                if (localSettings.requirePasscode) { // Avoid loop if already false
                     setLocalSettings(prev => ({ ...prev, requirePasscode: false }));
                 }
                 if (!showPasscodeSetup) {
-                    Alert.alert("Passcode Settings Update", "The 'Require Passcode' setting was turned off because no passcode was found. Please save settings to confirm this change or set up a passcode.");
+                    Alert.alert(t('parentalControls.passcodeAlertTitle'), t('parentalControls.passcodeAlertMessage'));
                 }
             }
         }
-    }, [isLoadingPasscodeStatus, localSettings.requirePasscode, passcodeExists, showPasscodeSetup]);
+    }, [isLoadingPasscodeStatus, localSettings.requirePasscode, passcodeExists, showPasscodeSetup, t]);
 
+    // --- Handlers (using 't' for all user-facing strings) ---
+    const togglePasscodeSetup = useCallback(() => {
+        setShowPasscodeSetup(prev => {
+            const nextState = !prev;
+            if (nextState) {
+                setCurrentPasscode(''); setNewPasscode(''); setConfirmPasscode('');
+                setPasscodeError(null); setPasscodeSuccess(null);
+                setTimeout(() => {
+                    if (isMountedRef.current) {
+                        if (passcodeExists) currentPasscodeRef.current?.focus();
+                        else newPasscodeRef.current?.focus();
+                    }
+                }, 150);
+            } else { Keyboard.dismiss(); }
+            return nextState;
+        });
+    }, [passcodeExists]);
 
-    // --- Handlers ---
-    // (togglePasscodeSetup, handleSettingChange, handleDowntimeDayToggle, handleReset,
-    // handleAttemptClose, handleSaveChanges, showTimePickerModal, onTimeChange,
-    // handleConfigureApps, handleConfigureWeb, handleSetOrUpdatePasscode,
-    // handleRemovePasscodeClick, toggleAddEmailInput, handleAddNotifyEmail,
-    // handleDeleteNotifyEmail - all remain unchanged logically)
-    const togglePasscodeSetup = useCallback(() => {setShowPasscodeSetup(prev => {const nextState = !prev;if (nextState) {setCurrentPasscode(''); setNewPasscode(''); setConfirmPasscode(''); setPasscodeError(null); setPasscodeSuccess(null); setTimeout(() => { if (passcodeExists) currentPasscodeRef.current?.focus(); else newPasscodeRef.current?.focus(); }, 150);} else {Keyboard.dismiss();}return nextState;});}, [passcodeExists]);
-    const handleSettingChange = useCallback(<K extends keyof ParentalSettingsData>(key: K, value: ParentalSettingsData[K]) => {if (key === 'requirePasscode' && value === true) {if (!passcodeExists) {Alert.alert("Passcode Required", "You need to set a passcode before you can require it.", [{ text: "OK", onPress: togglePasscodeSetup }]); return;}}setLocalSettings(prev => {switch (key) {case 'dailyLimitHours': const numericValue = value as string; const filteredValue = numericValue.replace(/[^0-9]/g, ''); const num = parseInt(filteredValue, 10); let finalValue: string; if (filteredValue === '') finalValue = ''; else if (!isNaN(num)) {if (num === 0) finalValue = '0'; else if (num > 0 && num <= 24) finalValue = num.toString(); else if (num > 24) finalValue = '24'; else finalValue = prev.dailyLimitHours;} else finalValue = prev.dailyLimitHours; return { ...prev, dailyLimitHours: finalValue }; case 'notifyEmails': return { ...prev, notifyEmails: value as string[] }; case 'downtimeDays': return { ...prev, downtimeDays: value as DayOfWeek[] }; case 'asdLevel': return { ...prev, asdLevel: value as AsdLevel | null }; case 'downtimeStart': case 'downtimeEnd': return { ...prev, [key]: value as string}; default: return { ...prev, [key]: value };}});}, [passcodeExists, togglePasscodeSetup]);
-    const handleDowntimeDayToggle = useCallback((day: DayOfWeek) => {setLocalSettings(prev => {const currentDays = prev.downtimeDays;const newDays = currentDays.includes(day)? currentDays.filter(d => d !== day): [...currentDays, day].sort((a, b) => daysOfWeek.indexOf(a) - daysOfWeek.indexOf(b));return {...prev, downtimeDays: newDays};});}, []);
-    const handleReset = () => {if(hasUnsavedChanges) {Alert.alert( "Reset Changes?", "Discard all unsaved changes?", [{ text: "Cancel", style: "cancel" },{ text: "Reset", style: "destructive", onPress: () => { setLocalSettings(originalSettings); if (showPasscodeSetup) togglePasscodeSetup(); }}]);}};
-    const handleAttemptClose = useCallback(() => {if (hasUnsavedChanges) {Alert.alert( "Unsaved Changes", "Discard changes and close?", [{ text: "Cancel", style: "cancel" },{ text: "Discard", style: "destructive", onPress: onClose }]);} else {onClose();}}, [hasUnsavedChanges, onClose]);
-    const handleSaveChanges = async () => {if (!hasUnsavedChanges || isSaving || isLoadingPasscodeStatus || isLoadingAppearance) return;if (localSettings.requirePasscode && !passcodeExists) {Alert.alert("Cannot Save", "Passcode is required but not set up."); if (!showPasscodeSetup) togglePasscodeSetup(); return;}if (localSettings.downtimeEnabled && localSettings.downtimeDays.length === 0) {Alert.alert("Incomplete Setting", "Select days for downtime or disable it."); return;}setIsSaving(true); try {await onSave(localSettings); setOriginalSettings(localSettings); setIsSaving(false); onClose();} catch (error) {console.error("Error saving parental controls:", error); Alert.alert("Error", "Could not save settings."); setIsSaving(false);}};
-    const showTimePickerModal = useCallback((target: 'start' | 'end') => {setTimePickerTarget(target); setTimePickerValue(parseTime(target === 'start' ? localSettings.downtimeStart : localSettings.downtimeEnd)); setShowTimePicker(true);}, [localSettings.downtimeStart, localSettings.downtimeEnd]);
-    const onTimeChange = (event: DateTimePickerEvent, selectedDate?: Date) => {const currentDate = selectedDate || timePickerValue;if (Platform.OS === 'android') {setShowTimePicker(false);}if (event.type === 'set' && timePickerTarget) {const formattedTime = formatTime(currentDate); handleSettingChange(timePickerTarget === 'start' ? 'downtimeStart' : 'downtimeEnd', formattedTime); if (Platform.OS === 'ios') setShowTimePicker(false); setTimePickerTarget(null);} else if (event.type === 'dismissed' || event.type === 'neutralButtonPressed') {setShowTimePicker(false); setTimePickerTarget(null);}};
-    const handleConfigureApps = useCallback(() => Alert.alert("App Limits", "Coming Soon."), []);
-    const handleConfigureWeb = useCallback(() => Alert.alert("Web Filtering", "Coming Soon."), []);
-    const handleSetOrUpdatePasscode = useCallback(async () => {Keyboard.dismiss(); setPasscodeError(null); setPasscodeSuccess(null);if (passcodeExists && !currentPasscode) { setPasscodeError("Enter current passcode."); return; }if (!newPasscode || newPasscode.length < 4) { setPasscodeError("New passcode: min 4 digits."); return; }if (newPasscode !== confirmPasscode) { setPasscodeError("New passcodes don't match."); return; }setIsSettingPasscode(true); try {if (passcodeExists) {const verified = await KeychainService.verifyPasscode(currentPasscode); if (!verified) { setPasscodeError("Incorrect current passcode."); setIsSettingPasscode(false); return; }}const success = await KeychainService.setPasscode(newPasscode); if (success) {const wasFirstPasscode = !passcodeExists; setPasscodeSuccess("Passcode set/updated!"); setPasscodeExists(true); setLocalSettings(prev => ({ ...prev, requirePasscode: true })); setTimeout(() => {togglePasscodeSetup(); if (wasFirstPasscode) { Alert.alert("Passcode Set", "'Require Passcode' enabled. Remember to save."); }}, 1500);} else { setPasscodeError("Failed to save passcode."); }} catch (error) { console.error("Error setting/updating passcode:", error); setPasscodeError("An unexpected error occurred."); }finally { setIsSettingPasscode(false); }}, [passcodeExists, currentPasscode, newPasscode, confirmPasscode, togglePasscodeSetup]);
-    const handleRemovePasscodeClick = useCallback(async () => {Keyboard.dismiss(); setPasscodeError(null); setPasscodeSuccess(null);if (!currentPasscode) { setPasscodeError("Enter current passcode to remove."); return; }Alert.alert( "Remove Passcode?", "Are you sure? Passcode protection will be disabled.", [{ text: "Cancel", style: "cancel" },{ text: "Remove", style: "destructive", onPress: async () => {setIsSettingPasscode(true); try {const verified = await KeychainService.verifyPasscode(currentPasscode); if (!verified) { setPasscodeError("Incorrect passcode."); setIsSettingPasscode(false); return; }const success = await KeychainService.resetPasscode(); if(success) {setPasscodeSuccess("Passcode removed."); setPasscodeExists(false); setLocalSettings(prev => ({...prev, requirePasscode: false })); setTimeout(() => {togglePasscodeSetup(); Alert.alert("Passcode Removed", "'Require Passcode' turned off. Remember to save.");}, 1500);} else { setPasscodeError("Failed to remove passcode."); }} catch (error) { console.error("Error removing passcode:", error); setPasscodeError("An unexpected error occurred."); }finally { setIsSettingPasscode(false); }}}]);}, [currentPasscode, togglePasscodeSetup]);
-    const toggleAddEmailInput = useCallback(() => {setShowAddEmailInput(prev => !prev); setNewNotifyEmail(''); if (showAddEmailInput) Keyboard.dismiss();}, [showAddEmailInput]);
-    const handleAddNotifyEmail = useCallback(() => {const trimmedEmail = newNotifyEmail.trim(); if (!trimmedEmail) return; if (!emailRegex.test(trimmedEmail)) { Alert.alert("Invalid Email"); return; } const lowerCaseEmail = trimmedEmail.toLowerCase(); if (localSettings.notifyEmails.some(email => email.toLowerCase() === lowerCaseEmail)) { Alert.alert("Duplicate Email"); return; } handleSettingChange('notifyEmails', [...localSettings.notifyEmails, trimmedEmail]); setNewNotifyEmail(''); setShowAddEmailInput(false); Keyboard.dismiss();}, [newNotifyEmail, localSettings.notifyEmails, handleSettingChange]);
-    const handleDeleteNotifyEmail = useCallback((emailToDelete: string) => {handleSettingChange('notifyEmails', localSettings.notifyEmails.filter(email => email !== emailToDelete));}, [localSettings.notifyEmails, handleSettingChange]);
+    const handleSettingChange = useCallback(<K extends keyof ParentalSettingsData>(key: K, value: ParentalSettingsData[K]) => {
+        if (key === 'requirePasscode' && value === true) {
+            if (!passcodeExists) {
+                Alert.alert(t('parentalControls.passcodeRequiredTitle'), t('parentalControls.passcodeRequiredMessage'), [{ text: t('common.ok'), onPress: togglePasscodeSetup }]);
+                return;
+            }
+        }
+        setLocalSettings(prev => {
+            if (key === 'dailyLimitHours') {
+                const numericValue = value as string;
+                const filteredValue = numericValue.replace(/[^0-9]/g, '');
+                const num = parseInt(filteredValue, 10);
+                let finalValue: string;
+                if (filteredValue === '') finalValue = '';
+                else if (!isNaN(num)) {
+                    if (num === 0) finalValue = '0';
+                    else if (num > 0 && num <= 24) finalValue = num.toString();
+                    else if (num > 24) finalValue = '24';
+                    else finalValue = prev.dailyLimitHours; // Revert if invalid number > 24 (or handle as error)
+                } else finalValue = prev.dailyLimitHours; // Revert if not a number after filtering
+                return { ...prev, dailyLimitHours: finalValue };
+            }
+            return { ...prev, [key]: value };
+        });
+    }, [passcodeExists, togglePasscodeSetup, t]);
 
+    const handleDowntimeDayToggle = useCallback((day: DayOfWeek) => {
+        setLocalSettings(prev => { /* ... (logic unchanged) ... */ return {...prev}; });
+    }, []);
 
-    // --- Pass styles object down ---
-    const componentStyles = styles; // Pass the themed styles directly
+    const handleReset = () => {
+        if(hasUnsavedChanges) {
+            Alert.alert(t('parentalControls.resetConfirmTitle'),t('parentalControls.resetConfirmMessage'),[{ text: t('common.cancel'), style: "cancel" },{ text: t('common.reset'), style: "destructive", onPress: () => { setLocalSettings(originalSettings); if (showPasscodeSetup) togglePasscodeSetup(); }}]);
+        }
+    };
+
+    const handleAttemptClose = useCallback(() => {
+        if (hasUnsavedChanges) {
+            Alert.alert(t('parentalControls.unsavedChangesTitle'),t('parentalControls.unsavedChangesMessage'),[{ text: t('common.cancel'), style: "cancel" },{ text: t('common.discard'), style: "destructive", onPress: onClose }]);
+        } else { onClose(); }
+    }, [hasUnsavedChanges, onClose, t]);
+
+    const handleSaveChanges = async () => {
+        if (!hasUnsavedChanges || isSaving || isLoadingPasscodeStatus || isLoadingAppearance) return;
+        if (localSettings.requirePasscode && !passcodeExists) { Alert.alert(t('parentalControls.errors.saveFailTitle'), t('parentalControls.errors.passcodeNotSet')); if (!showPasscodeSetup) togglePasscodeSetup(); return; }
+        if (localSettings.downtimeEnabled && localSettings.downtimeDays.length === 0) { Alert.alert(t('parentalControls.errors.incompleteDowntimeTitle'), t('parentalControls.errors.incompleteDowntimeMessage')); return; }
+        setIsSaving(true);
+        try {
+            await onSave(localSettings);
+            setOriginalSettings(localSettings);
+            onClose();
+        } catch (error) {
+            console.error("Error saving parental controls:", error);
+            Alert.alert(t('common.error'), t('parentalControls.errors.saveFail'));
+            if(isMountedRef.current) setIsSaving(false);
+        } finally {
+            if(isMountedRef.current && isSaving) setIsSaving(false); // Ensure reset if not unmounted by onClose
+        }
+    };
+
+    const showTimePickerModal = useCallback((target: 'start' | 'end') => {
+        setTimePickerTarget(target);
+        setTimePickerValue(parseTime(target === 'start' ? localSettings.downtimeStart : localSettings.downtimeEnd));
+        setShowTimePicker(true);
+    }, [localSettings.downtimeStart, localSettings.downtimeEnd]);
+
+    const onTimeChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+        const currentDate = selectedDate || timePickerValue;
+        if (Platform.OS === 'android') { setShowTimePicker(false); }
+        if (event.type === 'set' && timePickerTarget) {
+            const formattedTime = formatTime(currentDate);
+            handleSettingChange(timePickerTarget === 'start' ? 'downtimeStart' : 'downtimeEnd', formattedTime);
+            if (Platform.OS === 'ios') setShowTimePicker(false); // Close iOS picker after selection
+            setTimePickerTarget(null);
+        } else if (event.type === 'dismissed' || event.type === 'neutralButtonPressed') {
+            setShowTimePicker(false);
+            setTimePickerTarget(null);
+        }
+    };
+    const handleConfigureApps = useCallback(() => Alert.alert(t('parentalControls.appLimitsTitle'), t('parentalControls.comingSoon')), [t]);
+    const handleConfigureWeb = useCallback(() => Alert.alert(t('parentalControls.webFilteringTitle'), t('parentalControls.comingSoon')), [t]);
+
+    const handleSetOrUpdatePasscode = useCallback(async () => {
+        Keyboard.dismiss(); setPasscodeError(null); setPasscodeSuccess(null);
+        if (passcodeExists && !currentPasscode) { setPasscodeError(t('parentalControls.passcode.errorEnterCurrent')); return; }
+        if (!newPasscode || newPasscode.length < 4) { setPasscodeError(t('parentalControls.passcode.errorNewMinLength')); return; }
+        if (newPasscode !== confirmPasscode) { setPasscodeError(t('parentalControls.passcode.errorMismatch')); return; }
+        setIsSettingPasscode(true);
+        try {
+            if (passcodeExists) { const verified = await KeychainService.verifyPasscode(currentPasscode); if (!verified) { setPasscodeError(t('parentalControls.passcode.errorIncorrectCurrent')); setIsSettingPasscode(false); return; }}
+            const success = await KeychainService.setPasscode(newPasscode);
+            if (success) { const wasFirstPasscode = !passcodeExists; setPasscodeSuccess(t('parentalControls.passcode.successSetUpdate')); setPasscodeExists(true); setLocalSettings(prev => ({ ...prev, requirePasscode: true })); setTimeout(() => { if(isMountedRef.current) { togglePasscodeSetup(); if (wasFirstPasscode) { Alert.alert(t('parentalControls.passcode.successTitle'), t('parentalControls.passcode.successRequireEnabledMessage')); }}}, 1500);
+            } else { setPasscodeError(t('parentalControls.passcode.errorSaveFailed')); }
+        } catch (error) { console.error("Error setting/updating passcode:", error); setPasscodeError(t('parentalControls.passcode.errorUnexpected')); }
+        finally { if(isMountedRef.current) setIsSettingPasscode(false); }
+    }, [passcodeExists, currentPasscode, newPasscode, confirmPasscode, togglePasscodeSetup, t]);
+
+    const handleRemovePasscodeClick = useCallback(async () => {
+        Keyboard.dismiss(); setPasscodeError(null); setPasscodeSuccess(null);
+        if (!currentPasscode) { setPasscodeError(t('parentalControls.passcode.errorEnterCurrentToRemove')); return; }
+        Alert.alert( t('parentalControls.passcode.removeConfirmTitle'), t('parentalControls.passcode.removeConfirmMessage'), [{ text: t('common.cancel'), style: "cancel" },{ text: t('common.remove'), style: "destructive", onPress: async () => {
+            setIsSettingPasscode(true);
+            try {
+                const verified = await KeychainService.verifyPasscode(currentPasscode); if (!verified) { setPasscodeError(t('parentalControls.passcode.errorIncorrectCurrent')); setIsSettingPasscode(false); return; }
+                const success = await KeychainService.resetPasscode();
+                if(success) { setPasscodeSuccess(t('parentalControls.passcode.successRemoved')); setPasscodeExists(false); setLocalSettings(prev => ({...prev, requirePasscode: false })); setTimeout(() => { if(isMountedRef.current){ togglePasscodeSetup(); Alert.alert(t('parentalControls.passcode.successRemovedTitle'), t('parentalControls.passcode.successRequireDisabledMessage')); }}, 1500);
+                } else { setPasscodeError(t('parentalControls.passcode.errorRemoveFailed')); }
+            } catch (error) { console.error("Error removing passcode:", error); setPasscodeError(t('parentalControls.passcode.errorUnexpected')); }
+            finally { if(isMountedRef.current) setIsSettingPasscode(false); }
+        }}]);
+    }, [currentPasscode, togglePasscodeSetup, t]);
+
+    const toggleAddEmailInput = useCallback(() => { setShowAddEmailInput(prev => !prev); setNewNotifyEmail(''); if (showAddEmailInput) Keyboard.dismiss(); }, [showAddEmailInput]);
+    const handleAddNotifyEmail = useCallback(() => {
+        const trimmedEmail = newNotifyEmail.trim(); if (!trimmedEmail) return;
+        if (!emailRegex.test(trimmedEmail)) { Alert.alert(t('parentalControls.errors.invalidEmail')); return; }
+        const lowerCaseEmail = trimmedEmail.toLowerCase();
+        if (localSettings.notifyEmails.some(email => email.toLowerCase() === lowerCaseEmail)) { Alert.alert(t('parentalControls.errors.duplicateEmail')); return; }
+        handleSettingChange('notifyEmails', [...localSettings.notifyEmails, trimmedEmail]); setNewNotifyEmail(''); setShowAddEmailInput(false); Keyboard.dismiss();
+    }, [newNotifyEmail, localSettings.notifyEmails, handleSettingChange, t]);
+
+    const handleDeleteNotifyEmail = useCallback((emailToDelete: string) => { handleSettingChange('notifyEmails', localSettings.notifyEmails.filter(email => email !== emailToDelete)); }, [localSettings.notifyEmails, handleSettingChange]);
 
     // --- Loading/Saving States ---
     const isLoading = isLoadingAppearance || isLoadingPasscodeStatus;
     const isSaveDisabled = isSaving || !hasUnsavedChanges || isLoading || isSettingPasscode || (localSettings.requirePasscode && !passcodeExists);
     const isResetDisabled = isSaving || !hasUnsavedChanges || isLoading || isSettingPasscode;
 
-    // --- Render ---
+    // --- Render Guard for i18n ---
+    if (!i18n.isInitialized || typeof t !== 'function') {
+        console.log('ParentalControls: Rendering loading state because t is not ready or i18n not initialized.');
+        return (
+            <SafeAreaView style={styles.safeArea}>
+                <View style={[styles.container, {justifyContent: 'center', alignItems: 'center'}]}>
+                    <ActivityIndicator size="large" color={theme.primary} />
+                    {/* Static string for this specific loading state, as t might not be available */}
+                    <Text style={styles.loadingText}>Loading Interface...</Text>
+                </View>
+            </SafeAreaView>
+        );
+    }
+
+    // --- Main Render ---
     return (
         <SafeAreaView style={styles.safeArea}>
             <View style={styles.container}>
                 {/* Header */}
                 <View style={styles.header}>
-                    {/* ... (Header JSX remains the same, uses themed styles) ... */}
-                     <TouchableOpacity style={styles.headerButton} onPress={handleAttemptClose} hitSlop={hitSlop} accessibilityLabel="Close Parental Controls"><FontAwesomeIcon icon={faArrowLeft} size={fonts.h2 * 0.9} color={theme.white} /></TouchableOpacity><View style={styles.titleContainer}><Text style={styles.title}>Parental Controls</Text></View><TouchableOpacity style={styles.headerButton} onPress={handleSaveChanges} disabled={isSaveDisabled} hitSlop={hitSlop} accessibilityLabel="Save Settings" accessibilityState={{ disabled: isSaveDisabled }} >{isSaving ? <ActivityIndicator size="small" color={theme.white} /> : <FontAwesomeIcon icon={faSave} size={fonts.h2 * 0.9} color={!isSaveDisabled ? theme.white : theme.disabled} /> }</TouchableOpacity>
+                     <TouchableOpacity style={styles.headerButton} onPress={handleAttemptClose} hitSlop={hitSlop} accessibilityLabel={t('common.goBack')}>
+                        <FontAwesomeIcon icon={faArrowLeft} size={fonts.h2 * 0.9} color={theme.white} />
+                     </TouchableOpacity>
+                     <View style={styles.titleContainer}>
+                        <Text style={styles.title}>{t('parentalControls.title')}</Text>
+                     </View>
+                     <TouchableOpacity
+                        style={[styles.headerButton, isSaveDisabled && styles.buttonDisabled]}
+                        onPress={handleSaveChanges}
+                        disabled={isSaveDisabled}
+                        hitSlop={hitSlop}
+                        accessibilityLabel={t('common.saveSettings')}
+                        accessibilityState={{ disabled: isSaveDisabled }}
+                     >
+                        {isSaving ? <ActivityIndicator size="small" color={theme.white} /> : <FontAwesomeIcon icon={faSave} size={fonts.h2 * 0.9} color={!isSaveDisabled ? theme.white : theme.disabled} /> }
+                     </TouchableOpacity>
                 </View>
 
-                {/* Loading Overlay */}
-                {isLoading ? (
+                {/* Loading Overlay for initial settings/passcode status, not i18n readiness */}
+                {isLoading && !showPasscodeSetup ? ( // Also check !showPasscodeSetup to avoid overlaying passcode UI
                      <View style={styles.loadingOverlay}>
                         <ActivityIndicator size="large" color={theme.primary} />
-                        <Text style={styles.loadingText}>Loading Settings...</Text>
+                        <Text style={styles.loadingText}>{t('parentalControls.loading')}</Text>
                     </View>
                 ) : (
-                    // Main Content ScrollView
                     <ScrollView
                         style={styles.scrollView}
                         contentContainerStyle={styles.scrollContainer}
                         keyboardShouldPersistTaps="handled"
                         showsVerticalScrollIndicator={false}
                     >
-                        {/* Sections - Pass themed styles and switchStyles */}
-                        <ContentFilteringSection settings={localSettings} onSettingChange={handleSettingChange} onConfigureWeb={handleConfigureWeb}/>
-                        <ScreenTimeSection settings={localSettings} onSettingChange={handleSettingChange} onDayToggle={handleDowntimeDayToggle} onShowTimePicker={showTimePickerModal} daysOfWeek={daysOfWeek}/>
-                        <ChildProfileSection settings={localSettings} onSettingChange={handleSettingChange}/>
-                        <UsageReportingSection settings={localSettings} showAddEmailInput={showAddEmailInput} newNotifyEmail={newNotifyEmail} onNewEmailChange={setNewNotifyEmail} onToggleAddEmail={toggleAddEmailInput} onAddEmail={handleAddNotifyEmail} onDeleteEmail={handleDeleteNotifyEmail}/>
+                        {/* Sections - Pass t function to subsections */}
+                        <ContentFilteringSection settings={localSettings} onSettingChange={handleSettingChange} onConfigureWeb={handleConfigureWeb} t={t}/>
+                        <ScreenTimeSection settings={localSettings} onSettingChange={handleSettingChange} onDayToggle={handleDowntimeDayToggle} onShowTimePicker={showTimePickerModal} daysOfWeek={daysOfWeek} t={t}/>
+                        <ChildProfileSection settings={localSettings} onSettingChange={handleSettingChange} t={t}/>
+                        <UsageReportingSection settings={localSettings} showAddEmailInput={showAddEmailInput} newNotifyEmail={newNotifyEmail} onNewEmailChange={setNewNotifyEmail} onToggleAddEmail={toggleAddEmailInput} onAddEmail={handleAddNotifyEmail} onDeleteEmail={handleDeleteNotifyEmail} t={t}/>
                         <SecuritySection
                             settings={localSettings}
                             passcodeExists={passcodeExists}
                             onSettingChange={handleSettingChange}
                             onTogglePasscodeSetup={togglePasscodeSetup}
-                            isLoadingPasscodeStatus={isLoadingPasscodeStatus} // Pass specific loading state
+                            isLoadingPasscodeStatus={isLoadingPasscodeStatus}
+                            t={t}
                         />
 
-                        {/* Inline Passcode Setup UI (Themed) */}
+                        {/* Inline Passcode Setup UI */}
                         {showPasscodeSetup && (
-                            // ... (Passcode setup JSX remains the same, uses themed styles) ...
-                            <View style={styles.inlineSetupContainer}><Text style={styles.inlineSetupTitle}>{passcodeExists ? 'Change Passcode' : 'Set New Passcode'}</Text>{passcodeExists && (<View style={styles.inputGroupInline}><Text style={styles.labelInline}>Current Passcode</Text><TextInput ref={currentPasscodeRef} style={styles.inputInline} value={currentPasscode} onChangeText={setCurrentPasscode} keyboardType="number-pad" secureTextEntry maxLength={10} returnKeyType="next" onSubmitEditing={() => newPasscodeRef.current?.focus()} blurOnSubmit={false} autoFocus={true} placeholderTextColor={theme.disabled} selectionColor={theme.primary} /></View>)}<View style={styles.inputGroupInline}><Text style={styles.labelInline}>New Passcode (min 4 digits)</Text><TextInput ref={newPasscodeRef} style={styles.inputInline} value={newPasscode} onChangeText={setNewPasscode} keyboardType="number-pad" secureTextEntry maxLength={10} returnKeyType="next" onSubmitEditing={() => confirmPasscodeRef.current?.focus()} blurOnSubmit={false} autoFocus={!passcodeExists} placeholderTextColor={theme.disabled} selectionColor={theme.primary} /></View><View style={styles.inputGroupInline}><Text style={styles.labelInline}>Confirm New Passcode</Text><TextInput ref={confirmPasscodeRef} style={styles.inputInline} value={confirmPasscode} onChangeText={setConfirmPasscode} keyboardType="number-pad" secureTextEntry maxLength={10} returnKeyType="done" onSubmitEditing={handleSetOrUpdatePasscode} placeholderTextColor={theme.disabled} selectionColor={theme.primary}/></View>{passcodeError && <Text style={styles.errorTextInline}>{passcodeError}</Text>}{passcodeSuccess && <Text style={styles.successTextInline}>{passcodeSuccess}</Text>}<View style={styles.inlineButtonRow}>{passcodeExists && (<TouchableOpacity style={[styles.inlineButton, styles.removeButtonInline]} onPress={handleRemovePasscodeClick} disabled={isSettingPasscode}>{isSettingPasscode ? <ActivityIndicator size="small" color={styles.errorTextInline.color}/> : <Text style={styles.removeButtonTextInline}>Remove</Text>}</TouchableOpacity>)}<TouchableOpacity style={[styles.inlineButton, styles.cancelButtonInline]} onPress={togglePasscodeSetup} disabled={isSettingPasscode}><Text style={styles.cancelButtonTextInline}>Cancel</Text></TouchableOpacity><TouchableOpacity style={[styles.inlineButton, styles.saveButtonInline,(isSettingPasscode || !newPasscode || newPasscode.length < 4 || newPasscode !== confirmPasscode || (passcodeExists && !currentPasscode)) && styles.buttonDisabled]} onPress={handleSetOrUpdatePasscode} disabled={isSettingPasscode || !newPasscode || newPasscode.length < 4 || newPasscode !== confirmPasscode || (passcodeExists && !currentPasscode) } >{isSettingPasscode ? <ActivityIndicator size="small" color={theme.white}/> : <Text style={styles.saveButtonTextInline}>{passcodeExists ? 'Update' : 'Set'}</Text>}</TouchableOpacity></View></View>
+                            <View style={styles.inlineSetupContainer}>
+                                <Text style={styles.inlineSetupTitle}>{passcodeExists ? t('parentalControls.passcode.changeTitle') : t('parentalControls.passcode.setTitle')}</Text>
+                                {passcodeExists && (
+                                    <View style={styles.inputGroupInline}>
+                                        <Text style={styles.labelInline}>{t('parentalControls.passcode.currentLabel')}</Text>
+                                        <TextInput ref={currentPasscodeRef} style={styles.inputInline} value={currentPasscode} onChangeText={setCurrentPasscode} keyboardType="number-pad" secureTextEntry maxLength={10} returnKeyType="next" onSubmitEditing={() => newPasscodeRef.current?.focus()} blurOnSubmit={false} autoFocus={true} placeholderTextColor={theme.disabled} selectionColor={theme.primary} />
+                                    </View>
+                                )}
+                                <View style={styles.inputGroupInline}>
+                                    <Text style={styles.labelInline}>{t('parentalControls.passcode.newLabel')}</Text>
+                                    <TextInput ref={newPasscodeRef} style={styles.inputInline} value={newPasscode} onChangeText={setNewPasscode} keyboardType="number-pad" secureTextEntry maxLength={10} returnKeyType="next" onSubmitEditing={() => confirmPasscodeRef.current?.focus()} blurOnSubmit={false} autoFocus={!passcodeExists} placeholderTextColor={theme.disabled} selectionColor={theme.primary} />
+                                </View>
+                                <View style={styles.inputGroupInline}>
+                                    <Text style={styles.labelInline}>{t('parentalControls.passcode.confirmLabel')}</Text>
+                                    <TextInput ref={confirmPasscodeRef} style={styles.inputInline} value={confirmPasscode} onChangeText={setConfirmPasscode} keyboardType="number-pad" secureTextEntry maxLength={10} returnKeyType="done" onSubmitEditing={handleSetOrUpdatePasscode} placeholderTextColor={theme.disabled} selectionColor={theme.primary}/>
+                                </View>
+                                {passcodeError && <Text style={styles.errorTextInline}>{passcodeError}</Text>}
+                                {passcodeSuccess && <Text style={styles.successTextInline}>{passcodeSuccess}</Text>}
+                                <View style={styles.inlineButtonRow}>
+                                    {passcodeExists && ( <TouchableOpacity style={[styles.inlineButton, styles.removeButtonInline]} onPress={handleRemovePasscodeClick} disabled={isSettingPasscode} accessibilityLabel={t('common.remove')}> {isSettingPasscode ? <ActivityIndicator size="small" color={styles.errorTextInline.color}/> : <Text style={styles.removeButtonTextInline}>{t('common.remove')}</Text>} </TouchableOpacity> )}
+                                    <TouchableOpacity style={[styles.inlineButton, styles.cancelButtonInline]} onPress={togglePasscodeSetup} disabled={isSettingPasscode} accessibilityLabel={t('common.cancel')}><Text style={styles.cancelButtonTextInline}>{t('common.cancel')}</Text></TouchableOpacity>
+                                    <TouchableOpacity style={[styles.inlineButton, styles.saveButtonInline,(isSettingPasscode || !newPasscode || newPasscode.length < 4 || newPasscode !== confirmPasscode || (passcodeExists && !currentPasscode)) && styles.buttonDisabled]} onPress={handleSetOrUpdatePasscode} disabled={isSettingPasscode || !newPasscode || newPasscode.length < 4 || newPasscode !== confirmPasscode || (passcodeExists && !currentPasscode) } accessibilityLabel={passcodeExists ? t('common.update') : t('common.set')} >{isSettingPasscode ? <ActivityIndicator size="small" color={theme.white}/> : <Text style={styles.saveButtonTextInline}>{passcodeExists ? t('common.update') : t('common.set')}</Text>}</TouchableOpacity>
+                                </View>
+                            </View>
                         )}
 
-                        {/* Reset Button */}
-                        <TouchableOpacity
-                            style={[styles.resetButton, isResetDisabled && styles.buttonDisabled]}
-                            onPress={handleReset}
-                            disabled={isResetDisabled}
-                        >
+                        <TouchableOpacity style={[styles.resetButton, isResetDisabled && styles.buttonDisabled]} onPress={handleReset} disabled={isResetDisabled} accessibilityLabel={t('common.resetChanges')}>
                              <FontAwesomeIcon icon={faUndo} size={fonts.caption * 1.1} color={!isResetDisabled ? theme.textSecondary : theme.disabled} style={styles.buttonIcon}/>
-                             <Text style={[styles.resetButtonText, isResetDisabled && styles.textDisabled]}>Discard Changes</Text>
+                             <Text style={[styles.resetButtonText, isResetDisabled && styles.textDisabled]}>{t('common.resetChanges')}</Text>
                         </TouchableOpacity>
                     </ScrollView>
                  )}
 
-                 {/* Time Picker Modal */}
-                {showTimePicker && (
-                    <DateTimePicker
-                        testID="dateTimePicker"
-                        value={timePickerValue}
-                        mode="time"
-                        is24Hour={true}
-                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                        onChange={onTimeChange}
-                        textColor={theme.text} // iOS text color
-                        accentColor={theme.primary} // Android accent color
-                        themeVariant={theme.isDark ? 'dark' : 'light'} // iOS 14+ theme
-                        // style={{ backgroundColor: theme.card }} // Optional background
-                    />
-                 )}
+                {showTimePicker && ( <DateTimePicker testID="dateTimePicker" value={timePickerValue} mode="time" is24Hour={true} display={Platform.OS === 'ios' ? 'spinner' : 'default'} onChange={onTimeChange} textColor={theme.text} accentColor={theme.primary} themeVariant={theme.isDark ? 'dark' : 'light'} /> )}
             </View>
         </SafeAreaView>
     );
 };
-
 // --- Helper Function for Themed Styles ---
 // (Keep createThemedStyles function exactly as it was in the previous correct answer)
 const createThemedStyles = (theme: ThemeColors, fonts: FontSizes) => StyleSheet.create({

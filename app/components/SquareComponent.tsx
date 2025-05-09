@@ -5,6 +5,7 @@ import {
     TouchableOpacity
 } from 'react-native';
 import axios from 'axios'; // Ensure installed
+import { useTranslation } from 'react-i18next'; // <-- Import i18next hook
 
 // --- Import Appearance Context ---
 import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext'; // Adjust path
@@ -12,7 +13,7 @@ import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceCont
 // --- Component Props Interface ---
 interface SquareComponentProps {
   keyword: string;         // Original keyword (for Arasaac, onPress payload etc.)
-  displayText: string;   // The text to actually display on the square
+  displayText: string;   // The text to actually display on the square (pre-translated or original)
   language: string;        // Language for Arasaac API call (e.g., 'en') - This is the language Arasaac expects for its API
   imageUri?: string;      // Optional URI for custom symbols
   onPress: (keyword: string) => void; // Should still send the original keyword
@@ -22,14 +23,15 @@ interface SquareComponentProps {
 // --- Component ---
 const SquareComponent: React.FC<SquareComponentProps> = React.memo(({
   keyword,
-  displayText,
-  language,   // This is for Arasaac API, should be 'en' or similar (the language Arasaac search API expects)
+  displayText, // Use pre-translated or original text provided by parent
+  language,   // For Arasaac API call, expected to be 'en' or similar
   imageUri,
   onPress,
   size,
 }) => {
-  // --- Context ---
+  // --- Hooks ---
   const { theme, fonts } = useAppearance();
+  const { t } = useTranslation(); // <-- Get t function
 
   // --- Dynamic Styles ---
   const styles = useMemo(() => createThemedStyles(theme, fonts, size), [theme, fonts, size]);
@@ -43,6 +45,7 @@ const SquareComponent: React.FC<SquareComponentProps> = React.memo(({
   // Ref to track mounted status
   const isMountedRef = useRef(true);
 
+  // --- Effects ---
   useEffect(() => {
     isMountedRef.current = true; // Set true on mount
     return () => {
@@ -50,8 +53,6 @@ const SquareComponent: React.FC<SquareComponentProps> = React.memo(({
     };
   }, []); // Empty dependency array, runs only on mount and unmount
 
-
-  // --- Effect for Top Bar Color and Fetching ---
   useEffect(() => {
     // Reset state for Arasaac fetch if needed
     if (!imageUri) {
@@ -96,13 +97,13 @@ const SquareComponent: React.FC<SquareComponentProps> = React.memo(({
                         setPictogramUrl(generatedUrl);
                         setError(null);
                     } else {
-                        setError('Not found');
+                        setError(t('squareComponent.arasaacErrorNotFound')); // Use t() for error message
                         setPictogramUrl(null);
                     }
                 }
             } catch (err: any) {
                  if (isMountedRef.current) {
-                    setError(err.response?.status === 404 ? 'Not found' : 'Load error');
+                    setError(err.response?.status === 404 ? t('squareComponent.arasaacErrorNotFound') : t('squareComponent.arasaacErrorLoad')); // Use t()
                     setPictogramUrl(null);
                  }
             } finally {
@@ -120,19 +121,24 @@ const SquareComponent: React.FC<SquareComponentProps> = React.memo(({
         if (timer) clearTimeout(timer);
     };
 
-  }, [keyword, language, imageUri, theme.border]); // Rerun effect if these change. `theme.border` for initial topBarColor
+  }, [keyword, language, imageUri, theme.border, t]); // Added 't' to dependencies for error messages
 
   // --- Press Handler ---
   const handlePress = () => {
       onPress(keyword); // Send the original keyword
   };
 
+  // --- Accessibility Label ---
+  // Use t() for the format string and interpolate displayText
+  const accessibilityLabelText = t('squareComponent.accessibilityLabel', { symbol: displayText });
+
+
   return (
     <TouchableOpacity
         style={styles.squareContainer}
         onPress={handlePress}
         activeOpacity={0.7}
-        accessibilityLabel={`Symbol for ${displayText}, press to add`} // Use displayText for accessibility
+        accessibilityLabel={accessibilityLabelText} // <-- Use translated label format
         accessibilityRole="button"
     >
         <View style={styles.square}>
@@ -154,7 +160,7 @@ const SquareComponent: React.FC<SquareComponentProps> = React.memo(({
                         accessibilityLabel="" // Decorative if text label present
                         onError={(e) => {
                             console.warn(`Failed load custom image: ${keyword}`, e.nativeEvent.error);
-                            if (isMountedRef.current) setError('Img Error');
+                            if (isMountedRef.current) setError(t('squareComponent.customImageError')); // Use t()
                         }}
                     />
                 )}
@@ -165,14 +171,15 @@ const SquareComponent: React.FC<SquareComponentProps> = React.memo(({
                         style={styles.symbolImage}
                         resizeMode="contain"
                         accessibilityLabel="" // Decorative if text label present
-                        onError={() => { if (isMountedRef.current) setError('Img Error'); }}
+                        onError={() => { if (isMountedRef.current) setError(t('squareComponent.arasaacImageError')); }} // Use t()
                     />
                 )}
                 {/* Fallback Text/Icon */}
                 {!loading && (error || (!imageUri && !pictogramUrl)) && (
                      <View style={styles.fallbackContainer}>
+                         {/* If 'error' state contains a translated string, display it. Otherwise, display 'displayText'. */}
                          <Text style={styles.fallbackText} numberOfLines={2} ellipsizeMode="tail">
-                            {displayText} {/* Use displayText for fallback */}
+                            {error && typeof error === 'string' ? error : displayText}
                          </Text>
                      </View>
                 )}
@@ -180,8 +187,9 @@ const SquareComponent: React.FC<SquareComponentProps> = React.memo(({
 
             {/* Keyword Text Area */}
             <View style={styles.textContainer}>
+                {/* displayText is already translated or is the correct English */}
                 <Text style={styles.keywordText} numberOfLines={1} ellipsizeMode="tail">
-                    {displayText} {/* Use displayText for the label */}
+                    {displayText}
                 </Text>
             </View>
         </View>
@@ -233,7 +241,7 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, size: number) 
         fallbackText: {
             fontSize: dynamicFontSize,
             fontWeight: '500',
-            color: theme.textSecondary,
+            color: theme.textSecondary, // Fallback text can be secondary
             textAlign: 'center',
         },
         textContainer: {

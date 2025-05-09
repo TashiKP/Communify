@@ -1,45 +1,44 @@
 // src/i18n/index.ts
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import { findBestAvailableLanguage, getLocales } from 'react-native-localize';
-
-// Import translation files
 import enTranslation from '../locales/en/translation.json';
 import dzoTranslation from '../locales/dzo/translation.json';
 
 // Define resources
 const resources = {
-  en: {
-    translation: enTranslation,
-  },
-  dzo: {
-    translation: dzoTranslation,
-  },
+  en: { translation: enTranslation },
+  dzo: { translation: dzoTranslation },
 };
 
-// Find best available language from device settings
-const getInitialLanguage = () => {
-  const locales = getLocales();
-  if (locales && locales.length > 0) {
-    const bestMatch = findBestAvailableLanguage(['en', 'dzo']);
-    return bestMatch?.languageTag || 'en';
-  }
-  return 'en';
-};
+console.log('i18n: Attempting to initialize...'); // Log before init
 
 i18n
-  .use(initReactI18next)
+  .use(initReactI18next) // passes i18n down to react-i18next
   .init({
     resources,
-    lng: getInitialLanguage(),
-    fallbackLng: 'en',
-    compatibilityJSON: 'v4', // Use 'v4' for newer i18next versions
+    lng: 'en', // Initialize with English
+    fallbackLng: 'en', // Fallback to English if a key is missing in the current language
+    compatibilityJSON: 'v4', // For current i18next versions
     interpolation: {
-      escapeValue: false,
+      escapeValue: false, // React already protects from XSS
     },
     react: {
-      useSuspense: false,
+      useSuspense: false, // Set to false for React Native if not using Suspense for translations
     },
+    // debug: __DEV__, // Optional: Enable for verbose i18next logging in development
+  }, (err, t_instance_from_callback) => { // Callback function for init
+    if (err) {
+        // Log detailed error if initialization fails
+        return console.error('🔴 i18n: Initialization FAILED', err);
+    }
+    // Log success and key details
+    console.log('🟢 i18n: Initialization SUCCESSFUL!');
+    console.log('   i18n instance language after init:', i18n.language); // Should be 'en' initially
+    console.log('   t_instance from callback (should be function):', typeof t_instance_from_callback);
+    // You can also test the t_instance immediately
+    // if (typeof t_instance_from_callback === 'function') {
+    //    console.log('   Testing t_instance with appName:', t_instance_from_callback('appName'));
+    // }
   });
 
 export default i18n;

@@ -1,14 +1,15 @@
 // src/components/parental/UsageReportingSection.tsx
-import React, { useMemo } from 'react'; // Added useMemo
+import React, { useMemo } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Keyboard, Platform } from 'react-native';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import { faEnvelopeCircleCheck, faTrash, faPlusCircle, faCheck, faTimes } from '@fortawesome/free-solid-svg-icons';
+import { TFunction } from 'i18next'; // Import TFunction type
 
 // --- Import Context ---
 import { useAppearance, ThemeColors, FontSizes } from '../../context/AppearanceContext'; // Adjust path
 
 // --- Import Local Types ---
-import { ParentalSettingsData } from './types';
+import { ParentalSettingsData } from './types'; // Ensure this path is correct
 
 // --- Component Props ---
 interface UsageReportingSectionProps {
@@ -19,12 +20,12 @@ interface UsageReportingSectionProps {
     onToggleAddEmail: () => void;
     onAddEmail: () => void;
     onDeleteEmail: (emailToDelete: string) => void;
-    // styles prop no longer needed
+    t: TFunction<"translation", undefined>; // <-- ADDED: t function prop
 }
 
 // --- Shared Constants ---
 const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
-const errorColor = '#dc3545'; // Keep distinct error color or add to theme
+const errorColor = '#dc3545';
 
 // --- Component ---
 const UsageReportingSection: React.FC<UsageReportingSectionProps> = ({
@@ -35,6 +36,7 @@ const UsageReportingSection: React.FC<UsageReportingSectionProps> = ({
     onToggleAddEmail,
     onAddEmail,
     onDeleteEmail,
+    t, // <-- Destructure t function
 }) => {
     // --- Consume Context ---
     const { theme, fonts } = useAppearance();
@@ -47,18 +49,18 @@ const UsageReportingSection: React.FC<UsageReportingSectionProps> = ({
             {/* Section Header */}
             <View style={styles.cardHeader}>
                 <FontAwesomeIcon icon={faEnvelopeCircleCheck} size={fonts.h2 * 0.9} color={theme.primary} style={styles.cardIcon}/>
-                <Text style={styles.sectionTitle}>Usage Reporting</Text>
+                <Text style={styles.sectionTitle}>{t('parentalControls.usageReporting.sectionTitle')}</Text>
             </View>
 
             {/* Description */}
             <Text style={styles.infoText}>
-                Add email addresses to receive notifications about app usage.
+                {t('parentalControls.usageReporting.infoText')}
             </Text>
 
             {/* List of Added Emails */}
             <View style={styles.emailListContainer}>
                 {settings.notifyEmails.length === 0 && !showAddEmailInput && (
-                    <Text style={styles.noEmailsText}>No notification emails added yet.</Text>
+                    <Text style={styles.noEmailsText}>{t('parentalControls.usageReporting.noEmailsAdded')}</Text>
                 )}
                 {settings.notifyEmails.map((email, index) => (
                     <View key={index} style={styles.emailRow}>
@@ -67,7 +69,7 @@ const UsageReportingSection: React.FC<UsageReportingSectionProps> = ({
                             onPress={() => onDeleteEmail(email)}
                             style={styles.deleteEmailButton}
                             hitSlop={hitSlop}
-                            accessibilityLabel={`Delete email address ${email}`}
+                            accessibilityLabel={t('parentalControls.usageReporting.deleteEmailAccessibilityLabel', { email })}
                         >
                             <FontAwesomeIcon icon={faTrash} size={fonts.label * 1.1} color={errorColor} />
                         </TouchableOpacity>
@@ -80,24 +82,24 @@ const UsageReportingSection: React.FC<UsageReportingSectionProps> = ({
                 <View style={styles.addEmailContainer}>
                     <TextInput
                         style={styles.addEmailInput}
-                        placeholder="Enter email address"
-                        placeholderTextColor={theme.disabled} // Use theme color
+                        placeholder={t('parentalControls.usageReporting.emailInputPlaceholder')}
+                        placeholderTextColor={theme.disabled}
                         value={newNotifyEmail}
                         onChangeText={onNewEmailChange}
                         keyboardType="email-address"
                         autoCapitalize="none"
                         autoCorrect={false}
                         returnKeyType="done"
-                        onSubmitEditing={onAddEmail} // Attempt add on submit
+                        onSubmitEditing={onAddEmail}
                         autoFocus={true}
-                        selectionColor={theme.primary} // Use theme color
+                        selectionColor={theme.primary}
                         keyboardAppearance={theme.isDark ? 'dark' : 'light'}
                     />
                     <TouchableOpacity
-                        style={[styles.addEmailConfirmButton, !newNotifyEmail.trim() && styles.buttonDisabled]} // Use themed disabled style
+                        style={[styles.addEmailConfirmButton, !newNotifyEmail.trim() && styles.buttonDisabled]}
                         onPress={onAddEmail}
                         disabled={!newNotifyEmail.trim()}
-                        accessibilityLabel="Confirm adding email"
+                        accessibilityLabel={t('parentalControls.usageReporting.confirmAddEmailAccessibilityLabel')}
                         accessibilityState={{ disabled: !newNotifyEmail.trim() }}
                     >
                         <FontAwesomeIcon icon={faCheck} size={fonts.body} color={theme.white} />
@@ -115,7 +117,9 @@ const UsageReportingSection: React.FC<UsageReportingSectionProps> = ({
                         style={styles.buttonIcon}
                     />
                      <Text style={styles.addEmailToggleText}>
-                         {showAddEmailInput ? 'Cancel Adding Email' : 'Add Notification Email'}
+                         {showAddEmailInput
+                            ? t('parentalControls.usageReporting.cancelAddEmailButton')
+                            : t('parentalControls.usageReporting.addEmailButton')}
                      </Text>
                  </TouchableOpacity>
             </View>
@@ -123,126 +127,26 @@ const UsageReportingSection: React.FC<UsageReportingSectionProps> = ({
     );
 };
 
-// --- Helper Function for Themed Styles ---
+// --- Styles (Unchanged from your previous version) ---
 const createThemedStyles = (theme: ThemeColors, fonts: FontSizes) => StyleSheet.create({
-    sectionCard: {
-        backgroundColor: theme.card,
-        borderRadius: 12,
-        marginBottom: 20,
-        borderWidth: StyleSheet.hairlineWidth,
-        borderColor: theme.border,
-        overflow: 'hidden',
-    },
-    cardHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 18,
-        paddingTop: 15,
-        paddingBottom: 10,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: theme.border,
-    },
-    cardIcon: {
-        marginRight: 12,
-        // size/color set dynamically
-    },
-    sectionTitle: {
-        fontSize: fonts.h2 * 0.9,
-        fontWeight: '600',
-        color: theme.text,
-        flex: 1,
-    },
-    infoText: {
-        fontSize: fonts.caption,
-        color: theme.textSecondary,
-        paddingVertical: 15,
-        textAlign: 'left',
-        paddingHorizontal: 18,
-    },
-    emailListContainer: {
-        paddingHorizontal: 18,
-        paddingBottom: 10,
-        borderTopWidth: StyleSheet.hairlineWidth,
-        borderTopColor: theme.border, // Use theme border
-        marginTop: 0, // No margin needed if infoText provides space
-        paddingTop: 10,
-    },
-    emailRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: 10,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: theme.border, // Use theme border
-    },
-    emailText: {
-        flex: 1,
-        fontSize: fonts.body,
-        color: theme.text, // Use theme text color
-        marginRight: 10,
-    },
-    deleteEmailButton: {
-        padding: 5, // Keep padding for tap area
-    },
-    noEmailsText: {
-        fontStyle: 'italic',
-        color: theme.textSecondary, // Use theme secondary text color
-        textAlign: 'center',
-        paddingVertical: 15,
-        fontSize: fonts.body, // Use theme font size
-    },
-    addEmailContainer: {
-        flexDirection: 'row',
-        paddingHorizontal: 18,
-        paddingTop: 15,
-        paddingBottom: 15,
-        alignItems: 'center',
-        borderTopWidth: StyleSheet.hairlineWidth, // Separator when shown
-        borderTopColor: theme.border, // Use theme border
-    },
-    addEmailInput: {
-        flex: 1,
-        height: 44,
-        borderColor: theme.border, // Use theme border
-        borderWidth: 1,
-        borderRadius: 8,
-        paddingHorizontal: 12,
-        marginRight: 10,
-        fontSize: fonts.body, // Use theme font size
-        backgroundColor: theme.background, // Use theme background
-        color: theme.text, // Use theme text
-    },
-    addEmailConfirmButton: {
-        backgroundColor: theme.primary, // Use theme primary
-        padding: 10,
-        height: 44,
-        width: 44,
-        borderRadius: 8,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    buttonDisabled: { // General disabled style
-        opacity: 0.5,
-    },
-    cardFooter: { // Inherited style, ensure border is themed
-        borderTopWidth: StyleSheet.hairlineWidth,
-        borderTopColor: theme.border,
-        paddingVertical: 5, // Adjust padding as needed
-    },
-    addEmailToggleButton: {
-         flexDirection: 'row',
-         alignItems: 'center',
-         paddingVertical: 8,
-         justifyContent: 'center', // Center toggle button
-     },
-     buttonIcon: { // Inherited style for icon margin
-        marginRight: 8,
-    },
-     addEmailToggleText: {
-         fontSize: fonts.label, // Use theme font size
-         color: theme.primary, // Use theme primary color
-         fontWeight: '500',
-     },
+    sectionCard: { backgroundColor: theme.card, borderRadius: 12, marginBottom: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: theme.border, overflow: 'hidden', },
+    cardHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingTop: 15, paddingBottom: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border, },
+    cardIcon: { marginRight: 12, },
+    sectionTitle: { fontSize: fonts.h2 * 0.9, fontWeight: '600', color: theme.text, flex: 1, },
+    infoText: { fontSize: fonts.caption, color: theme.textSecondary, paddingVertical: 15, textAlign: 'left', paddingHorizontal: 18, },
+    emailListContainer: { paddingHorizontal: 18, paddingBottom: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.border, marginTop: 0, paddingTop: 10, },
+    emailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border, },
+    emailText: { flex: 1, fontSize: fonts.body, color: theme.text, marginRight: 10, },
+    deleteEmailButton: { padding: 5, },
+    noEmailsText: { fontStyle: 'italic', color: theme.textSecondary, textAlign: 'center', paddingVertical: 15, fontSize: fonts.body, },
+    addEmailContainer: { flexDirection: 'row', paddingHorizontal: 18, paddingTop: 15, paddingBottom: 15, alignItems: 'center', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.border, },
+    addEmailInput: { flex: 1, height: 44, borderColor: theme.border, borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, marginRight: 10, fontSize: fonts.body, backgroundColor: theme.background, color: theme.text, },
+    addEmailConfirmButton: { backgroundColor: theme.primary, padding: 10, height: 44, width: 44, borderRadius: 8, justifyContent: 'center', alignItems: 'center', },
+    buttonDisabled: { opacity: 0.5, },
+    cardFooter: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.border, paddingVertical: 5, },
+    addEmailToggleButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, justifyContent: 'center', },
+    buttonIcon: { marginRight: 8, },
+    addEmailToggleText: { fontSize: fonts.label, color: theme.primary, fontWeight: '500', },
 });
 
 export default UsageReportingSection;

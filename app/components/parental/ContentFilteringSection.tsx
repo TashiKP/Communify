@@ -1,21 +1,22 @@
 // src/components/parental/ContentFilteringSection.tsx
-import React, { useMemo } from 'react'; // Added useMemo
+import React, { useMemo } from 'react';
 import { View, Text, Switch, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import { faShieldAlt, faBan, faEyeSlash, faGlobe, faChevronRight } from '@fortawesome/free-solid-svg-icons';
+import { TFunction } from 'i18next'; // Import TFunction type
 
 // --- Import Context ---
 import { useAppearance, ThemeColors, FontSizes } from '../../context/AppearanceContext'; // Adjust path
 
 // --- Import Local Types ---
-import { ParentalSettingsData } from './types';
+import { ParentalSettingsData } from './types'; // Ensure this path is correct
 
 // --- Component Props ---
 interface ContentFilteringSectionProps {
     settings: ParentalSettingsData;
     onSettingChange: <K extends keyof ParentalSettingsData>(key: K, value: ParentalSettingsData[K]) => void;
     onConfigureWeb: () => void;
-    // switchStyles and styles props are no longer needed, use context instead
+    t: TFunction<"translation", undefined>; // <-- ADDED: t function prop
 }
 
 // --- Component ---
@@ -23,13 +24,14 @@ const ContentFilteringSection: React.FC<ContentFilteringSectionProps> = ({
     settings,
     onSettingChange,
     onConfigureWeb,
+    t, // <-- Destructure t function
 }) => {
     // --- Consume Context ---
     const { theme, fonts } = useAppearance();
 
     // --- Dynamic Styles ---
     const styles = useMemo(() => createThemedStyles(theme, fonts), [theme, fonts]);
-    const switchStyles = useMemo(() => ({ // Generate switch styles from theme
+    const switchStyles = useMemo(() => ({
         trackColor: { false: theme.disabled, true: theme.secondary },
         thumbColor: Platform.OS === 'android' ? theme.primary : undefined,
         ios_backgroundColor: theme.disabled,
@@ -40,18 +42,18 @@ const ContentFilteringSection: React.FC<ContentFilteringSectionProps> = ({
             {/* Card Header */}
             <View style={styles.cardHeader}>
                 <FontAwesomeIcon icon={faShieldAlt} size={fonts.h2 * 0.9} color={theme.primary} style={styles.cardIcon}/>
-                <Text style={styles.sectionTitle}>Content Filtering</Text>
+                <Text style={styles.sectionTitle}>{t('parentalControls.contentFiltering.sectionTitle')}</Text>
             </View>
 
             {/* Block Violence */}
             <View style={styles.settingRow}>
                 <FontAwesomeIcon icon={faBan} size={fonts.body * 1.1} color={theme.textSecondary} style={styles.settingIcon}/>
-                <Text style={styles.settingLabel}>Block Violent Content</Text>
+                <Text style={styles.settingLabel}>{t('parentalControls.contentFiltering.blockViolenceLabel')}</Text>
                 <Switch
                     value={settings.blockViolence}
                     onValueChange={(v) => onSettingChange('blockViolence', v)}
-                    {...switchStyles} // Apply themed switch styles
-                    accessibilityLabel="Toggle blocking violent content"
+                    {...switchStyles}
+                    accessibilityLabel={t('parentalControls.contentFiltering.blockViolenceAccessibilityLabel')}
                     accessibilityState={{ checked: settings.blockViolence }}
                 />
             </View>
@@ -59,12 +61,12 @@ const ContentFilteringSection: React.FC<ContentFilteringSectionProps> = ({
             {/* Block Inappropriate */}
             <View style={styles.settingRow}>
                  <FontAwesomeIcon icon={faEyeSlash} size={fonts.body * 1.1} color={theme.textSecondary} style={styles.settingIcon}/>
-                <Text style={styles.settingLabel}>Block Inappropriate Content</Text>
+                <Text style={styles.settingLabel}>{t('parentalControls.contentFiltering.blockInappropriateLabel')}</Text>
                 <Switch
                     value={settings.blockInappropriate}
                     onValueChange={(v) => onSettingChange('blockInappropriate', v)}
-                    {...switchStyles} // Apply themed switch styles
-                    accessibilityLabel="Toggle blocking inappropriate content"
+                    {...switchStyles}
+                    accessibilityLabel={t('parentalControls.contentFiltering.blockInappropriateAccessibilityLabel')}
                     accessibilityState={{ checked: settings.blockInappropriate }}
                 />
             </View>
@@ -75,11 +77,11 @@ const ContentFilteringSection: React.FC<ContentFilteringSectionProps> = ({
                     style={styles.featureRow}
                     onPress={onConfigureWeb}
                     activeOpacity={0.6}
-                    accessibilityLabel="Configure web filtering rules"
+                    accessibilityLabel={t('parentalControls.contentFiltering.webFilteringAccessibilityLabel')}
                     accessibilityRole="button"
                 >
                     <FontAwesomeIcon icon={faGlobe} size={fonts.body} color={theme.textSecondary} style={styles.featureIcon}/>
-                    <Text style={styles.featureLabel}>Web Filtering Rules</Text>
+                    <Text style={styles.featureLabel}>{t('parentalControls.contentFiltering.webFilteringLabel')}</Text>
                     <FontAwesomeIcon icon={faChevronRight} size={fonts.label} color={theme.disabled} />
                 </TouchableOpacity>
             </View>
@@ -87,7 +89,7 @@ const ContentFilteringSection: React.FC<ContentFilteringSectionProps> = ({
     );
 };
 
-// --- Helper Function for Themed Styles ---
+// --- Styles (Unchanged from your previous version) ---
 const createThemedStyles = (theme: ThemeColors, fonts: FontSizes) => StyleSheet.create({
     sectionCard: {
         backgroundColor: theme.card,
@@ -138,28 +140,25 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes) => StyleSheet.
     cardFooter: {
         borderTopWidth: StyleSheet.hairlineWidth,
         borderTopColor: theme.border,
-        // No margin needed if it's the last element in the card
     },
-    featureRow: { // Style for the clickable row in the footer
+    featureRow: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: 14,
         minHeight: 44,
-        paddingHorizontal: 18, // Consistent padding
+        paddingHorizontal: 18,
     },
     featureIcon: {
         marginRight: 18,
-        width: fonts.body, // Base width on font size
+        width: fonts.body,
         textAlign: 'center',
-        // color set dynamically
     },
     featureLabel: {
         flex: 1,
         fontSize: fonts.body,
-        color: theme.textSecondary, // Use secondary color for less emphasis
+        color: theme.textSecondary,
         marginRight: 10,
     },
-    // Chevron color set dynamically
 });
 
 export default ContentFilteringSection;

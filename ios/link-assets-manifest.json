@@ -1,4 +1,13 @@
 {
   "migIndex": 1,
-  "data": []
+  "data": [
+    {
+      "path": "assets/fonts/Jomolhari-Regular.ttf",
+      "sha1": "6313bae9b8565221f005ccc2019dedfcc5fd6f6b"
+    },
+    {
+      "path": "assets/fonts/NotoSerifTibetan-Regular.ttf",
+      "sha1": "bbe6c0334251882902efc86912a366e622f1770b"
+    }
+  ]
 }

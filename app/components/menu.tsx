@@ -13,15 +13,17 @@ import { useTranslation } from 'react-i18next';
 
 // --- Import Context Hooks & Types ---
 import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext';
+// --- Import Typography Utility ---
+import { getLanguageSpecificTextStyle } from '../styles/typography'; // Adjust path as needed
 
-// --- Import Components and Types ---
-import DisplayOptionsScreen from './DisplayOptionsScreen'; // Ensure path is correct
-import SelectionModeScreen from './SelectionModeScreen';   // Ensure path is correct
-import ParentalControls from './ParentalControls';       // Ensure path is correct
-import { ParentalSettingsData } from './parental/types'; // Ensure path is correct
-import SymbolVoiceOverScreen, { VoiceSettingData } from './SymbolVoiceOverScreen'; // Ensure path is correct
-import AboutScreen from './AboutScreen';                 // Ensure path is correct
-import PasscodePromptModal from './PasscodePromptModal';   // Ensure path is correct
+// --- Import Other Components/Screens/Types --- (Adjust paths as necessary)
+import DisplayOptionsScreen from './DisplayOptionsScreen';
+import SelectionModeScreen from './SelectionModeScreen';
+import ParentalControls from './ParentalControls';
+import { ParentalSettingsData } from './parental/types';
+import SymbolVoiceOverScreen, { VoiceSettingData } from './SymbolVoiceOverScreen';
+import AboutScreen from './AboutScreen';
+import PasscodePromptModal from './PasscodePromptModal';
 
 // --- Types ---
 type Mode = 'drag' | 'longClick';
@@ -36,8 +38,8 @@ const defaultParentalSettings: ParentalSettingsData = { blockViolence: false, bl
 
 // --- Constants ---
 const screenWidth = Dimensions.get('window').width;
-export const menuWidth = screenWidth * 0.25;
-const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 }; // Defined for closeButtonInternal
+export const menuWidth = screenWidth * 0.25; // Export if used by HomeScreen for animation
+const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
 
 // --- Component Props Interface ---
 interface MenuProps {
@@ -46,6 +48,7 @@ interface MenuProps {
     closeMenu: () => void;
     currentTtsSettings: VoiceSettingData;
     onTtsSettingsSave: (settings: VoiceSettingData) => void;
+    // onGridLayoutSave removed as DisplayOptionsScreen handles it via context
 }
 
 // --- Component ---
@@ -57,8 +60,9 @@ const Menu: React.FC<MenuProps> = ({
     onTtsSettingsSave,
 }) => {
     // --- Hooks ---
-    const { theme, fonts, isLoadingAppearance } = useAppearance();
-    const { t, i18n } = useTranslation(); // Get t and i18n instance
+    const { theme, fonts, isLoadingAppearance } = useAppearance(); // baseFonts for English
+    const { t, i18n } = useTranslation();
+    const currentLanguage = i18n.language;
 
     // --- State ---
     const [activeModal, setActiveModal] = useState<string | null>(null);
@@ -73,30 +77,32 @@ const Menu: React.FC<MenuProps> = ({
     const [passcodeExists, setPasscodeExists] = useState(false);
     const isMountedRef = useRef(true);
 
-
-    // --- Menu Items Configuration (using translation keys) ---
+    // --- Menu Items Configuration ---
     const menuItems = useMemo(() => [
         { id: 'display', icon: faDesktop, labelKey: 'menu.displayOptions' },
         { id: 'selection', icon: faShapes, labelKey: 'menu.symbolSelection' },
         { id: 'voiceover', icon: faCommentDots, labelKey: 'menu.voiceAndSpeech' },
         { id: 'parental', icon: faUserShield, labelKey: 'menu.parentalControls' },
         { id: 'about', icon: faInfoCircle, labelKey: 'menu.aboutUs' },
-    ], []); // Keys are static, so no dependencies on t or i18n.language here
+    ], []);
 
-    // Combined loading state
-    const isLoadingSettings = isLoadingAppearance || isLoadingSelection || isLoadingParental;
+    // Combined loading state for initial menu item enabling/disabling
+    const isLoadingInitialMenuSettings = isLoadingAppearance || isLoadingSelection || isLoadingParental;
 
-    // --- Mount/Unmount Effect ---
+    // --- Mount/Unmount Effect & i18n Log ---
     useEffect(() => {
         isMountedRef.current = true;
         console.log('Menu.tsx: Mounted. typeof t =', typeof t, 'i18n initialized:', i18n.isInitialized);
         return () => { isMountedRef.current = false; };
     }, [t, i18n.isInitialized]);
 
+    // --- Dynamic Styles ---
+    const styles = useMemo(() => createThemedMenuStyles(theme, fonts, currentLanguage), [theme, fonts, currentLanguage]);
+
     // --- Effect to load Menu-managed settings ---
     useEffect(() => {
         const loadMenuSettings = async () => {
-            if (!isMountedRef.current) return;
+            if (!isMountedRef.current || typeof t !== 'function') return; // Guard
             setIsLoadingSelection(true); setIsLoadingParental(true);
             try {
                 const [hasPC, selectionJson, parentalJson] = await Promise.all([
@@ -104,68 +110,59 @@ const Menu: React.FC<MenuProps> = ({
                     AsyncStorage.getItem(SELECTION_MODE_STORAGE_KEY),
                     AsyncStorage.getItem(PARENTAL_SETTINGS_STORAGE_KEY),
                 ]);
-
                 if (!isMountedRef.current) return;
-
                 setPasscodeExists(hasPC);
-
                 if (selectionJson === 'drag' || selectionJson === 'longClick') setSelectionModeValue(selectionJson as Mode);
                 else if (selectionJson === 'null') setSelectionModeValue(null);
                 else setSelectionModeValue(defaultSelectionMode);
-
                 if (parentalJson) setParentalSettings({ ...defaultParentalSettings, ...JSON.parse(parentalJson) });
                 else setParentalSettings(defaultParentalSettings);
-
             } catch (e) {
                 console.error("Menu: Failed to load selection/parental settings", e);
                 if(isMountedRef.current) {
                     setSelectionModeValue(defaultSelectionMode);
                     setParentalSettings(defaultParentalSettings);
-                    if (typeof t === 'function') Alert.alert(t('common.error'), t('menu.errors.loadSettingsFail'));
+                    Alert.alert(t('common.error'), t('menu.errors.loadSettingsFail'));
                 }
             } finally {
                 if(isMountedRef.current) { setIsLoadingSelection(false); setIsLoadingParental(false); }
             }
         };
-        loadMenuSettings();
-    }, [t]); // Add t as a dependency because it's used in the catch block for Alert
+        if (typeof t === 'function' && i18n.isInitialized) { // Ensure t is ready
+            loadMenuSettings();
+        }
+    }, [t, i18n.isInitialized]); // Re-run if t becomes available
 
     // --- Handlers ---
     const handleCloseSubModal = useCallback(() => { setActiveModal(null); }, []);
 
     const handleMenuPress = useCallback(async (itemId: string) => {
-        if (typeof t !== 'function') return; // Guard if t is not ready
-
+        if (typeof t !== 'function' || !isMountedRef.current) return;
         const protectedItems = ['parental', 'voiceover', 'display', 'selection'];
         if (itemId === 'about') { setActiveModal(itemId); return; }
-
-        if (isLoadingSettings && protectedItems.includes(itemId)) {
+        if (isLoadingInitialMenuSettings && protectedItems.includes(itemId)) {
             Alert.alert(t('menu.loadingTitle'), t('menu.loadingMessage'));
             return;
         }
-
         if (protectedItems.includes(itemId)) {
             const requirePasscode = parentalSettings.requirePasscode;
             const currentPasscodeExists = await KeychainService.hasPasscode();
-            if (isMountedRef.current) setPasscodeExists(currentPasscodeExists);
-
+            if (!isMountedRef.current) return;
+            setPasscodeExists(currentPasscodeExists);
             if (requirePasscode && currentPasscodeExists) {
-                setTargetModalId(itemId);
-                setIsPasscodePromptVisible(true);
-                return;
+                setTargetModalId(itemId); setIsPasscodePromptVisible(true); return;
             } else if (requirePasscode && !currentPasscodeExists) {
-                 Alert.alert(t('menu.errors.passcodeRequiredTitle'), t('menu.errors.passcodeRequiredMessage'));
-                 return;
+                 Alert.alert(t('menu.errors.passcodeRequiredTitle'), t('menu.errors.passcodeRequiredMessage')); return;
             }
         }
         setActiveModal(itemId);
-    }, [parentalSettings.requirePasscode, isLoadingSettings, t]);
+    }, [parentalSettings.requirePasscode, isLoadingInitialMenuSettings, t]);
 
-    const handlePasscodeVerified = useCallback(() => { setIsPasscodePromptVisible(false); if (targetModalId) { setActiveModal(targetModalId); setTargetModalId(null); } }, [targetModalId]);
-    const handlePasscodeCancel = useCallback(() => { setIsPasscodePromptVisible(false); setTargetModalId(null); }, []);
+    const handlePasscodeVerified = useCallback(() => { if(isMountedRef.current) {setIsPasscodePromptVisible(false); if (targetModalId) { setActiveModal(targetModalId); setTargetModalId(null); }}}, [targetModalId]);
+    const handlePasscodeCancel = useCallback(() => { if(isMountedRef.current) {setIsPasscodePromptVisible(false); setTargetModalId(null);}}, []);
 
     const handleSelectionSave = useCallback(async (mode: Mode | null) => {
-        if (typeof t !== 'function') { console.error("Menu: t function not available for selection save."); return; }
+        if (typeof t !== 'function' || !isMountedRef.current) return;
         setIsSavingSelection(true);
         try {
             await AsyncStorage.setItem(SELECTION_MODE_STORAGE_KEY, String(mode));
@@ -182,7 +179,7 @@ const Menu: React.FC<MenuProps> = ({
     }, [handleCloseSubModal, t]);
 
     const handleParentalSave = useCallback(async (settings: ParentalSettingsData) => {
-        if (typeof t !== 'function') { console.error("Menu: t function not available for parental save."); return; }
+        if (typeof t !== 'function' || !isMountedRef.current) return;
         setIsSavingParental(true);
         try {
             await AsyncStorage.setItem(PARENTAL_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
@@ -201,14 +198,10 @@ const Menu: React.FC<MenuProps> = ({
 
     const memoizedParentalSettings = useMemo(() => parentalSettings, [parentalSettings]);
 
-    const styles = useMemo(() => createThemedMenuStyles(theme, fonts), [theme, fonts]);
-
     // --- Render Guard for i18n ---
     if (!i18n.isInitialized || typeof t !== 'function') {
-        console.log("Menu.tsx: Rendering loading state because 't' function is not ready or i18n not initialized.");
-        // Return a minimal loading state or null, avoid using 't' here
         return (
-            <View style={[styles.menuContainer, { justifyContent: 'center', alignItems: 'center' }]}>
+            <View style={[styles.menuContainerIfLoading, { justifyContent: 'center', alignItems: 'center' }]}>
                 <ActivityIndicator size="large" color={theme.primary || '#0077b6'} />
             </View>
         );
@@ -218,22 +211,23 @@ const Menu: React.FC<MenuProps> = ({
          <ScrollView style={styles.menuScrollView} contentContainerStyle={styles.scrollContentContainer} showsVerticalScrollIndicator={false}>
              {menuItems.map((item) => {
                  const label = t(item.labelKey);
+                 const isDisabledByLoading = isLoadingInitialMenuSettings && item.id !== 'about';
                  return (
                      <TouchableOpacity
                         key={item.id}
                         style={styles.menuItem}
                         onPress={() => handleMenuPress(item.id)}
                         activeOpacity={0.7}
-                        disabled={isLoadingSettings && item.id !== 'about'}
+                        disabled={isDisabledByLoading}
                         accessibilityRole="button"
                         accessibilityLabel={label}
-                        accessibilityState={{ disabled: isLoadingSettings && item.id !== 'about' }}
+                        accessibilityState={{ disabled: isDisabledByLoading }}
                      >
-                         <View style={[styles.iconWrapper, isLoadingSettings && item.id !== 'about' && { opacity: 0.5 }]}>
+                         <View style={[styles.iconWrapper, isDisabledByLoading && { opacity: 0.5 }]}>
                              <FontAwesomeIcon icon={item.icon} size={fonts.body * 1.2} color={theme.primary} />
                          </View>
-                         <Text style={[styles.menuText, isLoadingSettings && item.id !== 'about' && { color: theme.disabled }]}>{label}</Text>
-                         <FontAwesomeIcon icon={faChevronRight} size={fonts.label} style={[styles.menuArrow, isLoadingSettings && item.id !== 'about' && { opacity: 0.5 }]} color={theme.border} />
+                         <Text style={[styles.menuText, isDisabledByLoading && { color: theme.disabled }]}>{label}</Text>
+                         <FontAwesomeIcon icon={faChevronRight} size={fonts.label} style={[styles.menuArrow, isDisabledByLoading && { opacity: 0.5 }]} color={theme.border} />
                      </TouchableOpacity>
                  );
              })}
@@ -252,7 +246,7 @@ const Menu: React.FC<MenuProps> = ({
                         <FontAwesomeIcon icon={faTimes} size={fonts.h2} color={theme.textSecondary} />
                     </TouchableOpacity>
                 </View>
-                {isLoadingSettings ? <ActivityIndicator size="large" color={theme.primary} style={{ flex: 1 }} /> : renderMenuContent() }
+                {isLoadingInitialMenuSettings ? <ActivityIndicator size="large" color={theme.primary} style={{ flex: 1 }} /> : renderMenuContent() }
                 <View style={styles.menuFooter} />
             </Animated.View>
 
@@ -279,20 +273,43 @@ const Menu: React.FC<MenuProps> = ({
 };
 
 // --- Themed Styles for Menu ---
-const createThemedMenuStyles = (theme: ThemeColors, fonts: FontSizes) => StyleSheet.create({
+const createThemedMenuStyles = (theme: ThemeColors, baseFonts: FontSizes, language: string) => StyleSheet.create({
+    menuContainerIfLoading: { // For the render guard
+        position: 'absolute', left: 0, top: 0, bottom: 0,
+        width: menuWidth,
+        backgroundColor: theme.card || '#FFFFFF', // Fallback color
+        // Ensure this style doesn't rely on 't' if used in the guard
+    },
     overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0, 0, 0, 0.5)', },
     menuContainer: { position: 'absolute', left: 0, top: 0, bottom: 0, width: menuWidth, backgroundColor: theme.card, shadowColor: '#000', shadowOffset: { width: 2, height: 0 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 16, },
-    menuHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 15, paddingHorizontal: 15, borderBottomWidth: 1, borderBottomColor: theme.border, },
-    menuTitle: { fontSize: fonts.h1, fontWeight: 'bold', color: theme.text, },
+    menuHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingTop: Platform.OS === 'ios' ? 60 : 40,
+        paddingBottom: 15,
+        paddingHorizontal: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.border,
+    },
+    menuTitle: {
+        fontWeight: 'bold',
+        color: theme.text,
+        ...getLanguageSpecificTextStyle('h1', baseFonts, language), // Use typography utility
+    },
     closeButtonInternal: { padding: 8, },
     menuScrollView: { flex: 1, },
     scrollContentContainer: { paddingVertical: 8, },
     menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 15, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border },
     iconWrapper: { width: 35, alignItems: 'center', marginRight: 15, },
-    menuText: { fontSize: fonts.body, color: theme.text, flex: 1, fontWeight: '500', },
+    menuText: {
+        color: theme.text,
+        flex: 1,
+        fontWeight: '500',
+        ...getLanguageSpecificTextStyle('body', baseFonts, language), // Use typography utility
+    },
     menuArrow: { marginLeft: 8, color: theme.disabled, },
     menuFooter: { height: Platform.OS === 'ios' ? 40 : 30, backgroundColor: theme.card, borderTopWidth: 1, borderTopColor: theme.border },
-    hitSlop: { top: 10, bottom: 10, left: 10, right: 10 }
 });
 
 export default Menu;

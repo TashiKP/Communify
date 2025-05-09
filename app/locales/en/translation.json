@@ -82,8 +82,16 @@
     "saveSettings": "Save Settings",
     "update": "Update",
     "set": "Set",
-    "remove": "Remove"
+    "remove": "Remove",
+    "loading": "Loading..."
  },
+ "bottomNav": {
+    "search": "Search symbols",
+    "addCustom": "Add custom symbols or category",
+    "home": "Go to home screen",
+    "keyboard": "Open keyboard input",
+    "settings": "Open settings menu"
+  },
  "voiceSettings": {
    "title": "Voice & Speech",
    "loading": "Loading Settings...",
@@ -295,6 +303,159 @@
       "changePasscodeLabel": "Change Passcode",
       "setPasscodeFirstTitle": "Set Passcode First",
       "setPasscodeFirstMessage": "Please set a passcode using the option below before requiring it for parental controls access."
+    }
+  },
+  "menu": {
+    "title": "Settings",
+    "displayOptions": "Display Options",
+    "symbolSelection": "Symbol Selection",
+    "voiceAndSpeech": "Voice & Speech",
+    "parentalControls": "Parental Controls",
+    "aboutUs": "About Us",
+    "closeMenuAccessibilityLabel": "Close menu",
+    "loadingTitle": "Loading",
+    "loadingMessage": "Settings are still loading, please wait...",
+    "saveSuccessTitle": "Settings Saved",
+    "saveSuccessSelection": "Selection method updated.",
+    "saveSuccessParental": "Parental controls updated.",
+    "errors": {
+      "loadSettingsFail": "Could not load some settings.",
+      "passcodeRequiredTitle": "Set Passcode Required",
+      "passcodeRequiredMessage": "Parental Controls require a passcode, but none is set. Please configure one in Parental Controls > Security first.",
+      "saveSelectionFail": "Could not save selection method.",
+      "saveParentalFail": "Could not save parental settings."
+    }
+  },
+  "keyboardInput": {
+    "defaultPlaceholder": "Type message...",
+    "inputAccessibilityLabel": "Message input field",
+    "sendAccessibilityLabel": "Send message"
+  },
+  "iconInput": {
+    "speakAccessibilityLabel": "Speak sentence",
+    "placeholder": "Selected items appear here",
+    "backspaceAccessibilityLabel": "Delete last item",
+    "clearAccessibilityLabel": "Clear all items"
+  },
+  "displayOptions": {
+    "title": "Display Options",
+    "loading": "Loading Display Settings...",
+    "layout": {
+      "sectionTitle": "Layout Density",
+      "simple": "Simple",
+      "standard": "Standard",
+      "dense": "Dense",
+      "accessibilityLabel": "Set layout to {{layout}}",
+      "infoText": "Select the density for the symbol grid display. Changes are saved immediately."
+    },
+    "appearance": {
+      "sectionTitle": "Appearance",
+      "brightnessLabel": "App Brightness",
+      "lockBrightness": "Lock brightness editing",
+      "unlockBrightness": "Unlock brightness editing",
+      "brightnessSliderAccessibilityLabel": "App brightness slider",
+      "brightnessValueAccessibilityLabel": "Current brightness {{value}}",
+      "brightnessLow": "Low",
+      "brightnessMedium": "Medium", 
+      "brightnessHigh": "High", 
+      "brightnessInfo": "Adjusts a filter overlay within the app.",
+      "darkModeLabel": "Dark Mode",
+      "darkModeAccessibilityLabel": "Dark mode switch",
+      "contrastLabel": "Contrast",
+      "contrastAccessibilityLabel": "Set contrast mode to {{contrast}}",
+      "default": "Default" 
+    },
+    "contrast": { 
+        "default": "Default",
+        "highLight": "High Contrast (Light)",
+        "highDark": "High Contrast (Dark)"
+    },
+    "textSize": {
+      "sectionTitle": "Text Size",
+      "small": "Small",
+      "medium": "Medium",
+      "large": "Large",
+      "accessibilityLabel": "Set text size to {{size}}",
+      "infoText": "Adjusts the base size for text throughout the app."
+    },
+    "resetConfirmTitle": "Reset Changes?",
+    "resetConfirmMessage": "Discard changes to Appearance and Text Size?",
+    "saveSuccessTitle": "Settings Saved",
+    "saveSuccessMessage": "Display options updated.",
+    "unsavedChangesTitle": "Unsaved Changes",
+    "unsavedChangesMessage": "Discard changes to Appearance and Text Size?",
+    "errors": {
+      "saveFail": "An error occurred while saving display settings."
+    }
+  },
+  "customPage": {
+    "title": "Custom Symbols",
+    "addSymbolAccessibilityLabel": "Add new symbol",
+    "loadingSymbols": "Loading Custom Symbols...",
+    "noSymbolsTitle": "No Custom Symbols Yet",
+    "noSymbolsSubtitle": "Tap '+' in the header to add your first symbol.",
+    "uncategorizedCategoryLabel": "Uncategorized",
+    "categoryAccessibilityLabel": "Category {{name}}, {{count}} items, {{state}}",
+    "emptyFolderText": "This folder is empty.",
+    "editSymbolAccessibilityLabel": "Edit symbol {{name}}",
+    "deleteSymbolAccessibilityLabel": "Delete symbol {{name}}",
+    "modal": {
+      "addTitle": "Add Symbol",
+      "editTitle": "Edit Symbol",
+      "closeAccessibilityLabel": "Close modal",
+      "imageLabel": "Image (Optional)",
+      "chooseImageButton": "Choose Image",
+      "imageWarning": "Selected image might not persist well across app updates if it's not from the app's local storage. Consider using images saved by the app for best results.",
+      "nameLabel": "Symbol Name *",
+      "namePlaceholder": "Enter name",
+      "categoryLabel": "Category",
+      "addNewCategory": "Add New Category",
+      "cancelAddCategory": "Cancel Adding Category",
+      "newCategoryPlaceholder": "New category name...",
+      "confirmAddCategory": "Confirm adding category",
+      "addSymbolButton": "Add Symbol",
+      "saveChangesButton": "Save Changes",
+      "removeImageButton": "Remove Image"
+    },
+    "deleteConfirmTitle": "Confirm Deletion",
+    "deleteConfirmMessage": "Are you sure you want to delete the symbol \"{{name}}\"? This cannot be undone.",
+    "categoryAddedTitle": "Category Added",
+    "categoryAddedMessage": "\"{{name}}\" created successfully.",
+    "errors": {
+      "saveSymbolsFail": "Could not save symbols.",
+      "saveCategoriesFail": "Could not save categories.",
+      "imageSelectFail": "Could not select image.",
+      "invalidCategoryNameTitle": "Invalid Name",
+      "invalidCategoryNameMessage": "Please enter a valid category name.",
+      "duplicateCategoryTitle": "Duplicate Name",
+      "duplicateCategoryMessage": "A category with this name already exists.",
+      "validationErrorTitle": "Validation Error",
+      "symbolNameRequired": "Symbol name is required."
+    }
+  },
+  "cateComponent": {
+    "accessibilityLabel": "Category: {{category}}",
+    "selectedAccessibilityLabel": "Category: {{category}}, selected"
+  },
+  "aboutScreen": {
+    "title": "About",
+    "defaultContactEmail": "support@communify.app", 
+    "defaultWebsiteUrl": "https://communify.app",   
+    "versionLabel": "Version {{version}} (Build {{build}})",
+    "missionTitle": "Our Mission",
+    "missionText": "Passionate about creating innovative and accessible solutions. Focused on building high-quality applications that enhance user experience through simplicity, performance, and continuous feedback.",
+    "teamTitle": "Our Team",
+    "teamText": "Every member brings unique skills and dedication, allowing us to collaborate effectively and work towards making a positive impact. We believe in the power of teamwork to build great things.",
+    "connectTitle": "Connect With Us",
+    "websiteLinkText": "Visit Our Website",
+    "websiteAccessibilityLabel": "Visit our website",
+    "contactLinkText": "Contact Support",
+    "contactAccessibilityLabel": "Contact support via email",
+    "footerText": "© {{year}} {{appName}}. All rights reserved.",
+    "errors": {
+      "noEmailClient": "Could not open email client. Please check if you have a mail app installed.",
+      "noBrowser": "Could not open link. Please check if you have a web browser installed.",
+      "linkOpenFail": "An error occurred while trying to open the link."
     }
   }
 }

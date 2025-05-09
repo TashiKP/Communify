@@ -7,25 +7,19 @@ import {
   faBackspace,
   faTrash,
 } from '@fortawesome/free-solid-svg-icons';
+import { useTranslation } from 'react-i18next'; // <-- Import i18next hook
 
 // --- Import Appearance Context ---
 import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext'; // Adjust path
 
 // --- Props ---
 interface IconInputComponentProps {
-  /** Function to call when the speak button is pressed */
   onSpeakPress?: () => void;
-  /** Function to call when the backspace button is pressed */
   onBackspacePress?: () => void;
-  /** Function to call when the clear button is pressed */
   onClearPress?: () => void;
-  /** The actual content (e.g., selected symbols/text) to display in the middle */
   children?: React.ReactNode;
-  /** Optional: Disable speak button (e.g., if input is empty) */
   isSpeakDisabled?: boolean;
-  /** Optional: Disable backspace button (e.g., if input is empty) */
   isBackspaceDisabled?: boolean;
-   /** Optional: Disable clear button (e.g., if input is empty) */
   isClearDisabled?: boolean;
 }
 
@@ -42,24 +36,23 @@ const IconInputComponent: React.FC<IconInputComponentProps> = ({
   isBackspaceDisabled = false,
   isClearDisabled = false,
 }) => {
-  // --- Consume Appearance Context ---
+  // --- Hooks ---
   const { theme, fonts } = useAppearance();
+  const { t } = useTranslation(); // <-- Use the translation hook
 
   // --- Dynamic Styles ---
-  // Recalculate styles only when theme or fonts change
   const styles = useMemo(() => createThemedStyles(theme, fonts), [theme, fonts]);
 
   // --- Determine Icon Colors Based on Theme and Disabled State ---
-  const iconColorActive = theme.white; // Active icons use theme's white color
-  const iconColorInactive = theme.disabled; // Use theme's disabled color for inactive icons
+  const iconColorActive = theme.white;
+  const iconColorInactive = theme.disabled;
 
   const speakIconColor = isSpeakDisabled ? iconColorInactive : iconColorActive;
   const backspaceIconColor = isBackspaceDisabled ? iconColorInactive : iconColorActive;
   const clearIconColor = isClearDisabled ? iconColorInactive : iconColorActive;
 
-  // Calculate icon sizes based on theme fonts
-  const iconSize = fonts.h2 * 1.1; // Example: Base size on h2 font size
-  const smallIconSize = fonts.h2; // Slightly smaller for trash icon maybe
+  const iconSize = fonts.h2 * 1.1;
+  const smallIconSize = fonts.h2;
 
   return (
     <View style={styles.container}>
@@ -69,7 +62,7 @@ const IconInputComponent: React.FC<IconInputComponentProps> = ({
             style={styles.iconButton}
             onPress={onSpeakPress}
             disabled={isSpeakDisabled}
-            accessibilityLabel="Speak sentence"
+            accessibilityLabel={t('iconInput.speakAccessibilityLabel')} // Use t()
             accessibilityState={{ disabled: isSpeakDisabled }}
             hitSlop={hitSlop}
         >
@@ -85,8 +78,7 @@ const IconInputComponent: React.FC<IconInputComponentProps> = ({
             contentContainerStyle={styles.inputContentContainer}
             keyboardShouldPersistTaps="handled"
         >
-            {/* Render children or themed placeholder */}
-            {children ? children : <Text style={styles.placeholderText}>Selected items appear here</Text>}
+            {children ? children : <Text style={styles.placeholderText}>{t('iconInput.placeholder')}</Text>} {/* Use t() */}
         </ScrollView>
       </View>
 
@@ -96,19 +88,18 @@ const IconInputComponent: React.FC<IconInputComponentProps> = ({
             style={styles.iconButton}
             onPress={onBackspacePress}
             disabled={isBackspaceDisabled}
-            accessibilityLabel="Delete last item"
+            accessibilityLabel={t('iconInput.backspaceAccessibilityLabel')} // Use t()
             accessibilityState={{ disabled: isBackspaceDisabled }}
             hitSlop={hitSlop}
         >
           <FontAwesomeIcon icon={faBackspace} size={iconSize} color={backspaceIconColor} />
         </TouchableOpacity>
-        {/* Spacer */}
         <View style={styles.buttonSpacer} />
         <TouchableOpacity
             style={styles.iconButton}
             onPress={onClearPress}
             disabled={isClearDisabled}
-            accessibilityLabel="Clear all items"
+            accessibilityLabel={t('iconInput.clearAccessibilityLabel')} // Use t()
             accessibilityState={{ disabled: isClearDisabled }}
             hitSlop={hitSlop}
         >
@@ -119,57 +110,16 @@ const IconInputComponent: React.FC<IconInputComponentProps> = ({
   );
 };
 
-// --- Helper Function for Themed Styles ---
+// --- Styles (Unchanged) ---
 const createThemedStyles = (theme: ThemeColors, fonts: FontSizes) => StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    width: '100%',
-    backgroundColor: theme.primary, // Use theme primary for bar background
-    minHeight: Platform.select({ ios: 70, default: 65 }),
-    // Use theme border or a subtle overlay based on theme
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: theme.isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-  },
-  actionSection: {
-    paddingHorizontal: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  actionSectionRight: {
-    flexDirection: 'row',
-    paddingRight: 20,
-  },
-  inputArea: {
-    flex: 1,
-    backgroundColor: theme.card, // Use theme card color for input background
-    marginVertical: 6,
-    marginHorizontal: 0,
-    borderRadius: 8,
-    overflow: 'hidden',
-    justifyContent: 'center',
-    borderWidth: StyleSheet.hairlineWidth, // Add subtle border
-    borderColor: theme.border,          // Use theme border color
-  },
-  inputContentContainer: {
-    flexGrow: 1,
-    alignItems: 'center',
-    paddingHorizontal: 12,
-  },
-  iconButton: {
-    padding: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  buttonSpacer: {
-    width: 15,
-  },
-  placeholderText: {
-    color: theme.disabled, // Use theme disabled color for placeholder
-    fontSize: fonts.body,   // Use theme font size
-    fontStyle: 'italic',
-  },
-  // hitSlop defined outside styles
+  container: { flexDirection: 'row', alignItems: 'stretch', width: '100%', backgroundColor: theme.primary, minHeight: Platform.select({ ios: 70, default: 65 }), borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)', },
+  actionSection: { paddingHorizontal: 18, justifyContent: 'center', alignItems: 'center', },
+  actionSectionRight: { flexDirection: 'row', paddingRight: 20, },
+  inputArea: { flex: 1, backgroundColor: theme.card, marginVertical: 6, marginHorizontal: 0, borderRadius: 8, overflow: 'hidden', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth, borderColor: theme.border, },
+  inputContentContainer: { flexGrow: 1, alignItems: 'center', paddingHorizontal: 12, },
+  iconButton: { padding: 8, justifyContent: 'center', alignItems: 'center', },
+  buttonSpacer: { width: 15, },
+  placeholderText: { color: theme.disabled, fontSize: fonts.body, fontStyle: 'italic', },
 });
 
 export default IconInputComponent;

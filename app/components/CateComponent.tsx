@@ -6,6 +6,7 @@ import {
 import axios from 'axios'; // Ensure axios is installed
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import { faChevronRight, faFolder } from '@fortawesome/free-solid-svg-icons';
+import { useTranslation } from 'react-i18next'; // <-- Import i18next hook
 
 // --- Import Appearance Context ---
 import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext'; // Adjust path
@@ -13,22 +14,23 @@ import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceCont
 // --- Component Props Interface ---
 interface CateComponentProps {
   keyword: string;                    // Display text (potentially translated name of the category)
-  iconKeywordForArasaac: string;    // Original English keyword for Arasaac icon search (e.g., "Food", "Animals")
+  iconKeywordForArasaac: string;    // Original English keyword for Arasaac icon search
   languageForArasaac: string;       // Language to use for Arasaac API (e.g., 'en')
-  isSelected?: boolean;             // Optional: to highlight if selected
-  onPress?: () => void;             // Callback when pressed (SymbolGrid passes original name via closure)
+  isSelected?: boolean;
+  onPress?: () => void;
 }
 
 // --- Component ---
 const CateComponent: React.FC<CateComponentProps> = React.memo(({
-    keyword, // This is the displayText (e.g., "Food" or its Dzongkha translation)
-    iconKeywordForArasaac,    // Original English keyword for Arasaac icon (e.g., "Food")
-    languageForArasaac,       // Language for Arasaac API (e.g., "en")
+    keyword, // This is the displayText
+    iconKeywordForArasaac,
+    languageForArasaac,
     isSelected = false,
     onPress
 }) => {
-  // --- Appearance Context ---
+  // --- Hooks ---
   const { theme, fonts } = useAppearance();
+  const { t } = useTranslation(); // <-- Get t function
 
   // --- Dynamic Styles ---
   const styles = useMemo(() => createThemedStyles(theme, fonts, isSelected), [theme, fonts, isSelected]);
@@ -36,155 +38,96 @@ const CateComponent: React.FC<CateComponentProps> = React.memo(({
   // --- State for pictogram ---
   const [pictogramUrl, setPictogramUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [fetchAttempted, setFetchAttempted] = useState<boolean>(false); // Track if fetch was tried
-
-  // Ref to track mounted status
+  const [fetchAttempted, setFetchAttempted] = useState<boolean>(false);
   const isMountedRef = useRef(true);
 
+  // --- Effects ---
   useEffect(() => {
-    isMountedRef.current = true; // Set true on mount
-    return () => {
-      isMountedRef.current = false; // Set false on unmount
-    };
-  }, []); // Empty dependency array, runs only on mount and unmount
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
 
-
-  // --- Effect to fetch pictogram ---
+  // Effect to fetch pictogram (logic remains the same)
   useEffect(() => {
     if (!isMountedRef.current) return;
+    setPictogramUrl(null); setLoading(true); setFetchAttempted(false);
 
-    // Reset state when keyword or language changes
-    setPictogramUrl(null);
-    setLoading(true);
-    setFetchAttempted(false);
-
-    // Skip fetch for special keywords (use iconKeywordForArasaac for this logic as it's the stable English term)
-    // or if iconKeywordForArasaac is empty
-    if (!iconKeywordForArasaac ||
-        iconKeywordForArasaac.toLowerCase() === 'contextual' ||
-        iconKeywordForArasaac.toLowerCase() === 'custom') {
-        if (isMountedRef.current) setLoading(false); // Stop loading as no fetch will occur
+    if (!iconKeywordForArasaac || iconKeywordForArasaac.toLowerCase() === 'contextual' || iconKeywordForArasaac.toLowerCase() === 'custom') {
+        if (isMountedRef.current) setLoading(false);
         return;
     }
 
     let timer: NodeJS.Timeout | null = null;
-
     const fetchPictogram = async () => {
-      if (!isMountedRef.current) return; // Check before async operation
-
-      setFetchAttempted(true); // Mark that we are attempting the fetch
-      // Use languageForArasaac and iconKeywordForArasaac for the Arasaac API call
+      if (!isMountedRef.current) return;
+      setFetchAttempted(true);
       const searchUrl = `https://api.arasaac.org/api/pictograms/${languageForArasaac}/search/${encodeURIComponent(iconKeywordForArasaac)}`;
       try {
         const response = await axios.get(searchUrl);
         if (isMountedRef.current) {
             const pictogramId = response.data?.[0]?._id;
             if (pictogramId) {
-              const generatedUrl = `https://static.arasaac.org/pictograms/${pictogramId}/${pictogramId}_300.png`;
-              setPictogramUrl(generatedUrl);
-            } else {
-               setPictogramUrl(null); // Explicitly set to null if not found
-            }
+              setPictogramUrl(`https://static.arasaac.org/pictograms/${pictogramId}/${pictogramId}_300.png`);
+            } else { setPictogramUrl(null); }
         }
       } catch (err: any) {
         if (isMountedRef.current) {
             console.error(`CateComponent: Arasaac fetch error for '${iconKeywordForArasaac}':`, err.message);
-            setPictogramUrl(null); // Set to null on error
+            setPictogramUrl(null);
         }
       } finally {
-        if (isMountedRef.current) {
-            setLoading(false); // Stop loading indicator
-        }
+        if (isMountedRef.current) setLoading(false);
       }
     };
-
-    // Debounce fetch slightly
     timer = setTimeout(fetchPictogram, 50);
+    return () => { if (timer) clearTimeout(timer); };
+  }, [iconKeywordForArasaac, languageForArasaac]);
 
-    // Cleanup function
-    return () => {
-        if (timer) clearTimeout(timer); // Clear timer if component unmounts
-    };
-  }, [iconKeywordForArasaac, languageForArasaac]); // Rerun effect if these specific props change
-
-  // --- Press Handler ---
+  // --- Press Handler (unchanged) ---
   const handlePress = () => {
-    if (onPress) {
-      onPress(); // The onPress from SymbolGrid already knows the original category name
-    }
+    if (onPress) onPress();
   };
 
-  // --- Determine Icon Color ---
+  // --- Determine Icon Color (unchanged) ---
   const iconColor = isSelected ? theme.primary : theme.textSecondary;
+
+  // --- Accessibility Label ---
+  const accessibilityLabelText = isSelected
+    ? t('cateComponent.selectedAccessibilityLabel', { category: keyword })
+    : t('cateComponent.accessibilityLabel', { category: keyword });
 
   return (
     <TouchableOpacity
         style={styles.cateComponent}
         onPress={handlePress}
         activeOpacity={0.7}
-        accessibilityLabel={`Category: ${keyword}${isSelected ? ', selected' : ''}`} // 'keyword' is the display text
+        accessibilityLabel={accessibilityLabelText} // <-- Use translated label
         accessibilityRole="button"
         accessibilityState={{ selected: isSelected }}
     >
         <View style={styles.iconContainer}>
-            {loading && fetchAttempted && ( // Show loader only while loading AND fetch was attempted
-                <ActivityIndicator size="small" color={theme.textSecondary} />
-            )}
-            {!loading && pictogramUrl && ( // Show image if loaded and URL exists
-                <Image source={{ uri: pictogramUrl }} style={styles.symbolImage} resizeMode="contain"/>
-            )}
-            {/* Show folder icon if NOT loading AND (no URL OR fetch wasn't needed/attempted for special keywords) */}
-            {!loading && (!pictogramUrl || !fetchAttempted && (iconKeywordForArasaac.toLowerCase() === 'contextual' || iconKeywordForArasaac.toLowerCase() === 'custom')) && (
-                <FontAwesomeIcon icon={faFolder} size={fonts.h2} color={iconColor} />
-            )}
-             {/* Show folder icon if NOT loading AND (no URL after an attempted fetch failed for regular keywords) */}
-            {!loading && !pictogramUrl && fetchAttempted && iconKeywordForArasaac.toLowerCase() !== 'contextual' && iconKeywordForArasaac.toLowerCase() !== 'custom' && (
-                <FontAwesomeIcon icon={faFolder} size={fonts.h2} color={iconColor} />
-            )}
+            {/* Icon/Loading display logic remains the same */}
+            {loading && fetchAttempted && ( <ActivityIndicator size="small" color={theme.textSecondary} /> )}
+            {!loading && pictogramUrl && ( <Image source={{ uri: pictogramUrl }} style={styles.symbolImage} resizeMode="contain"/> )}
+            {!loading && (!pictogramUrl || !fetchAttempted && (iconKeywordForArasaac.toLowerCase() === 'contextual' || iconKeywordForArasaac.toLowerCase() === 'custom')) && ( <FontAwesomeIcon icon={faFolder} size={fonts.h2} color={iconColor} /> )}
+            {!loading && !pictogramUrl && fetchAttempted && iconKeywordForArasaac.toLowerCase() !== 'contextual' && iconKeywordForArasaac.toLowerCase() !== 'custom' && ( <FontAwesomeIcon icon={faFolder} size={fonts.h2} color={iconColor} /> )}
         </View>
+        {/* Text display uses the keyword prop, which is already the correct display text */}
         <Text style={styles.keywordText} numberOfLines={2} ellipsizeMode="tail">
-            {keyword} {/* This 'keyword' prop is the display text (e.g., "Food" or its translation) */}
+            {keyword}
         </Text>
         <FontAwesomeIcon icon={faChevronRight} size={fonts.label} color={iconColor} style={styles.chevronIcon} />
     </TouchableOpacity>
   );
 });
 
-// --- Helper Function for Themed Styles ---
+// --- Styles (Unchanged) ---
 const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, isSelected: boolean) => StyleSheet.create({
-  cateComponent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: isSelected ? theme.primaryMuted : theme.card,
-    paddingVertical: 12,
-    paddingHorizontal: 15,
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-    backgroundColor: isSelected ? theme.primaryMuted : theme.background,
-    borderRadius: 6,
-    overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: theme.border,
-  },
-  symbolImage: {
-    width: '85%', // Relative to iconContainer
-    height: '85%', // Relative to iconContainer
-  },
-  keywordText: {
-    flex: 1,
-    fontSize: fonts.body,
-    fontWeight: isSelected ? '600' : '500',
-    color: isSelected ? theme.primary : theme.text,
-    textAlign: 'left',
-  },
-  chevronIcon: {
-    marginLeft: 10,
-  },
+  cateComponent: { flexDirection: 'row', alignItems: 'center', backgroundColor: isSelected ? theme.primaryMuted : theme.card, paddingVertical: 12, paddingHorizontal: 15, },
+  iconContainer: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center', marginRight: 12, backgroundColor: isSelected ? theme.primaryMuted : theme.background, borderRadius: 6, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: theme.border, },
+  symbolImage: { width: '85%', height: '85%', },
+  keywordText: { flex: 1, fontSize: fonts.body, fontWeight: isSelected ? '600' : '500', color: isSelected ? theme.primary : theme.text, textAlign: 'left', },
+  chevronIcon: { marginLeft: 10, },
 });
 
 export default CateComponent;

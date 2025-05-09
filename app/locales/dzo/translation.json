@@ -78,7 +78,16 @@
     "ok": "འགྲིག་སོང་།",
     "error": "འཛོལ་བ།",
     "goBack": "རྒྱབ་ལོག",
-    "resetChanges": "བསྒྱུར་བཅོས་ལོག་བཙུགས།"
+    "saveSettings": "སྒྲིག་སྟངས་བསྲུང་།", 
+    "resetChanges": "བསྒྱུར་བཅོས་ལོག་བཙུགས།",
+    "loading": "འབྱོན་བཞིན་ཡོད།"
+  },
+  "bottomNav": {
+    "search": "བརྡ་རྟགས་འཚོལ།",
+    "addCustom": "སོ་སོའི་བརྡ་རྟགས་ ཡང་ན་ དབྱེ་སྡེ་ཁ་སྐོང་རྐྱབས།", 
+    "home": "གདོང་ཤོག་ལུ་འགྱོ།", 
+    "keyboard": "ལྡེ་སྒྲོམ་ཁ་ཕྱེ།",
+    "settings": "སྒྲིག་སྟངས་ཀྱི་གདམ་ཐོ་ཁ་ཕྱེ།"
   },
   "voiceSettings": {
     "title": "སྐད་དང་གསུང་སྐད།",
@@ -284,6 +293,158 @@
       "changePasscodeLabel": "ཆོག་མཆན་ཨང་གྲངས་སྒྱུར་བ།",
       "setPasscodeFirstTitle": "སྔོན་ལ་ཆོག་མཆན་ཨང་གྲངས་འགོད་རོགས།",
       "setPasscodeFirstMessage": "ཕ་མའི་ལྟ་སྐུལ་ནང་འཛུལ་དབང་ལ་དགོས་པར་མ་བྱས་གོང་དུ་གཤམ་གྱི་འདེམས་ཀ་བེད་སྤྱད་དེ་ཆོག་མཆན་ཨང་གྲངས་ཤིག་འགོད་རོགས།"
+    }
+  },
+  "menu": {
+    "title": "སྒྲིག་སྟངས།", 
+    "displayOptions": "བཀྲམ་སྟོན་གྱི་གདམ་ཁ།",
+    "symbolSelection": "བརྡ་རྟགས་ཀྱི་གདམ་ཁ།", 
+    "voiceAndSpeech": "སྐད་དང་གསུང་སྐད།",
+    "parentalControls": "ཕ་མའི་དབང་འཛིན།", 
+    "aboutUs": "ང་བཅས་ཀྱི་སྐོར།",
+    "closeMenuAccessibilityLabel": "གདམ་ཐོ་ཁ་བསྡམས།", 
+    "loadingTitle": "འབྱོན་བཞིན་ཡོད།",
+    "loadingMessage": "སྒྲིག་སྟངས་ཚུ་ད་ལྟོ་འབྱོན་བཞིན་ཡོད།།",
+    "saveSuccessTitle": "སྒྲིག་སྟངས་བསྲུངས་ཡོད།",
+    "saveSuccessSelection": "གདམ་ཁའི་ཐབས་ལམ་གསར་བསྐྱར་འབད་ཡོད།", 
+    "saveSuccessParental": "ཕ་མའི་དབང་འཛིན་གསར་བསྐྱར་འབད་ཡོད།",
+    "errors": {
+      "loadSettingsFail": "སྒྲིག་སྟངས་ལ་ལུ་ཅིག་ལེན་མ་ཚུགས།", 
+      "passcodeRequiredTitle": "གསང་ཚིག་བཟོ་དགོས།", 
+      "passcodeRequiredMessage": "ཕ་མའི་དབང་འཛིན་ལུ་གསང་ཚིག་དགོཔ་ཨིན་རུང་ གསང་ཚིག་བཟོ་སྟེ་མིན་འདུག། དང་པ་ཕ་མའི་དབང་འཛིན་ > སྲུང་སྐྱོབ་ནང་གཅིག་སྒྲིག་བཟོ་གནང་།",
+      "saveSelectionFail": "གདམ་ཁའི་ཐབས་ལམ་བསྲུང་མ་ཚུགས།", 
+      "saveParentalFail": "ཕ་མའི་དབང་འཛིན་གྱི་སྒྲིག་སྟངས་བསྲུང་མ་ཚུགས།" 
+    }
+  },
+  "keyboardInput": {
+    "defaultPlaceholder": "འཕྲིན་དོན་བཙུགས་སའི་སྟོང་ཆ།",
+    "inputAccessibilityLabel": "འཕྲིན་དོན་བཙུགས་སའི་སྟོང་ཆ།",
+    "sendAccessibilityLabel": "འཕྲིན་དོན་བསྐུར།" 
+  },
+  "iconInput": {
+    "speakAccessibilityLabel": "ཚིག་རྗོད་སླབ།",
+    "placeholder": "གདམ་ཁ་བརྐྱབས་མི་ཚུ་ནཱ་ལུ་མཐོང་ཚུགས།", 
+    "backspaceAccessibilityLabel": "མཇུག་གི་རྣམ་གྲངས་བཏོན་གཏང་།",
+    "clearAccessibilityLabel": "རྣམ་གྲངས་ཆ་མཉམ་གསལ་བཏང་།"
+  },
+  "displayOptions": {
+    "title": "བཀྲམ་སྟོན་གྱི་གདམ་ཁ།", 
+    "loading": "བཀྲམ་སྟོན་སྒྲིག་སྟངས་འབྱོན་བཞིན་ཡོད།", 
+    "layout": {
+      "sectionTitle": "སྒྲིག་བཀོད་ཀྱི་མཐུག་ཚད།",
+      "simple": "འཇམ་སམ།",
+      "standard": "ཚད་ལྡན།", 
+      "dense": "མཐུག་པོ།", 
+      "accessibilityLabel": "སྒྲིག་བཀོད་ {{layout}} ལུ་བཞག།",
+      "infoText": "བརྡ་རྟགས་ཀྱི་སྒྲོམ་མིག་བཀྲམ་སྟོན་གྱི་དོན་ལུ་ མཐུག་ཚད་དེ་གདམ་ཁ་རྐྱབས། བསྒྱུར་བཅོས་ཚུ་འཕྲལ་མར་བསྲུང་འོང་།" 
+    },
+    "appearance": {
+      "sectionTitle": "ཕྱི་ཚུལ།",
+      "brightnessLabel": "མངོན་གསལ་གྱི་གསལ་ཚད།",
+      "lockBrightness": "གསལ་ཚད་ཞུན་དག་ལྡེ་མིག་བརྐྱབ།", 
+      "unlockBrightness": "གསལ་ཚད་ཞུན་དག་ལྡེ་མིག་ཕྱེ།", 
+      "brightnessSliderAccessibilityLabel": "མངོན་གསལ་གྱི་གསལ་ཚད་ཀྱི་བདེ་སྒྲིལ།", 
+      "brightnessValueAccessibilityLabel": "ད་ལྟོའི་གསལ་ཚད་ {{value}}", 
+      "brightnessLow": "དམའ་བ།",
+      "brightnessMedium": "འབྲིང་མ།",
+      "brightnessHigh": "མཐོ་བ།", 
+      "brightnessInfo": "མངོན་གསལ་ནང་འཁོད་ལུ་ ཚགས་མའི་ཕྱི་ཁ ", 
+      "darkModeLabel": "མུืดཔ་གི་ཐབས་ལམ།",
+      "darkModeAccessibilityLabel": "མུืดཔ་གི་ཐབས་ལམ་སོར།",
+      "contrastLabel": "ཁྱད་པར།", 
+      "contrastAccessibilityLabel": "ཁྱད་པར་གྱི་ཐབས་ལམ་ {{contrast}} ལུ་བཞག།", 
+      "default": "སྔོན་སྒྲིག" 
+    },
+    "contrast": {
+        "default": "སྔོན་སྒྲིག", 
+        "highLight": "ཁྱད་པར་མཐོ་བ། (གསལ)", 
+        "highDark": "ཁྱད་པར་མཐོ་བ། (མུད)" 
+    },
+    "textSize": {
+      "sectionTitle": "ཡིག་འབྲུའི་ཚད།",
+      "small": "ཆུང་བ།", 
+      "medium": "འབྲིང་མ།", 
+      "large": "སྦོམ།",
+      "accessibilityLabel": "ཡིག་འབྲུའི་ཚད་ {{size}} ལུ་བཞག།",
+      "infoText": "མངོན་གསལ་ནང་འཁོད་ཀྱི་ཡིག་འབྲུ་ཆ་མཉམ་གྱི་གཞི་རྩའི་ཚད་དེ་སྒྲིག་མི་ཨིན།"
+    },
+    "resetConfirmTitle": "བསྒྱུར་བཅོས་ལོག་བཙུགས་རྐྱབ་ག?",
+    "resetConfirmMessage": "ཕྱི་ཚུལ་དང་ཡིག་འབྲུའི་ཚད་ཀྱི་བསྒྱུར་བཅོས་ཆ་མེད་བཏང་ནི་ཨིན་ནམ།",
+    "saveSuccessTitle": "སྒྲིག་སྟངས་བསྲུངས་ཡོད།", 
+    "saveSuccessMessage": "བཀྲམ་སྟོན་གྱི་གདམ་ཁ་ཚུ་གསར་བསྐྱར་འབད་ཡོད།", 
+    "unsavedChangesTitle": "མ་བསྲུངས་བའི་བསྒྱུར་བཅོས།", 
+    "unsavedChangesMessage": "ཕྱི་ཚུལ་དང་ཡིག་འབྲུའི་ཚད་ཀྱི་བསྒྱུར་བཅོས་ཆ་མེད་བཏང་སྟེ་རྒྱབ་ལོག་འགྱོ་ག?", 
+    "errors": {
+      "saveFail": "བཀྲམ་སྟོན་སྒྲིག་སྟངས་བསྲུང་བའི་སྐབས་ལུ་འཛོལ་བ་བྱུང་ནུག" 
+    }
+  },
+  "customPage": {
+  "title": "རྩོམ་སྒྲིག་དབྱིབས་རྟགས།",
+  "addSymbolAccessibilityLabel": "དབྱིབས་རྟགས་གསར་པ་ཁ་སྐོང་རྐྱབས།",
+  "loadingSymbols": "རྩོམ་སྒྲིག་དབྱིབས་རྟགས་ལེན་འཇུག་འབད་དོ།...",
+  "noSymbolsTitle": "རྩོམ་སྒྲིག་དབྱིབས་རྟགས་མེད།",
+  "noSymbolsSubtitle": "དབྱིབས་རྟགས་དང་པོ་ཁ་སྐོང་རྐྱབ་ནི་གཙོ་མདོག '+' ཨེབ།",
+  "uncategorizedCategoryLabel": "དབྱེ་ཁག་མེད་པ།",
+  "categoryAccessibilityLabel": "དབྱེ་ཁག {{name}}, {{count}} རྣམ་པ།, {{state}}",
+  "emptyFolderText": "ཡིག་སྣོད་འདི་ནང་སྣོད་མེད།",
+  "editSymbolAccessibilityLabel": "དབྱིབས་རྟགས {{name}} ཞུན་དག་འབད།",
+  "deleteSymbolAccessibilityLabel": "དབྱིབས་རྟགས {{name}} བསྐྲད།",
+  "modal": {
+    "addTitle": "དབྱིབས་རྟགས་ཁ་སྐོང་རྐྱབས།",
+    "editTitle": "དབྱིབས་རྟགས་ཞུན་དག།",
+    "closeAccessibilityLabel": "མཐེབ་ཁ་བསྡམས།",
+    "imageLabel": "རིས་མཚོན་ (ཐོན་རིམ་མེད།)",
+    "chooseImageButton": "རིས་མཚོན་གདམ་ཁ།",
+    "imageWarning": "རིས་མཚོན་འདི་མཉམ་སྦྱོར་གནང་བའི་གནས་སྟངས་ལ་གནས་མེད་འགྱུར་འོང་། ལག་མཐོང་ནང་གསོག་པའི་རིས་མཚོན་ལག་ལེན་འབད་ནས་ལག་ལེན་འབད་དགོས།",
+    "nameLabel": "དབྱིབས་རྟགས་མིང་ *",
+    "namePlaceholder": "མིང་བཙུགས།",
+    "categoryLabel": "དབྱེ་ཁག",
+    "addNewCategory": "དབྱེ་ཁག་གསར་པ་ཁ་སྐོང་རྐྱབས།",
+    "cancelAddCategory": "ཁ་སྐོང་བཏང་མ་བཅོལ།",
+    "newCategoryPlaceholder": "དབྱེ་ཁག་གསར་པའི་མིང་...",
+    "confirmAddCategory": "དབྱེ་ཁག་ཁ་སྐོང་བཏང་གི་ངེས་དཔྱད་འབད།",
+    "addSymbolButton": "དབྱིབས་རྟགས་ཁ་སྐོང་རྐྱབས།",
+    "saveChangesButton": "གནས་ཚུལ་སྲུང་བཞག",
+    "removeImageButton": "རིས་མཚོན་རྩ་བསྐྲད།"
+  },
+  "deleteConfirmTitle": "བསྐྲད་ངེས་དཔྱད།",
+  "deleteConfirmMessage": "“{{name}}” མིང་གི་དབྱིབས་རྟགས་བསྐྲད་དགོས་ཡོད་མས། འདི་གྱིས་ལོག་བསྐྱར་མི་ཐུབ།",
+  "categoryAddedTitle": "དབྱེ་ཁག་ཁ་སྐོང་རྐྱབས་ཡོད།",
+  "categoryAddedMessage": "“{{name}}” གསར་པ་ལག་ལེན་འཐབ་ཚར་ཡོད།",
+  "errors": {
+    "saveSymbolsFail": "དབྱིབས་རྟགས་སྲུང་བཞག་མི་ཚུགས།",
+    "saveCategoriesFail": "དབྱེ་ཁག་སྲུང་བཞག་མི་ཚུགས།",
+    "imageSelectFail": "རིས་མཚོན་གདམ་ཁ་བཙུགས་མི་ཚུགས།",
+    "invalidCategoryNameTitle": "མིང་མི་ནུས་པ།",
+    "invalidCategoryNameMessage": "ནུས་པའི་དབྱེ་ཁག་མིང་བཙུགས།",
+    "duplicateCategoryTitle": "མིང་གཅིག་བསྐྱར་ཡོད།",
+    "duplicateCategoryMessage": "མིང་འདི་དང་མཉམ་པའི་དབྱེ་ཁག་ཧེ་མ་སྤྲད་ཡོད།",
+    "validationErrorTitle": "ནུས་བདེན་འཛིན་འཛོལ།",
+    "symbolNameRequired": "དབྱིབས་རྟགས་མིང་དགོས་མཁོ་ཡོད།"
+  }
+},
+"cateComponent": {
+    "accessibilityLabel": "དབྱེ་སྡེ་: {{category}}", 
+    "selectedAccessibilityLabel": "དབྱེ་སྡེ་: {{category}}, གདམ་ཁ་བརྐྱབས་ཡོད།" 
+  },
+  "aboutScreen": {
+    "title": "སྐོར་ལས།", 
+    "defaultContactEmail": "support@communify.app", 
+    "defaultWebsiteUrl": "https://communify.app",  
+    "versionLabel": "ཐོན་རིམ། {{version}} (བཟོ་སྐྲུན། {{build}})", 
+    "missionTitle": "ང་བཅས་ཀྱི་དམིགས་ཡུལ།", 
+    "missionText": "གསར་གཏོད་དང་འཇམ་ཏོང་ཏོ་ཡོད་པའི་ཐབས་ལམ་བཟོ་ནི་ལུ་སྤྲོ་བ་ཡོད། ལག་ལེན་པའི་ཉམས་མྱོང་དེ་ འཇམ་ཏོང་ཏོ་དང་། ལཱ་གི་གྲུབ་འབྲས། རྒྱུན་ཆད་མེད་པའི་བསམ་འཆར་ཚུ་གི་ཐོག་ལས་ཡར་དྲག་བཟོ་མི་ སྤུས་ཚད་མཐོ་བའི་མངོན་གསལ་བཟོ་ནི་ལུ་གཙོ་བོར་བཟུང་ཡོད།",
+    "teamTitle": "ང་བཅས་ཀྱི་སྡེ་ཚན།", 
+    "teamText": "འཐུས་མི་རེ་རེ་གིས་ རིག་རྩལ་དང་བརྩོན་ཤུགས་ཐ་དད་འབག་འོང་མི་ལུ་བརྟེན་ཏེ་ ང་བཅས་མཉམ་འབྲེལ་ནུས་ཤུགས་ཅན་འབད་ཚུགས་པའི་ཁར་ ཕན་ཐོགས་ཅན་གྱི་ལཱ་འབད་ཚུགས། ང་བཅས་ སྡེ་ཚན་གྱི་ནུས་ཤུགས་ལུ་བརྟེན་ཏེ་ ལཱ་ག་ཅི་ཡང་འབད་ཚུགས་ཟེར་ཡིད་ཆེས་བསྐྱེད་དོ།", 
+    "websiteLinkText": "ང་བཅས་ཀྱི་དྲ་རྒྱ་ནང་འཛུལ།", 
+    "websiteAccessibilityLabel": "ང་བཅས་ཀྱི་དྲ་རྒྱ་ནང་འཛུལ།",
+    "contactLinkText": "རྒྱབ་སྐྱོར་ལུ་འབྲེལ་བ་འཐབ།",
+    "contactAccessibilityLabel": "གློག་འཕྲིན་ཐོག་ལས་རྒྱབ་སྐྱོར་ལུ་འབྲེལ་བ་འཐབ།", 
+    "footerText": "© {{year}} {{appName}}། དབང་ཆ་ཆ་མཉམ་བདག་དབང་ཡོད།", 
+    "errors": {
+      "noEmailClient": "གློག་འཕྲིན་གྱི་མངོན་གསལ་ཁ་ཕྱེ་མ་ཚུགས། ཁྱོད་ལུ་གློག་འཕྲིན་མངོན་གསལ་བཙུགས་ཡོད་ག་མེད་དཔྱད་གནང་།", 
+      "noBrowser": "འབྲེལ་ལམ་ཁ་ཕྱེ་མ་ཚུགས། ཁྱོད་ལུ་དྲ་རྒྱའི་མངོན་གསལ་བཙུགས་ཡོད་ག་མེད་དཔྱད་གནང་།", 
+      "linkOpenFail": "འབྲེལ་ལམ་ཁ་ཕྱེ་ནིའི་སྐབས་ལུ་འཛོལ་བ་བྱུང་ནུག" 
     }
   }
 }

@@ -4,32 +4,32 @@ import {
     View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Platform,
     ScrollView, Alert, Switch, ActivityIndicator
 } from 'react-native';
-import Slider from '@react-native-community/slider'; // Ensure installed: npm install @react-native-community/slider
+import Slider from '@react-native-community/slider';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import {
     faArrowLeft, faSave, faUndo, faColumns, faSun, faLock, faLockOpen,
     faTextHeight, faMoon, faFont,
     faThLarge, faTh, faGripVertical, faCheckCircle, faAdjust
 } from '@fortawesome/free-solid-svg-icons';
+import { useTranslation } from 'react-i18next'; // <-- Import i18next hook
 
 // --- Import Context Hooks & Types ---
-import { useGrid, GridLayoutType } from '../context/GridContext'; // Adjust path if needed
+import { useGrid, GridLayoutType } from '../context/GridContext';
 import {
     useAppearance,
     TextSizeType,
     ContrastModeType,
-    ThemeColors, // Type for theme colors
-    FontSizes // Type for font sizes
-} from '../context/AppearanceContext'; // Adjust path if needed
+    ThemeColors,
+    FontSizes
+} from '../context/AppearanceContext';
 
 // --- Re-export types for convenience if needed by parent (Menu) ---
 export type { TextSizeType, ContrastModeType };
 
 // --- Define the settings managed locally by this screen FOR TRACKING CHANGES ---
-// These mirror the AppearanceSettings from the context, plus the local lock state
 interface DisplayLocalSettingsData {
-  brightness: number; // 0-100
-  brightnessLocked: boolean; // Local state for the lock UI, not saved globally
+  brightness: number;
+  brightnessLocked: boolean; // Local UI state only
   textSize: TextSizeType;
   darkModeEnabled: boolean;
   contrastMode: ContrastModeType;
@@ -37,11 +37,10 @@ interface DisplayLocalSettingsData {
 
 // --- Component Props ---
 interface DisplayOptionsScreenProps {
-  // No initialSettings or onSave needed - reads/writes directly to context
   onClose: () => void;
 }
 
-// --- Default Values (only for initial state before context loads) ---
+// --- Default Values ---
 const defaultLocalSettings: DisplayLocalSettingsData = {
   brightness: 50,
   brightnessLocked: false,
@@ -55,186 +54,185 @@ const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
 
 // --- Component ---
 const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) => {
-    // --- Context Hooks ---
+    // --- Hooks ---
     const { gridLayout: contextLayout, setGridLayout, isLoadingLayout } = useGrid();
     const {
-        settings: appearanceSettings, // Current settings from context
-        theme, // Current theme colors
-        fonts, // Current font sizes
+        settings: appearanceSettings,
+        theme,
+        fonts,
         isLoadingAppearance,
-        updateAppearanceSetting // Function to save settings to context
+        updateAppearanceSetting
     } = useAppearance();
+    const { t, i18n } = useTranslation(); // <-- Use the translation hook
 
     // --- State ---
-    // Local state mirrors context settings *for editing and change tracking*
     const [localSettings, setLocalSettings] = useState<DisplayLocalSettingsData>(() => ({
-        // Initialize from context if already loaded, otherwise use defaults temporarily
         brightness: isLoadingAppearance ? defaultLocalSettings.brightness : appearanceSettings.brightness,
-        brightnessLocked: false, // Lock state always starts false locally
+        brightnessLocked: false,
         textSize: isLoadingAppearance ? defaultLocalSettings.textSize : appearanceSettings.textSize,
         darkModeEnabled: isLoadingAppearance ? defaultLocalSettings.darkModeEnabled : appearanceSettings.darkModeEnabled,
         contrastMode: isLoadingAppearance ? defaultLocalSettings.contrastMode : appearanceSettings.contrastMode,
     }));
-     // Separate state for the brightness lock UI element (doesn't persist globally)
-     const [isBrightnessLocked, setIsBrightnessLocked] = useState(false);
-
-    // Saving state for the main Save button action
+    const [isBrightnessLocked, setIsBrightnessLocked] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const isMountedRef = React.useRef(true);
+
+    // --- Mount/Unmount Effect ---
+    useEffect(() => {
+        isMountedRef.current = true;
+        console.log('DisplayOptionsScreen: Mounted. typeof t =', typeof t, 'i18n initialized:', i18n.isInitialized);
+        return () => { isMountedRef.current = false; };
+    }, [t, i18n.isInitialized]);
+
 
     // --- Effect to sync local state when context settings load/change ---
      useEffect(() => {
-        // Update local state ONLY when context is NOT loading, prevents overwriting edits
         if (!isLoadingAppearance) {
-            setLocalSettings({
-                 brightness: appearanceSettings.brightness,
-                 brightnessLocked: isBrightnessLocked, // Keep local lock state separate
-                 textSize: appearanceSettings.textSize,
-                 darkModeEnabled: appearanceSettings.darkModeEnabled,
-                 contrastMode: appearanceSettings.contrastMode,
-            });
+            if (isMountedRef.current) {
+                setLocalSettings({
+                     brightness: appearanceSettings.brightness,
+                     brightnessLocked: isBrightnessLocked,
+                     textSize: appearanceSettings.textSize,
+                     darkModeEnabled: appearanceSettings.darkModeEnabled,
+                     contrastMode: appearanceSettings.contrastMode,
+                });
+            }
         }
-        // We don't reset isBrightnessLocked here, it's purely local UI state
-    }, [appearanceSettings, isLoadingAppearance, isBrightnessLocked]); // Sync if context settings, loading state, or local lock changes
+    }, [appearanceSettings, isLoadingAppearance, isBrightnessLocked]);
 
     // --- Memoize Check for Unsaved Changes ---
-    // Compare local editable state against the *current* context settings
     const hasChanged = useMemo(() => {
-        if (isLoadingAppearance) return false; // No changes considered while loading
+        if (isLoadingAppearance) return false;
         return (
             localSettings.brightness !== appearanceSettings.brightness ||
             localSettings.textSize !== appearanceSettings.textSize ||
             localSettings.darkModeEnabled !== appearanceSettings.darkModeEnabled ||
             localSettings.contrastMode !== appearanceSettings.contrastMode
-            // Note: isBrightnessLocked changes don't trigger save, it's local UI state only
         );
     }, [localSettings, appearanceSettings, isLoadingAppearance]);
 
     // --- Handlers ---
-    // Update local state when an editable setting changes
-    const handleLocalSettingChange = useCallback(<K extends keyof Omit<DisplayLocalSettingsData, 'brightnessLocked'>>( // Exclude brightnessLocked
+    const handleLocalSettingChange = useCallback(<K extends keyof Omit<DisplayLocalSettingsData, 'brightnessLocked'>>(
         key: K,
         value: DisplayLocalSettingsData[K]
     ) => {
         setLocalSettings(prev => ({ ...prev, [key]: value }));
     }, []);
 
-     // Toggle local brightness lock state only
      const handleBrightnessLockToggle = useCallback(() => {
         setIsBrightnessLocked(prev => !prev);
-        // Do NOT modify localSettings.brightnessLocked here, it's separate state
     }, []);
 
-    // Layout selection calls GridContext directly
     const handleLayoutSelect = useCallback(async (layout: GridLayoutType) => {
         if (layout === contextLayout || isLoadingLayout) return;
         try {
-            await setGridLayout(layout); // Update context (which saves)
-            // Optionally provide user feedback if needed, though context might handle it
+            await setGridLayout(layout);
+             // Context handles saving and alerts, provide additional feedback if needed
+            // Alert.alert(t('displayOptions.layoutChangedTitle'), t('displayOptions.layoutChangedMessage', { layout: t(`displayOptions.layout.${layout}`) }));
         } catch (error) {
             console.error("DisplayOptionsScreen: Error calling setGridLayout", error);
             // Alert handled by context potentially
         }
-    }, [setGridLayout, contextLayout, isLoadingLayout]);
+    }, [setGridLayout, contextLayout, isLoadingLayout, /*t*/]); // t removed if alert moved to context
 
-    // Utility to map brightness value to labels
     const mapBrightnessValueToLabel = (value: number): string => {
-        if (value < 34) return 'Low';
-        if (value < 67) return 'Medium';
-        return 'High';
+        if (value < 34) return t('displayOptions.appearance.brightnessLow');
+        if (value < 67) return t('displayOptions.appearance.brightnessMedium');
+        return t('displayOptions.appearance.brightnessHigh');
     };
 
-    // Reset local changes back to match the current context settings
     const handleReset = () => {
         if (!hasChanged || isLoadingAppearance) return;
-        Alert.alert("Reset Changes?", "Discard changes to Appearance and Text Size?", [
-            { text: "Cancel", style: "cancel" },
+        Alert.alert(t('displayOptions.resetConfirmTitle'), t('displayOptions.resetConfirmMessage'), [
+            { text: t('common.cancel'), style: "cancel" },
             {
-                text: "Reset",
+                text: t('common.reset'),
                 style: "destructive",
                 onPress: () => {
-                    // Reset local state to match context's current settings
-                    setLocalSettings({
-                        brightness: appearanceSettings.brightness,
-                        brightnessLocked: isBrightnessLocked, // Keep current local lock state
-                        textSize: appearanceSettings.textSize,
-                        darkModeEnabled: appearanceSettings.darkModeEnabled,
-                        contrastMode: appearanceSettings.contrastMode,
-                    });
-                    // Optionally reset the brightness lock state as well if desired:
-                    // setIsBrightnessLocked(false);
+                    if (isMountedRef.current) {
+                        setLocalSettings({
+                            brightness: appearanceSettings.brightness,
+                            brightnessLocked: isBrightnessLocked,
+                            textSize: appearanceSettings.textSize,
+                            darkModeEnabled: appearanceSettings.darkModeEnabled,
+                            contrastMode: appearanceSettings.contrastMode,
+                        });
+                    }
                 }
             }
         ]);
     };
 
-    // Save local changes by calling the AppearanceContext update function
     const handleSave = async () => {
         if (!hasChanged || isSaving || isLoadingAppearance) return;
-        setIsSaving(true);
+        if(isMountedRef.current) setIsSaving(true);
 
-        // Collect update promises for only the changed settings
         const promises: Promise<void>[] = [];
-        if (localSettings.brightness !== appearanceSettings.brightness) {
-            promises.push(updateAppearanceSetting('brightness', localSettings.brightness));
-        }
-        if (localSettings.textSize !== appearanceSettings.textSize) {
-            promises.push(updateAppearanceSetting('textSize', localSettings.textSize));
-        }
-        if (localSettings.darkModeEnabled !== appearanceSettings.darkModeEnabled) {
-            promises.push(updateAppearanceSetting('darkModeEnabled', localSettings.darkModeEnabled));
-        }
-        if (localSettings.contrastMode !== appearanceSettings.contrastMode) {
-            promises.push(updateAppearanceSetting('contrastMode', localSettings.contrastMode));
-        }
-        // Note: Brightness lock (isBrightnessLocked) is NOT saved via context
+        if (localSettings.brightness !== appearanceSettings.brightness) { promises.push(updateAppearanceSetting('brightness', localSettings.brightness)); }
+        if (localSettings.textSize !== appearanceSettings.textSize) { promises.push(updateAppearanceSetting('textSize', localSettings.textSize)); }
+        if (localSettings.darkModeEnabled !== appearanceSettings.darkModeEnabled) { promises.push(updateAppearanceSetting('darkModeEnabled', localSettings.darkModeEnabled)); }
+        if (localSettings.contrastMode !== appearanceSettings.contrastMode) { promises.push(updateAppearanceSetting('contrastMode', localSettings.contrastMode)); }
 
         try {
-            await Promise.all(promises); // Wait for all context updates to complete
-            setIsSaving(false);
-            Alert.alert("Settings Saved", "Display options updated."); // Provide feedback
-            onClose(); // Close screen after successful save
+            await Promise.all(promises);
+            if(isMountedRef.current) setIsSaving(false);
+            Alert.alert(t('displayOptions.saveSuccessTitle'), t('displayOptions.saveSuccessMessage'));
+            onClose();
         } catch (error) {
-            // Context's update function likely shows an alert on failure
             console.error("DisplayOptionsScreen: Failed to save settings via context", error);
-            setIsSaving(false); // Ensure saving state is reset
-            // Optionally show a generic fallback error alert here
-            // Alert.alert("Error", "An error occurred while saving settings.");
+            if(isMountedRef.current) setIsSaving(false);
+            Alert.alert(t('common.error'), t('displayOptions.errors.saveFail'));
         }
     };
 
-    // Handle closing attempt, check for unsaved local changes
     const handleAttemptClose = useCallback(() => {
         if (hasChanged) {
-            Alert.alert("Unsaved Changes", "Discard changes to Appearance and Text Size?", [
-                { text: "Cancel", style: "cancel" },
-                { text: "Discard", style: "destructive", onPress: onClose }
+            Alert.alert(t('displayOptions.unsavedChangesTitle'), t('displayOptions.unsavedChangesMessage'), [
+                { text: t('common.cancel'), style: "cancel" },
+                { text: t('common.discard'), style: "destructive", onPress: onClose }
             ]);
         } else {
             onClose();
         }
-    }, [hasChanged, onClose]);
+    }, [hasChanged, onClose, t]);
 
-    // --- Static Data for Options ---
-    const layoutOptions: { type: GridLayoutType; label: string; icon: any; }[] = [
-        { type: 'simple', label: 'Simple', icon: faGripVertical },
-        { type: 'standard', label: 'Standard', icon: faTh },
-        { type: 'dense', label: 'Dense', icon: faThLarge },
-    ];
-     const contrastOptions: { type: ContrastModeType; label: string; }[] = [
-        { type: 'default', label: 'Default' },
-        { type: 'high-contrast-light', label: 'High Contrast (Light)' },
-        { type: 'high-contrast-dark', label: 'High Contrast (Dark)' },
-    ];
+    // --- Static Data for Options (Labels use t()) ---
+    const layoutOptions: { type: GridLayoutType; labelKey: string; icon: any; }[] = useMemo(() => [
+        { type: 'simple', labelKey: 'displayOptions.layout.simple', icon: faGripVertical },
+        { type: 'standard', labelKey: 'displayOptions.layout.standard', icon: faTh },
+        { type: 'dense', labelKey: 'displayOptions.layout.dense', icon: faThLarge },
+    ], []);
+     const contrastOptions: { type: ContrastModeType; labelKey: string; }[] = useMemo(() => [
+        { type: 'default', labelKey: 'displayOptions.contrast.default' },
+        { type: 'high-contrast-light', labelKey: 'displayOptions.contrast.highLight' },
+        { type: 'high-contrast-dark', labelKey: 'displayOptions.contrast.highDark' },
+    ], []);
+    const textSizeOptions: { type: TextSizeType; labelKey: string; }[] = useMemo(() => [
+        { type: 'small', labelKey: 'displayOptions.textSize.small' },
+        { type: 'medium', labelKey: 'displayOptions.textSize.medium' },
+        { type: 'large', labelKey: 'displayOptions.textSize.large' },
+    ], []);
+
 
     // --- Dynamic Styles ---
     const styles = useMemo(() => createThemedStyles(theme, fonts), [theme, fonts]);
 
-    // --- Loading State ---
+    // --- Render Guard for i18n ---
+    if (!i18n.isInitialized || typeof t !== 'function') {
+        console.log("DisplayOptionsScreen: Rendering loading state because 't' function is not ready.");
+        return (
+            <SafeAreaView style={[styles.screenContainer, { justifyContent: 'center', alignItems: 'center'}]}>
+                 <ActivityIndicator size="large" color={theme.primary || '#0077b6'} />
+                 <Text style={{ color: theme.text || '#000000', marginTop: 15, fontSize: fonts.body || 16 }}>Loading Interface...</Text>
+             </SafeAreaView>
+         );
+     }
+
      if (isLoadingAppearance) {
          return (
             <SafeAreaView style={[styles.screenContainer, { justifyContent: 'center', alignItems: 'center'}]}>
                  <ActivityIndicator size="large" color={theme.primary} />
-                 <Text style={{ color: theme.text, marginTop: 15, fontSize: fonts.body }}>Loading Display Settings...</Text>
+                 <Text style={{ color: theme.text, marginTop: 15, fontSize: fonts.body }}>{t('displayOptions.loading')}</Text>
              </SafeAreaView>
          );
      }
@@ -243,21 +241,20 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) 
     const isSaveDisabled = !hasChanged || isSaving || isLoadingAppearance;
     const isResetDisabled = !hasChanged || isSaving || isLoadingAppearance;
 
-    // --- Render ---
     return (
     <SafeAreaView style={styles.screenContainer}>
         {/* Header */}
         <View style={styles.header}>
-             <TouchableOpacity style={styles.headerButton} onPress={handleAttemptClose} hitSlop={hitSlop} accessibilityLabel="Go back">
+             <TouchableOpacity style={styles.headerButton} onPress={handleAttemptClose} hitSlop={hitSlop} accessibilityLabel={t('common.goBack')}>
                 <FontAwesomeIcon icon={faArrowLeft} size={fonts.h2} color={theme.white} />
              </TouchableOpacity>
-            <View style={styles.titleContainer}><Text style={styles.title}>Display Options</Text></View>
+            <View style={styles.titleContainer}><Text style={styles.title}>{t('displayOptions.title')}</Text></View>
             <TouchableOpacity
                 style={[styles.headerButton, isSaveDisabled && styles.buttonDisabled]}
                 onPress={handleSave}
                 disabled={isSaveDisabled}
                 hitSlop={hitSlop}
-                accessibilityLabel="Save display settings"
+                accessibilityLabel={t('common.saveSettings')}
                 accessibilityState={{ disabled: isSaveDisabled }}
             >
                 {isSaving ? <ActivityIndicator size="small" color={theme.white}/> : <FontAwesomeIcon icon={faSave} size={fonts.h2} color={!isSaveDisabled ? theme.white : theme.disabled} />}
@@ -266,18 +263,18 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) 
 
         {/* Content */}
         <ScrollView contentContainerStyle={styles.scrollContentContainer} keyboardShouldPersistTaps="handled">
-
             {/* Layout Section */}
             <View style={styles.sectionCard}>
                 <View style={styles.sectionHeader}>
                     <FontAwesomeIcon icon={faColumns} size={fonts.h2 * 0.8} color={theme.primary} style={styles.sectionIcon} />
-                    <Text style={styles.sectionTitle}>Layout Density</Text>
+                    <Text style={styles.sectionTitle}>{t('displayOptions.layout.sectionTitle')}</Text>
                     {isLoadingLayout && <ActivityIndicator size="small" color={theme.primary} style={{marginLeft: 10}}/>}
                 </View>
                 <View style={styles.layoutOptionsContainer}>
                     {layoutOptions.map((option) => {
                         const isSelected = contextLayout === option.type;
                         const isDisabled = isLoadingLayout;
+                        const label = t(option.labelKey);
                         return (
                             <TouchableOpacity
                                 key={option.type}
@@ -285,59 +282,57 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) 
                                 onPress={() => handleLayoutSelect(option.type)}
                                 activeOpacity={0.8}
                                 disabled={isDisabled}
-                                accessibilityLabel={`Set layout to ${option.label}`}
+                                accessibilityLabel={t('displayOptions.layout.accessibilityLabel', { layout: label })}
                                 accessibilityRole="radio"
                                 accessibilityState={{ selected: isSelected, disabled: isDisabled }}
                             >
                                 <FontAwesomeIcon icon={option.icon} size={fonts.h1 * 0.9} color={isSelected ? theme.white : theme.primary} style={styles.layoutOptionIcon} />
                                 <View style={styles.layoutOptionTextContainer}>
-                                    <Text style={[styles.layoutOptionLabel, isSelected && styles.layoutOptionLabelActive]}>{option.label}</Text>
+                                    <Text style={[styles.layoutOptionLabel, isSelected && styles.layoutOptionLabelActive]}>{label}</Text>
                                 </View>
                                 {isSelected && !isDisabled && (<FontAwesomeIcon icon={faCheckCircle} size={fonts.h2 * 0.8} color={theme.white} style={styles.layoutCheckIcon}/>)}
                             </TouchableOpacity>
                         );
                     })}
                 </View>
-                 <Text style={styles.infoTextSmall}>Select the density for the symbol grid display. Changes are saved immediately.</Text>
+                 <Text style={styles.infoTextSmall}>{t('displayOptions.layout.infoText')}</Text>
             </View>
 
              {/* Appearance Section */}
             <View style={styles.sectionCard}>
                 <View style={styles.sectionHeader}>
                     <FontAwesomeIcon icon={faSun} size={fonts.h2 * 0.8} color={theme.primary} style={styles.sectionIcon} />
-                    <Text style={styles.sectionTitle}>Appearance</Text>
+                    <Text style={styles.sectionTitle}>{t('displayOptions.appearance.sectionTitle')}</Text>
                 </View>
-                {/* Brightness */}
                 <View style={styles.settingItem}>
-                    <Text style={styles.settingLabel}>App Brightness</Text>
+                    <Text style={styles.settingLabel}>{t('displayOptions.appearance.brightnessLabel')}</Text>
                     <View style={styles.sliderControlRow}>
-                        <TouchableOpacity style={styles.lockButton} onPress={handleBrightnessLockToggle} hitSlop={hitSlop} accessibilityLabel={isBrightnessLocked ? "Unlock brightness editing" : "Lock brightness editing"}>
+                        <TouchableOpacity style={styles.lockButton} onPress={handleBrightnessLockToggle} hitSlop={hitSlop} accessibilityLabel={isBrightnessLocked ? t('displayOptions.appearance.unlockBrightness') : t('displayOptions.appearance.lockBrightness')}>
                             <FontAwesomeIcon icon={isBrightnessLocked ? faLock : faLockOpen} size={fonts.h2 * 0.9} color={isBrightnessLocked ? theme.primary : theme.textSecondary}/>
                         </TouchableOpacity>
                         <Slider
                             style={styles.slider}
                             minimumValue={0}
                             maximumValue={100}
-                            step={1} // Allow fine-grained control
+                            step={1}
                             value={localSettings.brightness}
                             onValueChange={(value) => handleLocalSettingChange('brightness', Math.round(value))}
-                            disabled={isBrightnessLocked} // Use local lock state
+                            disabled={isBrightnessLocked}
                             minimumTrackTintColor={theme.primary}
                             maximumTrackTintColor={theme.border}
                             thumbTintColor={Platform.OS === 'android' ? theme.primary : undefined}
-                            accessibilityLabel="App brightness slider"
+                            accessibilityLabel={t('displayOptions.appearance.brightnessSliderAccessibilityLabel')}
                             accessibilityValue={{ text: mapBrightnessValueToLabel(localSettings.brightness) }}
                             accessibilityState={{ disabled: isBrightnessLocked }}
                         />
-                        <Text style={styles.valueText} accessibilityLabel={`Current brightness ${mapBrightnessValueToLabel(localSettings.brightness)}`}>{mapBrightnessValueToLabel(localSettings.brightness)}</Text>
+                        <Text style={styles.valueText} accessibilityLabel={t('displayOptions.appearance.brightnessValueAccessibilityLabel', { value: mapBrightnessValueToLabel(localSettings.brightness) })}>{mapBrightnessValueToLabel(localSettings.brightness)}</Text>
                     </View>
-                    <Text style={styles.infoTextSmall}>Adjusts a filter overlay within the app.</Text>
+                    <Text style={styles.infoTextSmall}>{t('displayOptions.appearance.brightnessInfo')}</Text>
                 </View>
-                {/* Dark Mode */}
                 <View style={styles.switchRow}>
                     <View style={styles.switchLabelContainer}>
                         <FontAwesomeIcon icon={faMoon} size={fonts.h2 * 0.8} color={theme.textSecondary} style={styles.switchIcon}/>
-                        <Text style={styles.switchLabel}>Dark Mode</Text>
+                        <Text style={styles.switchLabel}>{t('displayOptions.appearance.darkModeLabel')}</Text>
                     </View>
                     <Switch
                         value={localSettings.darkModeEnabled}
@@ -345,19 +340,19 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) 
                         trackColor={{ false: theme.disabled, true: theme.secondary }}
                         thumbColor={Platform.OS === 'android' ? theme.primary : undefined}
                         ios_backgroundColor={theme.disabled}
-                        accessibilityLabel="Dark mode switch"
+                        accessibilityLabel={t('displayOptions.appearance.darkModeAccessibilityLabel')}
                         accessibilityState={{ checked: localSettings.darkModeEnabled }}
                     />
                 </View>
-                {/* Contrast Mode */}
                 <View style={styles.contrastSection}>
                     <View style={styles.contrastHeader}>
                         <FontAwesomeIcon icon={faAdjust} size={fonts.h2 * 0.8} color={theme.textSecondary} style={styles.switchIcon}/>
-                        <Text style={styles.switchLabel}>Contrast</Text>
+                        <Text style={styles.switchLabel}>{t('displayOptions.appearance.contrastLabel')}</Text>
                     </View>
                     <View style={styles.contrastOptionsContainer}>
                          {contrastOptions.map((option) => {
                              const isSelected = localSettings.contrastMode === option.type;
+                             const label = t(option.labelKey);
                              return (
                                  <TouchableOpacity
                                      key={option.type}
@@ -365,9 +360,9 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) 
                                      onPress={() => handleLocalSettingChange('contrastMode', option.type)}
                                      accessibilityRole="radio"
                                      accessibilityState={{ checked: isSelected }}
-                                     accessibilityLabel={`Set contrast mode to ${option.label}`}
+                                     accessibilityLabel={t('displayOptions.appearance.contrastAccessibilityLabel', { contrast: label })}
                                 >
-                                     <Text style={[styles.contrastOptionLabel, isSelected && styles.contrastOptionLabelActive]}>{option.label}</Text>
+                                     <Text style={[styles.contrastOptionLabel, isSelected && styles.contrastOptionLabelActive]}>{label}</Text>
                                  </TouchableOpacity>
                              );
                          })}
@@ -379,41 +374,44 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) 
             <View style={styles.sectionCard}>
                 <View style={styles.sectionHeader}>
                     <FontAwesomeIcon icon={faTextHeight} size={fonts.h2 * 0.8} color={theme.primary} style={styles.sectionIcon} />
-                    <Text style={styles.sectionTitle}>Text Size</Text>
+                    <Text style={styles.sectionTitle}>{t('displayOptions.textSize.sectionTitle')}</Text>
                 </View>
                 <View style={styles.textSizeOptionsContainer}>
-                    {(['small', 'medium', 'large'] as TextSizeType[]).map((size) => (
-                        <TouchableOpacity
-                            key={size}
-                            style={[styles.textSizeButton, localSettings.textSize === size && styles.textSizeButtonActive]}
-                            onPress={() => handleLocalSettingChange('textSize', size)}
-                            accessibilityRole="radio"
-                            accessibilityState={{ checked: localSettings.textSize === size }}
-                            accessibilityLabel={`Set text size to ${size}`}
-                        >
-                            <FontAwesomeIcon
-                                icon={faFont}
-                                size={size === 'small' ? fonts.caption * 1.1 : size === 'medium' ? fonts.body * 1.1 : fonts.h2 * 1.1} // Use calculated font sizes for icon size
-                                color={localSettings.textSize === size ? theme.white : theme.primary}
-                            />
-                        </TouchableOpacity>
-                    ))}
+                    {textSizeOptions.map((option) => {
+                        const size = option.type;
+                        const label = t(option.labelKey);
+                        return (
+                            <TouchableOpacity
+                                key={size}
+                                style={[styles.textSizeButton, localSettings.textSize === size && styles.textSizeButtonActive]}
+                                onPress={() => handleLocalSettingChange('textSize', size)}
+                                accessibilityRole="radio"
+                                accessibilityState={{ checked: localSettings.textSize === size }}
+                                accessibilityLabel={t('displayOptions.textSize.accessibilityLabel', { size: label })}
+                            >
+                                <FontAwesomeIcon
+                                    icon={faFont}
+                                    size={size === 'small' ? fonts.caption * 1.1 : size === 'medium' ? fonts.body * 1.1 : fonts.h2 * 1.1}
+                                    color={localSettings.textSize === size ? theme.white : theme.primary}
+                                />
+                            </TouchableOpacity>
+                        );
+                    })}
                 </View>
-                 <Text style={styles.infoTextSmall}>Adjusts the base size for text throughout the app.</Text>
+                 <Text style={styles.infoTextSmall}>{t('displayOptions.textSize.infoText')}</Text>
             </View>
 
-            {/* Actions */}
-             <View style={styles.actionsContainer}>
+            <View style={styles.actionsContainer}>
                 <TouchableOpacity
                     style={[styles.resetButton, isResetDisabled && styles.buttonDisabled]}
                     onPress={handleReset}
                     disabled={isResetDisabled}
                     accessibilityRole="button"
-                    accessibilityLabel="Reset appearance and text size changes"
+                    accessibilityLabel={t('common.resetChanges')}
                     accessibilityState={{ disabled: isResetDisabled }}
                 >
                     <FontAwesomeIcon icon={faUndo} size={fonts.label} color={!isResetDisabled ? theme.textSecondary : theme.disabled} style={styles.buttonIcon}/>
-                    <Text style={[styles.resetButtonText, isResetDisabled && styles.textDisabled]}>Reset Changes</Text>
+                    <Text style={[styles.resetButtonText, isResetDisabled && styles.textDisabled]}>{t('common.resetChanges')}</Text>
                 </TouchableOpacity>
             </View>
 
@@ -422,7 +420,7 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) 
     );
 };
 
-// --- Helper Function to Create Themed Styles ---
+// --- Styles (Unchanged from your previous version) ---
 const createThemedStyles = (theme: ThemeColors, fonts: FontSizes) => StyleSheet.create({
   screenContainer: { flex: 1, backgroundColor: theme.primary },
   header: { backgroundColor: theme.primary, paddingTop: Platform.OS === 'android' ? 10 : 0, paddingBottom: 12, paddingHorizontal: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' },
@@ -466,10 +464,9 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes) => StyleSheet.
   contrastHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   contrastOptionsContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10 },
   contrastOptionButton: { flexBasis: '48%', paddingVertical: 12, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1.5, borderColor: theme.border, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.card, minHeight: 50 },
-  contrastOptionButtonActive: { borderColor: theme.primary, backgroundColor: theme.primaryMuted }, // Use primaryMuted for active bg
+  contrastOptionButtonActive: { borderColor: theme.primary, backgroundColor: theme.primaryMuted },
   contrastOptionLabel: { fontSize: fonts.label, fontWeight: '500', color: theme.text, textAlign: 'center' },
-  contrastOptionLabelActive: { color: theme.primary, fontWeight: 'bold' }, // Keep primary color text
-  // hitSlop defined outside component
+  contrastOptionLabelActive: { color: theme.primary, fontWeight: 'bold' },
 });
 
 export default DisplayOptionsScreen;

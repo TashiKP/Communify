@@ -1,30 +1,28 @@
-// src/components/parental/ChildProfileSection.tsx
 import React, { useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, StyleProp, ViewStyle, TextStyle } from 'react-native'; // Added StyleProp, ViewStyle, TextStyle
+import { View, Text, TouchableOpacity, StyleSheet, StyleProp, ViewStyle, TextStyle } from 'react-native';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import { faChild, faHeart, faUserShield } from '@fortawesome/free-solid-svg-icons';
-import { TFunction } from 'i18next'; // TFunction can be from i18next
-import { useTranslation } from 'react-i18next'; // Correct: useTranslation from react-i18next
+import { TFunction } from 'i18next';
+import { useTranslation } from 'react-i18next';
 
 // --- Import Context ---
-import { useAppearance, ThemeColors, FontSizes } from '../../context/AppearanceContext'; // Adjust path
+import { useAppearance, ThemeColors, FontSizes } from '../../context/AppearanceContext';
 
 // --- Import Language Specific Text Style Helper ---
-import { getLanguageSpecificTextStyle } from '../../styles/typography'; // Adjust path
+import { getLanguageSpecificTextStyle } from '../../styles/typography';
 
 // --- Import Local Types ---
-import { ParentalSettingsData, AsdLevel } from './types'; // Assuming types are moved
+import { ParentalSettingsData, AsdLevel } from './types';
 
 // --- Component Props ---
 interface ChildProfileSectionProps {
     settings: ParentalSettingsData;
     onSettingChange: <K extends keyof ParentalSettingsData>(key: K, value: ParentalSettingsData[K]) => void;
     t: TFunction<"translation", undefined>;
-    // Style props passed from parent
     sectionStyle?: StyleProp<ViewStyle>;
     headerStyle?: StyleProp<ViewStyle>;
     titleStyle?: StyleProp<TextStyle>;
-    iconStyle?: StyleProp<TextStyle>; // For the main section icon
+    iconStyle?: StyleProp<TextStyle>;
 }
 
 // --- Component ---
@@ -39,21 +37,18 @@ const ChildProfileSection: React.FC<ChildProfileSectionProps> = ({
 }) => {
     // --- Consume Context ---
     const { theme, fonts } = useAppearance();
-    const { i18n } = useTranslation(); // Get i18n instance for currentLanguage
+    const { i18n } = useTranslation();
     const currentLanguage = i18n.language;
 
     // --- Dynamic Styles ---
     const styles = useMemo(() => createThemedStyles(theme, fonts, currentLanguage), [theme, fonts, currentLanguage]);
 
-    // --- Profile Options Data (Labels will use t function) ---
-    // Note: The 'AsdLevel' type in your types.ts should match these values: 'high', 'medium', 'low', 'noAsd', or null.
-    // If 'noAsd' is meant to be represented by `null` in `settings.asdLevel`, adjust `profileOptions` accordingly.
-    // For this example, I'm assuming 'noAsd' is a distinct string value for AsdLevel.
+    // --- Profile Options Data ---
     const profileOptions: { level: AsdLevel | 'noAsd'; labelKey: string; icon: any }[] = [
         { level: 'high', labelKey: "parentalControls.childProfile.level3Label", icon: faHeart },
         { level: 'medium', labelKey: "parentalControls.childProfile.level2Label", icon: faChild },
         { level: 'low', labelKey: "parentalControls.childProfile.level1Label", icon: faUserShield },
-        { level: 'noAsd', labelKey: "parentalControls.childProfile.noNeedsLabel", icon: faUserShield } // Assuming 'noAsd' is a valid AsdLevel string or handle null separately
+        { level: 'noAsd', labelKey: "parentalControls.childProfile.noNeedsLabel", icon: faUserShield }
     ];
 
     return (
@@ -61,19 +56,22 @@ const ChildProfileSection: React.FC<ChildProfileSectionProps> = ({
             {/* Card Header */}
             <View style={[styles.defaultCardHeader, headerStyle]}>
                 <FontAwesomeIcon
-                    icon={faChild} // Icon for this section
-                    size={fonts.h2 * 0.7} // Consistent with parent's definition for section icons
+                    icon={faChild}
+                    size={fonts.h2 * 0.7}
                     color={theme.primary}
                     style={[styles.defaultCardIcon, iconStyle]}
                 />
                 <Text style={[styles.defaultSectionTitle, titleStyle]}>{t('parentalControls.childProfile.sectionTitle')}</Text>
-             </View>
-             {/* Info Text */}
-             <Text style={styles.infoText}>{t('parentalControls.childProfile.infoText')}</Text>
+            </View>
+
+            {/* Info Text */}
+            <Text style={[styles.infoText, { color: theme.textSecondary }]}>
+                {t('parentalControls.childProfile.infoText')}
+            </Text>
+
             {/* Options List */}
             <View style={styles.optionsList}>
                 {profileOptions.map(({ level, labelKey, icon }) => {
-                    // Adjusting for null possibility if 'noAsd' represents null
                     const currentLevelToCompare = level === 'noAsd' ? null : level;
                     const isSelected = settings.asdLevel === currentLevelToCompare;
 
@@ -84,15 +82,15 @@ const ChildProfileSection: React.FC<ChildProfileSectionProps> = ({
 
                     return (
                         <TouchableOpacity
-                            key={level} // level is unique here
+                            key={level}
                             style={[styles.optionCard, isSelected && styles.optionCardSelected]}
-                            onPress={() => onSettingChange('asdLevel', currentLevelToCompare as AsdLevel | null)} // Cast to ensure type safety
-                            activeOpacity={0.8}
+                            onPress={() => onSettingChange('asdLevel', currentLevelToCompare as AsdLevel | null)}
+                            activeOpacity={0.7}
                             accessibilityLabel={t('parentalControls.childProfile.optionAccessibilityLabel', { profile: label })}
                             accessibilityRole="radio"
                             accessibilityState={{ checked: isSelected }}
                         >
-                             <FontAwesomeIcon icon={icon} size={fonts.body * 1.2} color={iconColor} style={styles.optionIcon}/>
+                            <FontAwesomeIcon icon={icon} size={fonts.body * 1.1} color={iconColor} style={styles.optionIcon} />
                             <Text style={labelStyle}>{label}</Text>
                             <View style={radioOuterStyle}>
                                 {isSelected && <View style={styles.radioInner} />}
@@ -104,10 +102,13 @@ const ChildProfileSection: React.FC<ChildProfileSectionProps> = ({
                     <TouchableOpacity
                         style={styles.clearButton}
                         onPress={() => onSettingChange('asdLevel', null)}
+                        activeOpacity={0.7}
                         accessibilityLabel={t('parentalControls.childProfile.clearAccessibilityLabel')}
                         accessibilityRole="button"
                     >
-                        <Text style={styles.clearButtonText}>{t('parentalControls.childProfile.clearButtonText')}</Text>
+                        <Text style={[styles.clearButtonText, { color: theme.primary }]}>
+                            {t('parentalControls.childProfile.clearButtonText')}
+                        </Text>
                     </TouchableOpacity>
                 )}
             </View>
@@ -118,8 +119,7 @@ const ChildProfileSection: React.FC<ChildProfileSectionProps> = ({
 // --- Styles ---
 const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguage: string) => {
     const bodyStyles = getLanguageSpecificTextStyle('body', fonts, currentLanguage);
-    const labelStyles = getLanguageSpecificTextStyle('label', fonts, currentLanguage);
-    const captionStyles = getLanguageSpecificTextStyle('caption', fonts, currentLanguage);
+    const h2Styles = getLanguageSpecificTextStyle('h2', fonts, currentLanguage);
 
     return StyleSheet.create({
         defaultSectionCard: {
@@ -141,16 +141,15 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
         },
         defaultCardIcon: {
             marginRight: 12,
-            // size and color are set by props or parent's iconStyle
         },
         defaultSectionTitle: {
-            ...labelStyles, // Using label for section titles
+            ...h2Styles,
             fontWeight: '600',
             color: theme.text,
             flex: 1,
         },
         infoText: {
-            ...captionStyles, // Typography for info text
+            ...bodyStyles,
             color: theme.textSecondary,
             paddingVertical: 15,
             textAlign: 'left',
@@ -158,12 +157,14 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
         },
         optionsList: {
             paddingHorizontal: 18,
-            paddingBottom: 10,
+            paddingBottom: 15,
+            borderTopWidth: StyleSheet.hairlineWidth,
+            borderTopColor: theme.border,
         },
         optionCard: {
             flexDirection: 'row',
             alignItems: 'center',
-            backgroundColor: theme.card, // Or theme.background if options are not "cards within a card"
+            backgroundColor: theme.background,
             paddingVertical: 12,
             paddingHorizontal: 15,
             borderRadius: 10,
@@ -177,20 +178,20 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
         },
         optionIcon: {
             marginRight: 15,
-            width: fonts.body * 1.2, // Base icon size on body font
+            width: fonts.body * 1.1,
             textAlign: 'center',
         },
         optionLabel: {
-            ...bodyStyles, // Typography for option labels
+            ...bodyStyles,
             flex: 1,
-            fontWeight: '500', // Default weight
+            fontWeight: '500',
             color: theme.text,
         },
         optionLabelSelected: {
-            ...bodyStyles, // Typography for selected option labels
+            ...bodyStyles,
             flex: 1,
-            fontWeight: 'bold', // Override weight
-            color: theme.primary, // Override color
+            fontWeight: '600',
+            color: theme.primary,
         },
         radioOuter: {
             height: 22,
@@ -202,7 +203,7 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
             justifyContent: 'center',
             marginLeft: 10,
         },
-        radioOuterSelected: { // No change from your version, looks good
+        radioOuterSelected: {
             height: 22,
             width: 22,
             borderRadius: 11,
@@ -212,7 +213,7 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
             justifyContent: 'center',
             marginLeft: 10,
         },
-        radioInner: { // No change, looks good
+        radioInner: {
             height: 12,
             width: 12,
             borderRadius: 6,
@@ -226,8 +227,7 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
             paddingHorizontal: 12,
         },
         clearButtonText: {
-            ...labelStyles, // Using label style for clear button text
-            color: theme.primary,
+            ...bodyStyles,
             fontWeight: '500',
         },
     });

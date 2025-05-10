@@ -1,4 +1,3 @@
-// src/components/SelectionModeScreen.tsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
@@ -12,10 +11,10 @@ import {
 import { useTranslation } from 'react-i18next';
 
 // --- Import Context Hooks ---
-import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext'; // Adjust path
+import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext';
 
 // --- Import Language Specific Text Style Helper ---
-import { getLanguageSpecificTextStyle } from '../styles/typography'; // Adjust path if needed
+import { getLanguageSpecificTextStyle } from '../styles/typography';
 
 // Define the possible selection modes
 export type Mode = 'drag' | 'longClick';
@@ -38,8 +37,8 @@ const SelectionModeScreen: React.FC<SelectionModeScreenProps> = ({
 }) => {
   // --- Hooks ---
   const { theme, fonts, isLoadingAppearance } = useAppearance();
-  const { t, i18n } = useTranslation(); // <-- Use the translation hook, get i18n instance
-  const currentLanguage = i18n.language; // Get current language
+  const { t, i18n } = useTranslation();
+  const currentLanguage = i18n.language;
 
   // --- State ---
   const [selectedMode, setSelectedMode] = useState<Mode | null>(initialPropMode);
@@ -126,7 +125,7 @@ const SelectionModeScreen: React.FC<SelectionModeScreenProps> = ({
           <SafeAreaView style={styles.safeArea}>
               <View style={[styles.container, styles.loadingContainer]}>
                    <ActivityIndicator size="large" color={theme.primary} />
-                   <Text style={[styles.loadingText, { marginTop: 15 }]}>{t('selectionMode.loading')}</Text>
+                   <Text style={[styles.loadingText, { color: theme.textSecondary }]}>{t('selectionMode.loading')}</Text>
                </View>
           </SafeAreaView>
        );
@@ -137,11 +136,11 @@ const SelectionModeScreen: React.FC<SelectionModeScreenProps> = ({
         <View style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
-              <TouchableOpacity style={styles.headerButton} onPress={handleAttemptClose} hitSlop={hitSlop} accessibilityLabel={t('common.goBack')}>
-                <FontAwesomeIcon icon={faArrowLeft} size={fonts.h2 * 0.9} color={theme.white} />
+              <TouchableOpacity style={styles.headerButton} onPress={handleAttemptClose} hitSlop={hitSlop} accessibilityLabel={t('common.goBack')} accessibilityRole="button">
+                <FontAwesomeIcon icon={faArrowLeft} size={fonts.h2 * 0.7} color={theme.white} />
               </TouchableOpacity>
               <View style={styles.titleContainer}>
-                <Text style={styles.title} numberOfLines={1}>{t('selectionMode.title')}</Text>
+                <Text style={[styles.title, { color: theme.white }]} numberOfLines={1}>{t('selectionMode.title')}</Text>
               </View>
               <TouchableOpacity
                  style={[styles.headerButton, isSaveDisabled && styles.buttonDisabled]}
@@ -149,19 +148,19 @@ const SelectionModeScreen: React.FC<SelectionModeScreenProps> = ({
                  disabled={isSaveDisabled}
                  hitSlop={hitSlop}
                  accessibilityLabel={t('common.save')}
-                 accessibilityState={{disabled: isSaveDisabled}}
+                 accessibilityRole="button"
+                 accessibilityState={{ disabled: isSaveDisabled }}
                >
                  {isSaving
                     ? <ActivityIndicator size="small" color={theme.white}/>
-                    : <FontAwesomeIcon icon={faSave} size={fonts.h2 * 0.9} color={!isSaveDisabled ? theme.white : theme.disabled} />
+                    : <FontAwesomeIcon icon={faSave} size={fonts.h2 * 0.7} color={!isSaveDisabled ? theme.white : theme.disabled} />
                  }
               </TouchableOpacity>
             </View>
 
             {/* Scrollable Content */}
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
-
-                <Text style={styles.instructionText}>
+                <Text style={[styles.instructionText, { color: theme.textSecondary }]}>
                     {t('selectionMode.instruction')}
                 </Text>
 
@@ -173,7 +172,7 @@ const SelectionModeScreen: React.FC<SelectionModeScreenProps> = ({
                     const description = t(option.descriptionKey);
 
                     return (
-                        <View key={option.type} style={[ styles.sectionCard, isSelected && styles.selectedOptionCard ]}>
+                        <View key={option.type} style={[styles.sectionCard, isSelected && styles.selectedOptionCard]}>
                             <TouchableOpacity
                                 style={styles.optionContentRow}
                                 onPress={() => handleSelectOption(option.type)}
@@ -185,7 +184,7 @@ const SelectionModeScreen: React.FC<SelectionModeScreenProps> = ({
                             >
                                 <FontAwesomeIcon
                                     icon={option.icon}
-                                    size={fonts.h1 * 0.9}
+                                    size={fonts.body * 1.1}
                                     color={iconColor}
                                     style={styles.optionIcon}
                                 />
@@ -206,7 +205,7 @@ const SelectionModeScreen: React.FC<SelectionModeScreenProps> = ({
                 })}
 
                 <View style={styles.helperTextContainer}>
-                    <Text style={styles.helperText}>{getHelperText()}</Text>
+                    <Text style={[styles.helperText, { color: theme.textSecondary }]}>{getHelperText()}</Text>
                 </View>
 
                 {selectedMode !== null && (
@@ -218,11 +217,10 @@ const SelectionModeScreen: React.FC<SelectionModeScreenProps> = ({
                         accessibilityRole="button"
                         accessibilityLabel={t('selectionMode.clearAccessibilityLabel')}
                     >
-                        <FontAwesomeIcon icon={faTimesCircle} size={fonts.caption * 1.1} color={theme.textSecondary} style={styles.clearIcon}/>
-                        <Text style={styles.clearButtonText}>{t('selectionMode.clearButtonText')}</Text>
+                        <FontAwesomeIcon icon={faTimesCircle} size={fonts.body * 1.1} color={theme.textSecondary} style={styles.clearIcon}/>
+                        <Text style={[styles.clearButtonText, { color: theme.textSecondary }]}>{t('selectionMode.clearButtonText')}</Text>
                     </TouchableOpacity>
                 )}
-
             </ScrollView>
         </View>
     </SafeAreaView>
@@ -233,156 +231,168 @@ const SelectionModeScreen: React.FC<SelectionModeScreenProps> = ({
 const createThemedStyles = (
     theme: ThemeColors,
     fonts: FontSizes,
-    currentLanguage: string // <-- Added currentLanguage
+    currentLanguage: string
 ) => {
-  const titleStyles = getLanguageSpecificTextStyle('h2', fonts, currentLanguage);
+  const h2Styles = getLanguageSpecificTextStyle('h2', fonts, currentLanguage);
   const bodyStyles = getLanguageSpecificTextStyle('body', fonts, currentLanguage);
-  const labelStyles = getLanguageSpecificTextStyle('label', fonts, currentLanguage);
-  const captionStyles = getLanguageSpecificTextStyle('caption', fonts, currentLanguage);
 
   return StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: theme.primary },
-    container: { flex: 1, backgroundColor: theme.background },
-    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background, },
-    loadingText: { // Added style for loading text
-        ...bodyStyles,
-        color: theme.textSecondary,
-        textAlign: 'center',
-        fontWeight: '500',
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.primary,
+    },
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: theme.background,
+    },
+    loadingText: {
+      ...bodyStyles,
+      fontWeight: '500',
+      textAlign: 'center',
     },
     header: {
-        backgroundColor: theme.primary,
-        paddingTop: Platform.OS === 'android' ? 10 : 0,
-        paddingBottom: 12,
-        paddingHorizontal: 10,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: 'rgba(255,255,255,0.1)',
+      backgroundColor: theme.primary,
+      paddingTop: Platform.OS === 'android' ? 10 : 0,
+      paddingBottom: 12,
+      paddingHorizontal: 10,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
     },
-    titleContainer: { flex: 1, alignItems: 'center', marginHorizontal: 5, },
+    titleContainer: {
+      flex: 1,
+      alignItems: 'center',
+      marginHorizontal: 5,
+    },
     title: {
-        ...titleStyles, // Apply language-specific font family, size, and line height
-        // fontSize: fonts.h2, // Overridden by titleStyles.fontSize
-        fontWeight: '600',
-        color: theme.white,
-        textAlign: 'center',
+      ...h2Styles,
+      fontWeight: '600',
+      textAlign: 'center',
     },
     headerButton: {
-        padding: 10,
-        minWidth: 44,
-        minHeight: 44,
-        justifyContent: 'center',
-        alignItems: 'center',
+      padding: 10,
+      minWidth: 44,
+      minHeight: 44,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
-    scrollView: { flex: 1, },
-    scrollContainer: { padding: 15, paddingBottom: 40, },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContainer: {
+      padding: 18,
+      paddingBottom: 40,
+    },
     instructionText: {
-        ...bodyStyles, // Apply language-specific font family, size, and line height
-        // fontSize: fonts.body, // Overridden by bodyStyles.fontSize
-        color: theme.textSecondary,
-        marginBottom: 25,
-        textAlign: 'center',
-        fontWeight: '500',
-        // lineHeight: fonts.body * 1.4, // Overridden by bodyStyles.lineHeight
+      ...bodyStyles,
+      fontWeight: '500',
+      marginBottom: 25,
+      textAlign: 'center',
     },
     sectionCard: {
-        backgroundColor: theme.card,
-        borderRadius: 12,
-        marginBottom: 15,
-        borderWidth: 1.5,
-        borderColor: theme.border,
-        overflow: 'hidden',
+      backgroundColor: theme.card,
+      borderRadius: 12,
+      marginBottom: 15,
+      borderWidth: 1.5,
+      borderColor: theme.border,
+      overflow: 'hidden',
     },
     selectedOptionCard: {
-        borderColor: theme.primary,
-        backgroundColor: theme.primaryMuted,
+      borderColor: theme.primary,
+      backgroundColor: theme.primaryMuted,
     },
     optionContentRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 15,
-        paddingHorizontal: 18,
-        minHeight: 70,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 15,
+      paddingHorizontal: 18,
+      minHeight: 44,
     },
     optionIcon: {
-        marginRight: 18,
-        width: fonts.h1 * 0.9, // Icon size, not text
-        textAlign: 'center',
+      marginRight: 18,
+      width: fonts.body * 1.1,
+      textAlign: 'center',
     },
-    optionTextContainer: { flex: 1, marginRight: 10, },
+    optionTextContainer: {
+      flex: 1,
+      marginRight: 10,
+    },
     optionLabel: {
-        ...labelStyles, // Apply language-specific font family, size, and line height
-        // fontSize: fonts.label, // Overridden by labelStyles.fontSize
-        fontWeight: '600',
-        color: theme.text,
-        marginBottom: 3,
+      ...h2Styles,
+      fontWeight: '600',
+      color: theme.text,
+      marginBottom: 3,
     },
     selectedOptionLabel: {
-        color: theme.primary,
+      ...h2Styles,
+      fontWeight: '600',
+      color: theme.primary,
     },
     optionDescription: {
-        ...captionStyles, // Apply language-specific font family, size, and line height
-        // fontSize: fonts.caption, // Overridden by captionStyles.fontSize
-        // lineHeight: fonts.caption * 1.4, // Overridden by captionStyles.lineHeight
-        // color: descriptionColor is set inline, so no theme.disabled here
+      ...bodyStyles,
+      fontWeight: '400',
     },
     radioOuter: {
-        height: 22,
-        width: 22,
-        borderRadius: 11,
-        borderWidth: 2,
-        borderColor: theme.border,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginLeft: 'auto',
-        backgroundColor: theme.card
+      height: 22,
+      width: 22,
+      borderRadius: 11,
+      borderWidth: 2,
+      borderColor: theme.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginLeft: 'auto',
+      backgroundColor: theme.card,
     },
-    radioOuterSelected: { borderColor: theme.primary },
+    radioOuterSelected: {
+      borderColor: theme.primary,
+    },
     radioInner: {
-        height: 12,
-        width: 12,
-        borderRadius: 6,
-        backgroundColor: theme.primary
+      height: 12,
+      width: 12,
+      borderRadius: 6,
+      backgroundColor: theme.primary,
     },
     helperTextContainer: {
-        marginTop: 15,
-        paddingVertical: 15,
-        paddingHorizontal: 10,
-        minHeight: 50,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 10,
+      marginTop: 15,
+      paddingVertical: 15,
+      paddingHorizontal: 10,
+      minHeight: 50,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 10,
     },
     helperText: {
-        ...captionStyles, // Apply language-specific font family, size, and line height
-        color: theme.textSecondary,
-        // fontSize: fonts.caption, // Overridden by captionStyles.fontSize
-        textAlign: 'center',
-        // lineHeight: fonts.caption * 1.4, // Overridden by captionStyles.lineHeight
+      ...bodyStyles,
+      fontWeight: '400',
+      textAlign: 'center',
     },
     clearButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 10,
-        paddingHorizontal: 15,
-        alignSelf: 'center',
-        marginTop: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 10,
+      paddingHorizontal: 15,
+      alignSelf: 'center',
+      marginTop: 10,
     },
     clearButtonText: {
-        ...labelStyles, // Apply language-specific font family, size, and line height
-        // fontSize: fonts.label, // Overridden by labelStyles.fontSize
-        color: theme.textSecondary,
-        fontWeight: '500',
-        textDecorationLine: 'underline',
+      ...bodyStyles,
+      fontWeight: '500',
+      textDecorationLine: 'underline',
     },
     clearIcon: {
-        marginRight: 6,
+      marginRight: 6,
     },
     buttonDisabled: {
-        opacity: 0.5,
+      opacity: 0.6,
     },
   });
 };

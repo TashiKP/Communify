@@ -1,4 +1,3 @@
-// src/components/DisplayOptionsScreen.tsx
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
@@ -31,7 +30,7 @@ import {
   faCheckCircle,
   faAdjust,
 } from '@fortawesome/free-solid-svg-icons';
-import { useTranslation } from 'react-i18next'; // <-- Import i18next hook
+import { useTranslation } from 'react-i18next';
 
 // --- Import Context Hooks & Types ---
 import { useGrid, GridLayoutType } from '../context/GridContext';
@@ -43,7 +42,7 @@ import {
   FontSizes,
 } from '../context/AppearanceContext';
 // --- Import Typography Utility ---
-import { getLanguageSpecificTextStyle } from '../styles/typography'; // Adjust path
+import { getLanguageSpecificTextStyle } from '../styles/typography';
 
 // --- Re-export types for convenience if needed by parent (Menu) ---
 export type { TextSizeType, ContrastModeType };
@@ -85,7 +84,8 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) 
     isLoadingAppearance,
     updateAppearanceSetting,
   } = useAppearance();
-  const { t, i18n } = useTranslation(); // <-- Use the translation hook
+  const { t, i18n } = useTranslation();
+  const currentLanguage = i18n.language;
 
   // --- State ---
   const [localSettings, setLocalSettings] = useState<DisplayLocalSettingsData>(() => ({
@@ -102,11 +102,10 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) 
   // --- Mount/Unmount Effect ---
   useEffect(() => {
     isMountedRef.current = true;
-    console.log('DisplayOptionsScreen: Mounted. typeof t =', typeof t, 'i18n initialized:', i18n.isInitialized);
     return () => {
       isMountedRef.current = false;
     };
-  }, [t, i18n.isInitialized]);
+  }, []);
 
   // --- Effect to sync local state when context settings load/change ---
   useEffect(() => {
@@ -154,14 +153,11 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) 
       if (layout === contextLayout || isLoadingLayout) return;
       try {
         await setGridLayout(layout);
-        // Context handles saving and alerts, provide additional feedback if needed
-        // Alert.alert(t('displayOptions.layoutChangedTitle'), t('displayOptions.layoutChangedMessage', { layout: t(`displayOptions.layout.${layout}`) }));
       } catch (error) {
         console.error('DisplayOptionsScreen: Error calling setGridLayout', error);
-        // Alert handled by context potentially
       }
     },
-    [setGridLayout, contextLayout, isLoadingLayout /*t*/] // t removed if alert moved to context
+    [setGridLayout, contextLayout, isLoadingLayout]
   );
 
   const mapBrightnessValueToLabel = (value: number): string => {
@@ -231,9 +227,9 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) 
     } else {
       onClose();
     }
-  }, [hasChanged, onClose, t]);
+  }, [hasChanged, onClose]);
 
-  // --- Static Data for Options (Labels use t()) ---
+  // --- Static Data for Options ---
   const layoutOptions: { type: GridLayoutType; labelKey: string; icon: any }[] = useMemo(
     () => [
       { type: 'simple', labelKey: 'displayOptions.layout.simple', icon: faGripVertical },
@@ -261,23 +257,16 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) 
 
   // --- Dynamic Styles ---
   const styles = useMemo(
-    () => createThemedStyles(theme, fonts, i18n.language),
-    [theme, fonts, i18n.language] // Added i18n.language to dependencies
+    () => createThemedStyles(theme, fonts, currentLanguage),
+    [theme, fonts, currentLanguage]
   );
 
   // --- Render Guard for i18n ---
   if (!i18n.isInitialized || typeof t !== 'function') {
-    console.log("DisplayOptionsScreen: Rendering loading state because 't' function is not ready.");
     return (
       <SafeAreaView style={[styles.screenContainer, { justifyContent: 'center', alignItems: 'center' }]}>
         <ActivityIndicator size="large" color={theme.primary || '#0077b6'} />
-        <Text
-          style={{
-            ...getLanguageSpecificTextStyle('body', fonts, i18n.language), // Apply typography for body
-            color: theme.text || '#000000',
-            marginTop: 15,
-          }}
-        >
+        <Text style={[styles.loadingText, { color: theme.text || '#000000' }]}>
           Loading Interface...
         </Text>
       </SafeAreaView>
@@ -288,13 +277,7 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) 
     return (
       <SafeAreaView style={[styles.screenContainer, { justifyContent: 'center', alignItems: 'center' }]}>
         <ActivityIndicator size="large" color={theme.primary} />
-        <Text
-          style={{
-            ...getLanguageSpecificTextStyle('body', fonts, i18n.language), // Apply typography for body
-            color: theme.text,
-            marginTop: 15,
-          }}
-        >
+        <Text style={[styles.loadingText, { color: theme.text }]}>
           {t('displayOptions.loading')}
         </Text>
       </SafeAreaView>
@@ -314,11 +297,12 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) 
           onPress={handleAttemptClose}
           hitSlop={hitSlop}
           accessibilityLabel={t('common.goBack')}
+          accessibilityRole="button"
         >
-          <FontAwesomeIcon icon={faArrowLeft} size={fonts.h2} color={theme.white} />
+          <FontAwesomeIcon icon={faArrowLeft} size={fonts.h2 * 0.7} color={theme.white} />
         </TouchableOpacity>
         <View style={styles.titleContainer}>
-          <Text style={styles.title}>{t('displayOptions.title')}</Text>
+          <Text style={[styles.title, { color: theme.white }]}>{t('displayOptions.title')}</Text>
         </View>
         <TouchableOpacity
           style={[styles.headerButton, isSaveDisabled && styles.buttonDisabled]}
@@ -326,6 +310,7 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) 
           disabled={isSaveDisabled}
           hitSlop={hitSlop}
           accessibilityLabel={t('common.saveSettings')}
+          accessibilityRole="button"
           accessibilityState={{ disabled: isSaveDisabled }}
         >
           {isSaving ? (
@@ -333,7 +318,7 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) 
           ) : (
             <FontAwesomeIcon
               icon={faSave}
-              size={fonts.h2}
+              size={fonts.h2 * 0.7}
               color={!isSaveDisabled ? theme.white : theme.disabled}
             />
           )}
@@ -345,8 +330,8 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) 
         {/* Layout Section */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <FontAwesomeIcon icon={faColumns} size={fonts.h2 * 0.8} color={theme.primary} style={styles.sectionIcon} />
-            <Text style={styles.sectionTitle}>{t('displayOptions.layout.sectionTitle')}</Text>
+            <FontAwesomeIcon icon={faColumns} size={fonts.body * 1.1} color={theme.primary} style={styles.sectionIcon} />
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('displayOptions.layout.sectionTitle')}</Text>
             {isLoadingLayout && (
               <ActivityIndicator size="small" color={theme.primary} style={{ marginLeft: 10 }} />
             )}
@@ -365,7 +350,7 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) 
                     isDisabled && styles.buttonDisabled,
                   ]}
                   onPress={() => handleLayoutSelect(option.type)}
-                  activeOpacity={0.8}
+                  activeOpacity={0.7}
                   disabled={isDisabled}
                   accessibilityLabel={t('displayOptions.layout.accessibilityLabel', { layout: label })}
                   accessibilityRole="radio"
@@ -373,7 +358,7 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) 
                 >
                   <FontAwesomeIcon
                     icon={option.icon}
-                    size={fonts.h1 * 0.9}
+                    size={fonts.body * 1.1}
                     color={isSelected ? theme.white : theme.primary}
                     style={styles.layoutOptionIcon}
                   />
@@ -387,7 +372,7 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) 
                   {isSelected && !isDisabled && (
                     <FontAwesomeIcon
                       icon={faCheckCircle}
-                      size={fonts.h2 * 0.8}
+                      size={fonts.body * 1.1}
                       color={theme.white}
                       style={styles.layoutCheckIcon}
                     />
@@ -396,17 +381,19 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) 
               );
             })}
           </View>
-          <Text style={styles.infoTextSmall}>{t('displayOptions.layout.infoText')}</Text>
+          <Text style={[styles.infoTextSmall, { color: theme.textSecondary }]}>
+            {t('displayOptions.layout.infoText')}
+          </Text>
         </View>
 
         {/* Appearance Section */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <FontAwesomeIcon icon={faSun} size={fonts.h2 * 0.8} color={theme.primary} style={styles.sectionIcon} />
-            <Text style={styles.sectionTitle}>{t('displayOptions.appearance.sectionTitle')}</Text>
+            <FontAwesomeIcon icon={faSun} size={fonts.body * 1.1} color={theme.primary} style={styles.sectionIcon} />
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('displayOptions.appearance.sectionTitle')}</Text>
           </View>
           <View style={styles.settingItem}>
-            <Text style={styles.settingLabel}>{t('displayOptions.appearance.brightnessLabel')}</Text>
+            <Text style={[styles.settingLabel, { color: theme.text }]}>{t('displayOptions.appearance.brightnessLabel')}</Text>
             <View style={styles.sliderControlRow}>
               <TouchableOpacity
                 style={styles.lockButton}
@@ -417,10 +404,11 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) 
                     ? t('displayOptions.appearance.unlockBrightness')
                     : t('displayOptions.appearance.lockBrightness')
                 }
+                accessibilityRole="button"
               >
                 <FontAwesomeIcon
                   icon={isBrightnessLocked ? faLock : faLockOpen}
-                  size={fonts.h2 * 0.9}
+                  size={fonts.body * 1.1}
                   color={isBrightnessLocked ? theme.primary : theme.textSecondary}
                 />
               </TouchableOpacity>
@@ -440,7 +428,7 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) 
                 accessibilityState={{ disabled: isBrightnessLocked }}
               />
               <Text
-                style={styles.valueText}
+                style={[styles.valueText, { color: theme.primary }]}
                 accessibilityLabel={t('displayOptions.appearance.brightnessValueAccessibilityLabel', {
                   value: mapBrightnessValueToLabel(localSettings.brightness),
                 })}
@@ -448,17 +436,19 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) 
                 {mapBrightnessValueToLabel(localSettings.brightness)}
               </Text>
             </View>
-            <Text style={styles.infoTextSmall}>{t('displayOptions.appearance.brightnessInfo')}</Text>
+            <Text style={[styles.infoTextSmall, { color: theme.textSecondary }]}>
+              {t('displayOptions.appearance.brightnessInfo')}
+            </Text>
           </View>
           <View style={styles.switchRow}>
             <View style={styles.switchLabelContainer}>
               <FontAwesomeIcon
                 icon={faMoon}
-                size={fonts.h2 * 0.8}
+                size={fonts.body * 1.1}
                 color={theme.textSecondary}
                 style={styles.switchIcon}
               />
-              <Text style={styles.switchLabel}>{t('displayOptions.appearance.darkModeLabel')}</Text>
+              <Text style={[styles.switchLabel, { color: theme.text }]}>{t('displayOptions.appearance.darkModeLabel')}</Text>
             </View>
             <Switch
               value={localSettings.darkModeEnabled}
@@ -474,11 +464,11 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) 
             <View style={styles.contrastHeader}>
               <FontAwesomeIcon
                 icon={faAdjust}
-                size={fonts.h2 * 0.8}
+                size={fonts.body * 1.1}
                 color={theme.textSecondary}
                 style={styles.switchIcon}
               />
-              <Text style={styles.switchLabel}>{t('displayOptions.appearance.contrastLabel')}</Text>
+              <Text style={[styles.switchLabel, { color: theme.text }]}>{t('displayOptions.appearance.contrastLabel')}</Text>
             </View>
             <View style={styles.contrastOptionsContainer}>
               {contrastOptions.map((option) => {
@@ -489,6 +479,7 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) 
                     key={option.type}
                     style={[styles.contrastOptionButton, isSelected && styles.contrastOptionButtonActive]}
                     onPress={() => handleLocalSettingChange('contrastMode', option.type)}
+                    activeOpacity={0.7}
                     accessibilityRole="radio"
                     accessibilityState={{ checked: isSelected }}
                     accessibilityLabel={t('displayOptions.appearance.contrastAccessibilityLabel', {
@@ -512,11 +503,11 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) 
           <View style={styles.sectionHeader}>
             <FontAwesomeIcon
               icon={faTextHeight}
-              size={fonts.h2 * 0.8}
+              size={fonts.body * 1.1}
               color={theme.primary}
               style={styles.sectionIcon}
             />
-            <Text style={styles.sectionTitle}>{t('displayOptions.textSize.sectionTitle')}</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('displayOptions.textSize.sectionTitle')}</Text>
           </View>
           <View style={styles.textSizeOptionsContainer}>
             {textSizeOptions.map((option) => {
@@ -527,20 +518,23 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) 
                   key={size}
                   style={[styles.textSizeButton, localSettings.textSize === size && styles.textSizeButtonActive]}
                   onPress={() => handleLocalSettingChange('textSize', size)}
+                  activeOpacity={0.7}
                   accessibilityRole="radio"
                   accessibilityState={{ checked: localSettings.textSize === size }}
                   accessibilityLabel={t('displayOptions.textSize.accessibilityLabel', { size: label })}
                 >
                   <FontAwesomeIcon
                     icon={faFont}
-                    size={size === 'small' ? fonts.caption * 1.1 : size === 'medium' ? fonts.body * 1.1 : fonts.h2 * 1.1}
+                    size={fonts.body * 1.1}
                     color={localSettings.textSize === size ? theme.white : theme.primary}
                   />
                 </TouchableOpacity>
               );
             })}
           </View>
-          <Text style={styles.infoTextSmall}>{t('displayOptions.textSize.infoText')}</Text>
+          <Text style={[styles.infoTextSmall, { color: theme.textSecondary }]}>
+            {t('displayOptions.textSize.infoText')}
+          </Text>
         </View>
 
         <View style={styles.actionsContainer}>
@@ -554,7 +548,7 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) 
           >
             <FontAwesomeIcon
               icon={faUndo}
-              size={fonts.label}
+              size={fonts.body * 1.1}
               color={!isResetDisabled ? theme.textSecondary : theme.disabled}
               style={styles.buttonIcon}
             />
@@ -569,9 +563,15 @@ const DisplayOptionsScreen: React.FC<DisplayOptionsScreenProps> = ({ onClose }) 
 };
 
 // --- Styles ---
-const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguage: string) =>
-  StyleSheet.create({
-    screenContainer: { flex: 1, backgroundColor: theme.primary },
+const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguage: string) => {
+  const h2Styles = getLanguageSpecificTextStyle('h2', fonts, currentLanguage);
+  const bodyStyles = getLanguageSpecificTextStyle('body', fonts, currentLanguage);
+
+  return StyleSheet.create({
+    screenContainer: {
+      flex: 1,
+      backgroundColor: theme.primary,
+    },
     header: {
       backgroundColor: theme.primary,
       paddingTop: Platform.OS === 'android' ? 10 : 0,
@@ -580,14 +580,17 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      borderBottomWidth: 1,
-      borderBottomColor: 'rgba(255,255,255,0.1)',
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
     },
-    titleContainer: { flex: 1, alignItems: 'center', marginHorizontal: 5 },
+    titleContainer: {
+      flex: 1,
+      alignItems: 'center',
+      marginHorizontal: 5,
+    },
     title: {
-      ...getLanguageSpecificTextStyle('h2', fonts, currentLanguage), // Apply typography for h2
+      ...h2Styles,
       fontWeight: '600',
-      color: theme.white,
       textAlign: 'center',
     },
     headerButton: {
@@ -597,56 +600,70 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
       justifyContent: 'center',
       alignItems: 'center',
     },
-    scrollContentContainer: { flexGrow: 1, backgroundColor: theme.background, padding: 15, paddingBottom: 40 },
+    scrollContentContainer: {
+      flexGrow: 1,
+      backgroundColor: theme.background,
+      padding: 18,
+      paddingBottom: 40,
+    },
     sectionCard: {
       backgroundColor: theme.card,
       borderRadius: 12,
-      padding: 15,
+      padding: 18,
       marginBottom: 20,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: theme.isDark ? 0.3 : 0.1,
-      shadowRadius: 3,
-      elevation: 2,
-      borderWidth: theme.isDark ? StyleSheet.hairlineWidth : 0,
+      borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.border,
+      overflow: 'hidden',
     },
     sectionHeader: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: 18,
+      marginBottom: 10,
       paddingBottom: 10,
-      borderBottomWidth: 1,
+      borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
     },
-    sectionIcon: { marginRight: 12, width: 20, textAlign: 'center' },
+    sectionIcon: {
+      marginRight: 12,
+      width: fonts.body * 1.1,
+      textAlign: 'center',
+    },
     sectionTitle: {
-      ...getLanguageSpecificTextStyle('h2', fonts, currentLanguage), // Apply typography for h2
+      ...h2Styles,
       fontWeight: '600',
-      color: theme.text,
       flex: 1,
     },
-    settingItem: { marginBottom: 15 },
-    settingLabel: {
-      ...getLanguageSpecificTextStyle('label', fonts, currentLanguage), // Apply typography for label
-      fontWeight: '500',
-      color: theme.text,
-      marginBottom: 8,
+    settingItem: {
+      marginBottom: 15,
     },
-    sliderControlRow: { flexDirection: 'row', alignItems: 'center', marginTop: 5 },
-    lockButton: { paddingHorizontal: 10, paddingVertical: 5, marginRight: 10 },
-    slider: { flex: 1, height: 40 },
+    settingLabel: {
+      ...bodyStyles,
+      fontWeight: '500',
+    },
+    sliderControlRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 5,
+    },
+    lockButton: {
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      marginRight: 10,
+    },
+    slider: {
+      flex: 1,
+      height: 40,
+    },
     valueText: {
-      ...getLanguageSpecificTextStyle('label', fonts, currentLanguage), // Apply typography for label
-      color: theme.primary,
+      ...bodyStyles,
       fontWeight: '600',
       minWidth: 80,
       textAlign: 'center',
       marginLeft: 14,
     },
     infoTextSmall: {
-      ...getLanguageSpecificTextStyle('caption', fonts, currentLanguage), // Apply typography for caption
-      color: theme.textSecondary,
+      ...bodyStyles,
+      fontWeight: '400',
       marginTop: 8,
       textAlign: 'center',
       paddingHorizontal: 5,
@@ -655,16 +672,24 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingVertical: 10,
+      paddingVertical: 12,
       marginTop: 15,
-      borderTopWidth: 1,
+      borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: theme.border,
     },
-    switchLabelContainer: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 10 },
-    switchIcon: { marginRight: 15, width: 20, textAlign: 'center' },
+    switchLabelContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+      marginRight: 10,
+    },
+    switchIcon: {
+      marginRight: 15,
+      width: fonts.body * 1.1,
+      textAlign: 'center',
+    },
     switchLabel: {
-      ...getLanguageSpecificTextStyle('label', fonts, currentLanguage), // Apply typography for label
-      color: theme.text,
+      ...bodyStyles,
       fontWeight: '500',
     },
     textSizeOptionsContainer: {
@@ -677,7 +702,7 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
     textSizeButton: {
       paddingVertical: 12,
       paddingHorizontal: 18,
-      borderRadius: 22,
+      borderRadius: 10,
       borderWidth: 1.5,
       borderColor: theme.border,
       backgroundColor: theme.card,
@@ -686,19 +711,32 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
       minWidth: 70,
       minHeight: 44,
     },
-    textSizeButtonActive: { backgroundColor: theme.primary, borderColor: theme.primary },
-    actionsContainer: { marginTop: 25, alignItems: 'center' },
-    resetButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 20 },
+    textSizeButtonActive: {
+      backgroundColor: theme.primary,
+      borderColor: theme.primary,
+    },
+    actionsContainer: {
+      marginTop: 25,
+      alignItems: 'center',
+    },
+    resetButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 10,
+      paddingHorizontal: 20,
+    },
     resetButtonText: {
-      ...getLanguageSpecificTextStyle('label', fonts, currentLanguage), // Apply typography for label
-      color: theme.textSecondary,
+      ...bodyStyles,
       fontWeight: '500',
       textDecorationLine: 'underline',
     },
-    buttonIcon: { marginRight: 6 },
-    buttonDisabled: { opacity: 0.5 },
+    buttonIcon: {
+      marginRight: 6,
+    },
+    buttonDisabled: {
+      opacity: 0.6,
+    },
     textDisabled: {
-      color: theme.disabled,
       textDecorationLine: 'none',
     },
     layoutOptionsContainer: {
@@ -722,19 +760,41 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
       backgroundColor: theme.card,
       minHeight: 90,
     },
-    layoutOptionButtonActive: { backgroundColor: theme.primary, borderColor: theme.primary },
-    layoutOptionIcon: { marginBottom: 8 },
-    layoutOptionTextContainer: { alignItems: 'center' },
-    layoutOptionLabel: {
-      ...getLanguageSpecificTextStyle('label', fonts, currentLanguage), // Apply typography for label
-      fontWeight: '600',
-      color: theme.primary,
-      textAlign: 'center',
+    layoutOptionButtonActive: {
+      backgroundColor: theme.primary,
+      borderColor: theme.primary,
     },
-    layoutOptionLabelActive: { color: theme.white },
-    layoutCheckIcon: { position: 'absolute', top: 8, right: 8 },
-    contrastSection: { marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: theme.border },
-    contrastHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+    layoutOptionIcon: {
+      marginBottom: 8,
+    },
+    layoutOptionTextContainer: {
+      alignItems: 'center',
+    },
+    layoutOptionLabel: {
+      ...bodyStyles,
+      fontWeight: '600',
+    },
+    layoutOptionLabelActive: {
+      ...bodyStyles,
+      fontWeight: '600',
+      color: theme.white,
+    },
+    layoutCheckIcon: {
+      position: 'absolute',
+      top: 8,
+      right: 8,
+    },
+    contrastSection: {
+      marginTop: 15,
+      paddingTop: 15,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.border,
+    },
+    contrastHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
     contrastOptionsContainer: {
       flexDirection: 'row',
       flexWrap: 'wrap',
@@ -745,25 +805,34 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
       flexBasis: '48%',
       paddingVertical: 12,
       paddingHorizontal: 10,
-      borderRadius: 8,
+      borderRadius: 10,
       borderWidth: 1.5,
       borderColor: theme.border,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.card,
-      minHeight: 50,
+      minHeight: 44,
     },
-    contrastOptionButtonActive: { borderColor: theme.primary, backgroundColor: theme.primaryMuted },
+    contrastOptionButtonActive: {
+      borderColor: theme.primary,
+      backgroundColor: theme.primaryMuted,
+    },
     contrastOptionLabel: {
-      ...getLanguageSpecificTextStyle('label', fonts, currentLanguage), // Apply typography for label
+      ...bodyStyles,
       fontWeight: '500',
-      color: theme.text,
-      textAlign: 'center',
     },
     contrastOptionLabelActive: {
+      ...bodyStyles,
+      fontWeight: '600',
       color: theme.primary,
-      fontWeight: 'bold',
+    },
+    loadingText: {
+      ...bodyStyles,
+      fontWeight: '500',
+      marginTop: 15,
+      textAlign: 'center',
     },
   });
+};
 
 export default DisplayOptionsScreen;

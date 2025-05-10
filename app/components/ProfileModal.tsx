@@ -9,10 +9,9 @@ import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import {
     faTimes, faSignOutAlt, faPen, faCheck, faCamera, faUserCircle
 } from '@fortawesome/free-solid-svg-icons';
-import { useTranslation } from 'react-i18next'; // <-- Import i18next hook
-
-// --- Import Appearance Context ---
+import { useTranslation } from 'react-i18next';
 import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext';
+import { getLanguageSpecificTextStyle } from '../styles/typography'; 
 
 // --- Dummy Data & Constants ---
 const AVATAR_LIBRARY = [
@@ -51,13 +50,14 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
 }) => {
     // --- Hooks ---
     const { theme, fonts } = useAppearance();
-    const { t } = useTranslation(); // <-- Use the translation hook
+    const { t, i18n } = useTranslation(); 
+    const currentLanguage = i18n.language; 
 
     // --- Dynamic Styles ---
-    const styles = useMemo(() => createThemedStyles(theme, fonts), [theme, fonts]);
+    const styles = useMemo(() => createThemedStyles(theme, fonts, currentLanguage), [theme, fonts, currentLanguage]);
 
     // Default profile if none provided
-    const defaultUserName = t('profile.defaultUserName'); // Get default name from translations
+    const defaultUserName = t('profile.defaultUserName');
     const profile = userProfile || { name: defaultUserName, email: 'user@example.com', avatar: undefined };
 
     // State
@@ -84,7 +84,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
     const handleSave = async () => {
         const trimmedName = currentName.trim();
         if (trimmedName === '') {
-            setSaveError(t('profile.errors.nameEmpty')); // Use t()
+            setSaveError(t('profile.errors.nameEmpty'));
             return;
         }
         setSaveError(null);
@@ -92,10 +92,10 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
         Keyboard.dismiss();
         try {
             if (onSave) { await onSave(trimmedName, currentAvatarUri); }
-            setIsEditingName(false); // Close editing mode on successful save
+            setIsEditingName(false);
         } catch (error) {
             console.error("Error saving profile:", error);
-            setSaveError(t('profile.errors.saveFail')); // Use t()
+            setSaveError(t('profile.errors.saveFail'));
         }
         finally { setIsSaving(false); }
     };
@@ -104,10 +104,9 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
         Keyboard.dismiss();
         if (isEditingName) {
             setIsEditingName(false);
-            setCurrentName(profile.name); // Reset to original name if editing was cancelled
+            setCurrentName(profile.name);
             setSaveError(null);
         }
-        // onClose(); // Removed direct close on background tap, can be added back if desired
     };
 
     const handleInternalLogout = () => { if (onLogout) { onLogout(); } };
@@ -255,45 +254,136 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
     );
 };
 
-// --- Styles (Unchanged from your previous version) ---
-const createThemedStyles = (theme: ThemeColors, fonts: FontSizes) => StyleSheet.create({
-    modalBackground: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.6)', },
-    modalContainer: { width: modalWidth, backgroundColor: theme.background, borderRadius: 16, overflow: 'hidden', maxHeight: '90%', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 18, elevation: 15, borderWidth: theme.isDark ? 1 : 0, borderColor: theme.border, },
-    header: { paddingVertical: 15, paddingHorizontal: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: theme.primary, },
-    title: { fontSize: fonts.h2, fontWeight: '600', color: theme.white, },
-    headerButton: { padding: 6, minWidth: 35, alignItems: 'center' },
-    headerButtonPlaceholder: { minWidth: 35 },
-    contentContainer: { paddingVertical: 30, paddingHorizontal: 25, },
-    avatarSection: { alignItems: 'center', marginBottom: 25, },
-    avatarTouchable: { position: 'relative', width: 90, height: 90, },
-    avatarImage: { width: '100%', height: '100%', borderRadius: 45, borderWidth: 3, borderColor: theme.white, backgroundColor: theme.disabled, },
-    avatarPlaceholderIcon: { width: 90, height: 90, borderRadius: 45, backgroundColor: theme.card, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: theme.white, },
-    avatarEditBadge: { position: 'absolute', bottom: 2, right: 2, backgroundColor: theme.card, width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 5, borderWidth: 1, borderColor: theme.border, },
-    fieldContainer: { marginBottom: 20, },
-    fieldLabel: { fontSize: fonts.caption, fontWeight: '500', color: theme.textSecondary, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5, },
-    nameInputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.card, borderRadius: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: theme.border, },
-    textInput: { flex: 1, fontSize: fonts.body, fontWeight: '500', color: theme.text, paddingVertical: Platform.OS === 'ios' ? 12 : 10, height: 46, },
-    textInputEditing: { /* Optional focus style */ },
-    inlineEditButton: { paddingLeft: 10, paddingVertical: 5, },
-    emailText: { fontSize: fonts.body, color: theme.textSecondary, paddingVertical: 12, paddingHorizontal: 12, backgroundColor: theme.background, borderRadius: 8, borderWidth: 1, borderColor: theme.border, },
-    errorText: { color: errorColor, fontSize: fonts.caption, fontWeight: '500', textAlign: 'center', marginTop: -10, marginBottom: 15, },
-    divider: { height: StyleSheet.hairlineWidth, backgroundColor: theme.border, marginVertical: 25, },
-    actionButton: { paddingVertical: 13, paddingHorizontal: 16, borderRadius: 10, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 1.5, },
-    logoutButton: { backgroundColor: theme.card, borderWidth: 1.5, borderColor: errorColor, },
-    buttonText: { fontSize: fonts.button, fontWeight: 'bold', textAlign: 'center', },
-    logoutText: { color: errorColor, },
-    buttonIcon: { marginRight: 10, },
-    avatarOptionsOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: theme.isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.6)', justifyContent: 'center', alignItems: 'center', padding: 20, },
-    avatarOptionsContainer: { width: '100%', maxWidth: modalWidth, backgroundColor: theme.card, borderRadius: 16, paddingVertical: 25, paddingHorizontal: 20, maxHeight: '80%', borderWidth: theme.isDark ? 1 : 0, borderColor: theme.border, },
-    avatarOptionsTitle: { fontSize: fonts.h2, fontWeight: 'bold', color: theme.text, marginBottom: 25, textAlign: 'center', },
-    avatarGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 15, marginBottom: 25, },
-    avatarOption: { width: (modalWidth * 0.9 - 40 - 30) / 3, aspectRatio: 1, borderRadius: 12, overflow: 'hidden', borderWidth: 3, borderColor: 'transparent', backgroundColor: theme.disabled, },
-    avatarOptionSelected: { borderColor: theme.primary, },
-    avatarOptionImage: { width: '100%', height: '100%', },
-    avatarUploadOption: { width: (modalWidth * 0.9 - 40 - 30) / 3, aspectRatio: 1, borderRadius: 12, borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.border, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background, },
-    uploadText: { fontSize: fonts.caption, color: theme.textSecondary, marginTop: 5, fontWeight: '500', },
-    closeAvatarOptionsButton: { marginTop: 15, paddingVertical: 12, borderRadius: 10, backgroundColor: theme.border, alignItems: 'center', },
-    closeAvatarOptionsText: { fontSize: fonts.button, color: theme.textSecondary, fontWeight: '600', },
-});
+// --- Styles ---
+const createThemedStyles = (
+    theme: ThemeColors,
+    fonts: FontSizes,
+    currentLanguage: string 
+) => {
+    const titleStyles = getLanguageSpecificTextStyle('h2', fonts, currentLanguage);
+    const bodyStyles = getLanguageSpecificTextStyle('body', fonts, currentLanguage);
+    const captionStyles = getLanguageSpecificTextStyle('caption', fonts, currentLanguage);
+    const buttonStyles = getLanguageSpecificTextStyle('button', fonts, currentLanguage);
+
+    return StyleSheet.create({
+        modalBackground: {
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: theme.isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.6)',
+        },
+        modalContainer: {
+            width: modalWidth,
+            backgroundColor: theme.background,
+            borderRadius: 16,
+            overflow: 'hidden',
+            maxHeight: '90%',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.4,
+            shadowRadius: 18,
+            elevation: 15,
+            borderWidth: theme.isDark ? 1 : 0,
+            borderColor: theme.border,
+        },
+        header: {
+            paddingVertical: 15,
+            paddingHorizontal: 15,
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: theme.primary,
+        },
+        title: {
+            ...titleStyles, 
+            fontWeight: '600',
+            color: theme.white,
+        },
+        headerButton: { padding: 6, minWidth: 35, alignItems: 'center' },
+        headerButtonPlaceholder: { minWidth: 35 },
+        contentContainer: { paddingVertical: 30, paddingHorizontal: 25, },
+        avatarSection: { alignItems: 'center', marginBottom: 25, },
+        avatarTouchable: { position: 'relative', width: 90, height: 90, },
+        avatarImage: { width: '100%', height: '100%', borderRadius: 45, borderWidth: 3, borderColor: theme.white, backgroundColor: theme.disabled, },
+        avatarPlaceholderIcon: { width: 90, height: 90, borderRadius: 45, backgroundColor: theme.card, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: theme.white, },
+        avatarEditBadge: { position: 'absolute', bottom: 2, right: 2, backgroundColor: theme.card, width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 5, borderWidth: 1, borderColor: theme.border, },
+        fieldContainer: { marginBottom: 20, },
+        fieldLabel: {
+            ...captionStyles, 
+            fontWeight: '500',
+            color: theme.textSecondary,
+            marginBottom: 6,
+            textTransform: 'uppercase',
+            letterSpacing: 0.5,
+        },
+        nameInputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.card, borderRadius: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: theme.border, },
+        textInput: {
+            flex: 1,
+            ...bodyStyles, 
+            fontWeight: '500',
+            color: theme.text,
+            paddingVertical: Platform.OS === 'ios' ? 12 : 10,
+            height: 46, 
+        },
+        textInputEditing: { /* Optional focus style */ },
+        inlineEditButton: { paddingLeft: 10, paddingVertical: 5, },
+        emailText: {
+            ...bodyStyles, 
+            color: theme.textSecondary,
+            paddingVertical: 12,
+            paddingHorizontal: 12,
+            backgroundColor: theme.background,
+            borderRadius: 8,
+            borderWidth: 1,
+            borderColor: theme.border,
+        },
+        errorText: {
+            ...captionStyles, 
+            color: errorColor,
+            fontWeight: '500',
+            textAlign: 'center',
+            marginTop: -10,
+            marginBottom: 15,
+        },
+        divider: { height: StyleSheet.hairlineWidth, backgroundColor: theme.border, marginVertical: 25, },
+        actionButton: { paddingVertical: 13, paddingHorizontal: 16, borderRadius: 10, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 1.5, },
+        logoutButton: { backgroundColor: theme.card, borderWidth: 1.5, borderColor: errorColor, },
+        buttonText: { 
+            ...buttonStyles, 
+            fontWeight: 'bold',
+            textAlign: 'center',
+        },
+        logoutText: { // Specific color for logout button text
+            color: errorColor,
+        },
+        buttonIcon: { marginRight: 10, },
+        avatarOptionsOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: theme.isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.6)', justifyContent: 'center', alignItems: 'center', padding: 20, },
+        avatarOptionsContainer: { width: '100%', maxWidth: modalWidth, backgroundColor: theme.card, borderRadius: 16, paddingVertical: 25, paddingHorizontal: 20, maxHeight: '80%', borderWidth: theme.isDark ? 1 : 0, borderColor: theme.border, },
+        avatarOptionsTitle: {
+            ...titleStyles, 
+            fontWeight: 'bold',
+            color: theme.text,
+            marginBottom: 25,
+            textAlign: 'center',
+        },
+        avatarGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 15, marginBottom: 25, },
+        avatarOption: { width: (modalWidth * 0.9 - 40 - 30) / 3, aspectRatio: 1, borderRadius: 12, overflow: 'hidden', borderWidth: 3, borderColor: 'transparent', backgroundColor: theme.disabled, },
+        avatarOptionSelected: { borderColor: theme.primary, },
+        avatarOptionImage: { width: '100%', height: '100%', },
+        avatarUploadOption: { width: (modalWidth * 0.9 - 40 - 30) / 3, aspectRatio: 1, borderRadius: 12, borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.border, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background, },
+        uploadText: {
+            ...captionStyles, 
+            color: theme.textSecondary,
+            marginTop: 5,
+            fontWeight: '500',
+        },
+        closeAvatarOptionsButton: { marginTop: 15, paddingVertical: 12, borderRadius: 10, backgroundColor: theme.border, alignItems: 'center', },
+        closeAvatarOptionsText: {
+            ...buttonStyles, 
+            color: theme.textSecondary,
+            fontWeight: '600',
+        },
+    });
+};
 
 export default ProfileModal;

@@ -6,10 +6,13 @@ import {
 import axios from 'axios'; // Ensure axios is installed
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import { faChevronRight, faFolder } from '@fortawesome/free-solid-svg-icons';
-import { useTranslation } from 'react-i18next'; // <-- Import i18next hook
+import { useTranslation } from 'react-i18next';
 
 // --- Import Appearance Context ---
 import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext'; // Adjust path
+
+// --- Import Language Specific Text Style Helper ---
+import { getLanguageSpecificTextStyle } from '../styles/typography'; // Adjust path if needed
 
 // --- Component Props Interface ---
 interface CateComponentProps {
@@ -30,10 +33,11 @@ const CateComponent: React.FC<CateComponentProps> = React.memo(({
 }) => {
   // --- Hooks ---
   const { theme, fonts } = useAppearance();
-  const { t } = useTranslation(); // <-- Get t function
+  const { t, i18n } = useTranslation(); // <-- Get t function and i18n instance
+  const currentLanguage = i18n.language; // Get current language
 
   // --- Dynamic Styles ---
-  const styles = useMemo(() => createThemedStyles(theme, fonts, isSelected), [theme, fonts, isSelected]);
+  const styles = useMemo(() => createThemedStyles(theme, fonts, isSelected, currentLanguage), [theme, fonts, isSelected, currentLanguage]);
 
   // --- State for pictogram ---
   const [pictogramUrl, setPictogramUrl] = useState<string | null>(null);
@@ -101,18 +105,16 @@ const CateComponent: React.FC<CateComponentProps> = React.memo(({
         style={styles.cateComponent}
         onPress={handlePress}
         activeOpacity={0.7}
-        accessibilityLabel={accessibilityLabelText} // <-- Use translated label
+        accessibilityLabel={accessibilityLabelText}
         accessibilityRole="button"
         accessibilityState={{ selected: isSelected }}
     >
         <View style={styles.iconContainer}>
-            {/* Icon/Loading display logic remains the same */}
             {loading && fetchAttempted && ( <ActivityIndicator size="small" color={theme.textSecondary} /> )}
             {!loading && pictogramUrl && ( <Image source={{ uri: pictogramUrl }} style={styles.symbolImage} resizeMode="contain"/> )}
             {!loading && (!pictogramUrl || !fetchAttempted && (iconKeywordForArasaac.toLowerCase() === 'contextual' || iconKeywordForArasaac.toLowerCase() === 'custom')) && ( <FontAwesomeIcon icon={faFolder} size={fonts.h2} color={iconColor} /> )}
             {!loading && !pictogramUrl && fetchAttempted && iconKeywordForArasaac.toLowerCase() !== 'contextual' && iconKeywordForArasaac.toLowerCase() !== 'custom' && ( <FontAwesomeIcon icon={faFolder} size={fonts.h2} color={iconColor} /> )}
         </View>
-        {/* Text display uses the keyword prop, which is already the correct display text */}
         <Text style={styles.keywordText} numberOfLines={2} ellipsizeMode="tail">
             {keyword}
         </Text>
@@ -121,13 +123,55 @@ const CateComponent: React.FC<CateComponentProps> = React.memo(({
   );
 });
 
-// --- Styles (Unchanged) ---
-const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, isSelected: boolean) => StyleSheet.create({
-  cateComponent: { flexDirection: 'row', alignItems: 'center', backgroundColor: isSelected ? theme.primaryMuted : theme.card, paddingVertical: 12, paddingHorizontal: 15, },
-  iconContainer: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center', marginRight: 12, backgroundColor: isSelected ? theme.primaryMuted : theme.background, borderRadius: 6, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: theme.border, },
-  symbolImage: { width: '85%', height: '85%', },
-  keywordText: { flex: 1, fontSize: fonts.body, fontWeight: isSelected ? '600' : '500', color: isSelected ? theme.primary : theme.text, textAlign: 'left', },
-  chevronIcon: { marginLeft: 10, },
-});
+// --- Styles ---
+const createThemedStyles = (
+    theme: ThemeColors,
+    fonts: FontSizes,
+    isSelected: boolean,
+    currentLanguage: string // <-- Added currentLanguage
+) => {
+  // Get language-specific styles for the body text (used for keywordText)
+  const bodyTextStyles = getLanguageSpecificTextStyle(
+    'body', // Type of text (matches 'body' in DZONGKHA_TYPOGRAPHY_ADJUSTMENTS)
+    fonts,  // Base font sizes from context
+    currentLanguage
+  );
+
+  return StyleSheet.create({
+    cateComponent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: isSelected ? theme.primaryMuted : theme.card,
+      paddingVertical: 12,
+      paddingHorizontal: 15,
+    },
+    iconContainer: {
+      width: 40,
+      height: 40,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 12,
+      backgroundColor: isSelected ? theme.primaryMuted : theme.background,
+      borderRadius: 6,
+      overflow: 'hidden',
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border,
+    },
+    symbolImage: {
+      width: '85%',
+      height: '85%',
+    },
+    keywordText: {
+      flex: 1,
+      ...bodyTextStyles, // Apply language-specific font family, size, and line height
+      fontWeight: isSelected ? '600' : '500',
+      color: isSelected ? theme.primary : theme.text,
+      textAlign: 'left',
+    },
+    chevronIcon: {
+      marginLeft: 10,
+    },
+  });
+};
 
 export default CateComponent;

@@ -5,20 +5,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/AuthNavigator';
 import { API_BASE_URL } from '../config/apiConfig'; // Import your API base URL
 
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
-  KeyboardAvoidingView,
-  Platform,
-  StatusBar,
-  TouchableWithoutFeedback,
-  Keyboard,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, KeyboardAvoidingView, Platform, StatusBar, TouchableWithoutFeedback, Keyboard, ActivityIndicator } from 'react-native';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import { faEnvelope, faLock } from '@fortawesome/free-solid-svg-icons';
 import LinearGradient from 'react-native-linear-gradient';
@@ -33,7 +20,6 @@ const textColor = '#343a40';
 const placeholderColor = '#adb5bd';
 const errorColor = '#dc3545';
 const subtleBorderColor = '#e0e0e0';
-// const cursorColor = 'rgba(255, 255, 255, 0.75)'; // Not directly used in styles below
 const inputBackground = '#e6f0fa';
 const gradientStart = '#0066a3';
 const gradientEnd = '#0099c6';
@@ -45,10 +31,8 @@ type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, '
 interface TokenResponse {
   access_token: string;
   token_type: string;
-  // Add other fields if your token response includes them (e.g., expires_in, refresh_token)
 }
 
-// Interface for FastAPI error detail (can be a string or an array of error objects)
 interface FastAPIErrorDetail {
   loc: string[];
   msg: string;

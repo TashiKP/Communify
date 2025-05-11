@@ -1,111 +1,188 @@
-// App.tsx - TEST 1 (FAILED): useAppearance() and theme.background
+import React, { useEffect, useMemo } from 'react';
+import {
+    SafeAreaView,
+    StyleSheet,
+    StatusBar,
+    View,
+    ActivityIndicator,
+    Text,
+} from 'react-native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import Orientation from 'react-native-orientation-locker';
+import * as Sentry from '@sentry/react-native';
 
-import React, { useEffect } from 'react';
-import { SafeAreaView, StyleSheet, /* StatusBar, */ View, ActivityIndicator, Text } from 'react-native'; // StatusBar still commented
-import { NavigationContainer } from '@react-navigation/native';
-// import Orientation from 'react-native-orientation-locker'; // Still commented
+// --- Import Constants ---
+import {
+    LOADER_COLOR,
+    DEFAULT_BACKGROUND_COLOR,
+    ERROR_FALLBACK_TEXT_COLOR,
+    ERROR_FALLBACK_MESSAGE_COLOR,
+    ERROR_DETAILS_COLOR,
+} from './constants/colors'; // Or import from './constants' if using barrel file fully
+import { TestIDs } from './constants/testIDs';
 
+// Contexts
 import { GridProvider } from './context/GridContext';
-import { AppearanceProvider, useAppearance } from './context/AppearanceContext'; // RE-IMPORT useAppearance
+import { AppearanceProvider, useAppearance } from './context/AppearanceContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
+// Navigators
 import AuthNavigator from './navigation/AuthNavigator';
 import MainAppNavigator from './navigation/MainAppNavigator';
 
+// --- Error Boundary (Simple Example) ---
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+}
+
+class AppErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
+    Sentry.captureException(error, {
+        extra: {
+            componentStack: errorInfo.componentStack,
+        },
+    });
+}
+
+  render() {
+    if (this.state.hasError) {
+      if (this.props.fallback) {
+        return this.props.fallback;
+      }
+      return (
+        <View style={styles.errorFallbackContainer}>
+          <Text style={styles.errorFallbackText}>Oops! Something went wrong.</Text>
+          <Text style={styles.errorFallbackMessage}>
+            Please try restarting the application.
+          </Text>
+          {__DEV__ && this.state.error && (
+            <Text style={styles.errorDetails}>
+              {this.state.error.toString()}
+            </Text>
+          )}
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// --- Themed Content (Main App UI after loading) ---
 const ThemedAppContent: React.FC = () => {
-    // UNCOMMENT useAppearance and use theme, isLoadingAppearance
-    const { theme, isLoadingAppearance /*, brightnessOverlayOpacity, statusBarStyle */ } = useAppearance();
+    const { theme, brightnessOverlayOpacity, statusBarStyle } = useAppearance();
 
-    console.log('[ThemedAppContent] TEST 1: useAppearance. isLoadingAppearance:', isLoadingAppearance);
-
-    // ADD BACK loading check for appearance
-    if (isLoadingAppearance) {
-        console.log('[ThemedAppContent] TEST 1: Appearance is loading.');
-        return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#0077b6" />
-            </View>
-        );
-    }
-
-    // ADD BACK theme check
-    if (!theme) {
-        console.warn('[ThemedAppContent] TEST 1: Theme not ready. Fallback loading.');
-        return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#0077b6" />
-            </View>
-        );
-    }
-
-    // Use theme for background, but keep StatusBar and Overlay commented for now
     return (
         <View style={[styles.appContainer, { backgroundColor: theme.background }]}>
-            {/* StatusBar component fully commented out */}
+            <StatusBar
+                barStyle={statusBarStyle}
+                backgroundColor={theme.primary}
+                translucent={false}
+            />
             <MainAppNavigator />
-            {/* Brightness overlay fully commented out */}
+            {brightnessOverlayOpacity > 0 && (
+                <View
+                    style={[
+                        styles.brightnessOverlay,
+                        { backgroundColor: `rgba(0, 0, 0, ${brightnessOverlayOpacity})` },
+                    ]}
+                    pointerEvents="none"
+                />
+            )}
         </View>
     );
 };
 
-const AppNavigationDecider: React.FC = () => {
+// --- Component to Decide Between Loading, Auth, or Main App ---
+const AppLoadingOrContent: React.FC = () => {
     const { userToken, isLoading: isAuthLoading } = useAuth();
+    const { isLoadingAppearance, theme } = useAppearance();
 
-    console.log(
-        '[AppNavigationDecider] Evaluating: isAuthLoading:', isAuthLoading,
-        'userToken:', userToken ? `"${userToken.substring(0,10)}..."` : 'null'
-    );
+    const isAppLoading = isAuthLoading || isLoadingAppearance;
 
-    if (isAuthLoading) {
-        console.log('[AppNavigationDecider] Auth is loading. Rendering loading indicator.');
+    const navigationTheme = useMemo(() => {
+        if (!theme) {
+            return DefaultTheme;
+        }
+        return theme.isDark ? DarkTheme : DefaultTheme;
+        // More detailed theme mapping:
+        // return {
+        //   ...(theme.isDark ? DarkTheme : DefaultTheme),
+        //   colors: {
+        //     ...(theme.isDark ? DarkTheme.colors : DefaultTheme.colors),
+        //     background: theme.background,
+        //     card: theme.card,
+        //     text: theme.text,
+        //     primary: theme.primary,
+        //     border: theme.border,
+        //   },
+        // };
+    }, [theme]);
+
+    if (isAppLoading) {
         return (
-            <View key="auth-loading-screen" style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#0077b6" />
+            <View style={styles.loadingContainer} testID={TestIDs.APP_LOADING_INDICATOR}>
+                <ActivityIndicator size="large" color={LOADER_COLOR} />
             </View>
         );
     }
 
-    if (userToken) {
-        console.log('[AppNavigationDecider] User token exists. Rendering ThemedAppContent (TEST 1).');
-        return <ThemedAppContent key="main-app-content-test1" />; // Update key for clarity
-    } else {
-        console.log('[AppNavigationDecider] No user token. Rendering AuthNavigator.');
-        return <AuthNavigator key="auth-navigator" />;
-    }
+    return (
+        <NavigationContainer theme={navigationTheme}>
+            {userToken ? <ThemedAppContent /> : <AuthNavigator />}
+        </NavigationContainer>
+    );
 };
 
+// --- Main App Component ---
 export default function App() {
-    // useEffect(() => { // Still commented
-    //     // Orientation.lockToLandscape();
-    //     // return () => {
-    //     //     Orientation.unlockAllOrientations();
-    //     // };
-    // }, []);
+    useEffect(() => {
+        Orientation.lockToLandscape();
+        // return () => {
+        //     Orientation.unlockAllOrientations();
+        // };
+    }, []);
 
-    console.log('[App] Component rendering/mounting.');
+    // Sentry.init({ dsn: "YOUR_SENTRY_DSN" });
 
     return (
-        <AuthProvider>
-            <AppearanceProvider> {/* Culprit is likely in here or useAppearance */}
-                <GridProvider>
-                    <LanguageProvider>
-                        <SafeAreaView style={styles.safeAreaContainer}>
-                            <NavigationContainer>
-                                <AppNavigationDecider />
-                            </NavigationContainer>
-                        </SafeAreaView>
-                    </LanguageProvider>
-                </GridProvider>
-            </AppearanceProvider>
-        </AuthProvider>
+        <AppErrorBoundary>
+            <AuthProvider>
+                <AppearanceProvider>
+                    <GridProvider>
+                        <LanguageProvider>
+                            <SafeAreaView style={styles.safeAreaContainer}>
+                                <AppLoadingOrContent />
+                            </SafeAreaView>
+                        </LanguageProvider>
+                    </GridProvider>
+                </AppearanceProvider>
+            </AuthProvider>
+        </AppErrorBoundary>
     );
 }
 
+// --- Styles ---
 const styles = StyleSheet.create({
     safeAreaContainer: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: DEFAULT_BACKGROUND_COLOR,
     },
     appContainer: {
         flex: 1,
@@ -114,10 +191,36 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: DEFAULT_BACKGROUND_COLOR,
     },
     brightnessOverlay: {
         ...StyleSheet.absoluteFillObject,
         zIndex: 9999,
+    },
+    errorFallbackContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+        backgroundColor: DEFAULT_BACKGROUND_COLOR,
+    },
+    errorFallbackText: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        textAlign: 'center',
+        marginBottom: 10,
+        color: ERROR_FALLBACK_TEXT_COLOR,
+    },
+    errorFallbackMessage: {
+        fontSize: 16,
+        textAlign: 'center',
+        marginBottom: 20,
+        color: ERROR_FALLBACK_MESSAGE_COLOR,
+    },
+    errorDetails: {
+        fontSize: 12,
+        textAlign: 'center',
+        color: ERROR_DETAILS_COLOR,
+        marginTop: 10,
     },
 });

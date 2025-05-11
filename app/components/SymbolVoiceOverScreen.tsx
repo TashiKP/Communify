@@ -17,14 +17,8 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import Tts from 'react-native-tts';
 import { useTranslation } from 'react-i18next';
-
-// --- Import Context ---
 import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext';
-
-// --- Import Typography Utility ---
 import { getLanguageSpecificTextStyle } from '../styles/typography';
-
-// --- Types ---
 export interface VoiceSettingData {
     pitch: number; speed: number; volume: number; pitchLocked: boolean; speedLocked: boolean;
     volumeLocked: boolean; selectedVoiceId: string | null; highlightWord: boolean; speakPunctuation: boolean;

@@ -1,4 +1,3 @@
-// src/components/ProfileModal.tsx
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     View, Text, TouchableOpacity, StyleSheet, Modal, SafeAreaView, Image, TextInput,
@@ -13,12 +12,8 @@ import { useTranslation } from 'react-i18next';
 import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext';
 import { getLanguageSpecificTextStyle } from '../styles/typography'; 
 
-// --- Dummy Data & Constants ---
 const AVATAR_LIBRARY = [
     { id: 'avatar1', uri: 'https://ui-avatars.com/api/?name=T+D&background=0077b6&color=fff&size=128&bold=true' },
-    { id: 'avatar2', uri: 'https://ui-avatars.com/api/?name=TD&background=ade8f4&color=0077b6&size=128&bold=true' },
-    { id: 'avatar3', uri: 'https://ui-avatars.com/api/?name=T+D&background=03045e&color=fff&size=128&bold=true' },
-    { id: 'avatar4', uri: 'https://ui-avatars.com/api/?name=TD&background=90e0ef&color=03045e&size=128&bold=true' },
 ];
 const FALLBACK_AVATAR_ICON = faUserCircle;
 const screenWidth = Dimensions.get('window').width;
@@ -27,7 +22,6 @@ const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
 const errorColor = '#dc3545';
 const successColor = '#198754';
 
-// --- Component Props Interface ---
 interface ProfileModalProps {
     visible: boolean;
     onClose: () => void;
@@ -40,7 +34,6 @@ interface ProfileModalProps {
     onSave?: (name: string, avatarUri?: string | null) => Promise<void> | void;
 }
 
-// --- Component ---
 const ProfileModal: React.FC<ProfileModalProps> = ({
     visible,
     onClose,
@@ -48,19 +41,15 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
     onLogout,
     onSave,
 }) => {
-    // --- Hooks ---
     const { theme, fonts } = useAppearance();
     const { t, i18n } = useTranslation(); 
     const currentLanguage = i18n.language; 
 
-    // --- Dynamic Styles ---
     const styles = useMemo(() => createThemedStyles(theme, fonts, currentLanguage), [theme, fonts, currentLanguage]);
 
-    // Default profile if none provided
     const defaultUserName = t('profile.defaultUserName');
     const profile = userProfile || { name: defaultUserName, email: 'user@example.com', avatar: undefined };
 
-    // State
     const [currentName, setCurrentName] = useState(profile.name);
     const [currentAvatarUri, setCurrentAvatarUri] = useState<string | undefined>(profile.avatar);
     const [isEditingName, setIsEditingName] = useState(false);
@@ -68,19 +57,19 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
     const [showAvatarOptions, setShowAvatarOptions] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
 
-    // Effects
     useEffect(() => {
-        if (visible) {
-            setCurrentName(profile.name);
-            setCurrentAvatarUri(profile.avatar);
-            setIsEditingName(false);
-            setIsSaving(false);
-            setShowAvatarOptions(false);
-            setSaveError(null);
-        }
+      if (visible) {
+        setCurrentName(profile.name);
+        setCurrentAvatarUri(profile.avatar);
+        setIsEditingName(false);
+        setIsSaving(false);
+        setShowAvatarOptions(false);
+        setSaveError(null);
+      } else {
+        setShowAvatarOptions(false);
+      }
     }, [visible, profile]);
 
-    // Handlers
     const handleSave = async () => {
         const trimmedName = currentName.trim();
         if (trimmedName === '') {
@@ -112,18 +101,16 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
     const handleInternalLogout = () => { if (onLogout) { onLogout(); } };
     const handleAvatarSelect = (avatarUri: string) => { setCurrentAvatarUri(avatarUri); setShowAvatarOptions(false); setSaveError(null); };
 
-    // Derived State
     const hasNameChanged = currentName.trim() !== profile.name.trim();
     const hasAvatarChanged = currentAvatarUri !== profile.avatar;
     const canSaveChanges = (hasNameChanged || hasAvatarChanged) && currentName.trim() !== '';
 
     return (
-        <Modal visible={visible} animationType="fade" transparent={true} onRequestClose={onClose} >
+        <Modal visible={visible} animationType="none" transparent={true} onRequestClose={onClose} >
             <TouchableWithoutFeedback onPress={dismissKeyboardAndReset} accessible={false}>
                 <SafeAreaView style={styles.modalBackground}>
                     <TouchableWithoutFeedback accessible={false}>
                         <View style={styles.modalContainer}>
-                            {/* Header */}
                             <View style={styles.header}>
                                 <View style={styles.headerButtonPlaceholder} />
                                 <Text style={styles.title}>{t('profile.title')}</Text>
@@ -136,9 +123,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                                 </TouchableOpacity>
                             </View>
 
-                            {/* Scrollable Content */}
                             <ScrollView contentContainerStyle={styles.contentContainer} keyboardShouldPersistTaps="handled">
-                                {/* Avatar Area */}
                                 <View style={styles.avatarSection}>
                                     <TouchableOpacity style={styles.avatarTouchable} onPress={() => setShowAvatarOptions(true)} activeOpacity={0.8} accessibilityLabel={t('profile.changeAvatarAccessibilityLabel')}>
                                         {currentAvatarUri ? (
@@ -154,7 +139,6 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                                     </TouchableOpacity>
                                 </View>
 
-                                {/* Name Edit Section */}
                                 <View style={styles.fieldContainer}>
                                     <Text style={styles.fieldLabel}>{t('profile.nameLabel')}</Text>
                                     <View style={styles.nameInputContainer}>
@@ -184,18 +168,15 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                                     </View>
                                 </View>
 
-                                {/* Email Display Section */}
                                 <View style={styles.fieldContainer}>
                                     <Text style={styles.fieldLabel}>{t('profile.emailLabel')}</Text>
                                     <Text style={styles.emailText}>{profile.email}</Text>
                                 </View>
 
-                                {/* Error Display */}
                                 {saveError && <Text style={styles.errorText}>{saveError}</Text>}
 
                                 <View style={styles.divider} />
 
-                                {/* Logout Button */}
                                 <TouchableOpacity
                                     style={[styles.actionButton, styles.logoutButton]}
                                     onPress={handleInternalLogout}
@@ -210,7 +191,6 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                         </View>
                     </TouchableWithoutFeedback>
 
-                    {/* --- Avatar Selection Overlay --- */}
                     {showAvatarOptions && (
                          <TouchableWithoutFeedback onPress={() => setShowAvatarOptions(false)} accessible={false}>
                             <View style={styles.avatarOptionsOverlay}>
@@ -254,7 +234,6 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
     );
 };
 
-// --- Styles ---
 const createThemedStyles = (
     theme: ThemeColors,
     fonts: FontSizes,
@@ -353,7 +332,7 @@ const createThemedStyles = (
             fontWeight: 'bold',
             textAlign: 'center',
         },
-        logoutText: { // Specific color for logout button text
+        logoutText: {
             color: errorColor,
         },
         buttonIcon: { marginRight: 10, },

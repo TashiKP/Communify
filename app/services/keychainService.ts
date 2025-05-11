@@ -1,4 +1,4 @@
-// src/services/keychainService.ts
+// app/services/keychainService.ts
 import * as Keychain from 'react-native-keychain';
 
 const SERVICE_NAME = 'com.communify.parentalpasscode'; // Use a unique service name

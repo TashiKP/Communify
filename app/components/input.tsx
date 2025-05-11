@@ -1,16 +1,9 @@
-// src/components/IconInputComponent.tsx
 import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform, ScrollView } from 'react-native';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
-import {
-  faVolumeUp,
-  faBackspace,
-  faTrash,
-} from '@fortawesome/free-solid-svg-icons';
-import { useTranslation } from 'react-i18next'; // <-- Import i18next hook
-
-// --- Import Appearance Context ---
-import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext'; // Adjust path
+import { faVolumeUp, faBackspace, faTrash } from '@fortawesome/free-solid-svg-icons';
+import { useTranslation } from 'react-i18next';
+import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext';
 
 // --- Props ---
 interface IconInputComponentProps {
@@ -38,7 +31,7 @@ const IconInputComponent: React.FC<IconInputComponentProps> = ({
 }) => {
   // --- Hooks ---
   const { theme, fonts } = useAppearance();
-  const { t } = useTranslation(); // <-- Use the translation hook
+  const { t } = useTranslation();
 
   // --- Dynamic Styles ---
   const styles = useMemo(() => createThemedStyles(theme, fonts), [theme, fonts]);
@@ -54,17 +47,30 @@ const IconInputComponent: React.FC<IconInputComponentProps> = ({
   const iconSize = fonts.h2 * 1.1;
   const smallIconSize = fonts.h2;
 
+  // --- Render Children Safely ---
+  const renderInputContent = () => {
+    if (!children) {
+      return <Text style={styles.placeholderText}>{t('iconInput.placeholder')}</Text>;
+    }
+    // If children is a string, wrap it in a Text component
+    if (typeof children === 'string') {
+      return <Text style={styles.inputText}>{children}</Text>;
+    }
+    // Otherwise, render children as is (e.g., custom components)
+    return children;
+  };
+
   return (
     <View style={styles.container}>
       {/* Left Action Button (Speak) */}
       <View style={styles.actionSection}>
         <TouchableOpacity
-            style={styles.iconButton}
-            onPress={onSpeakPress}
-            disabled={isSpeakDisabled}
-            accessibilityLabel={t('iconInput.speakAccessibilityLabel')} // Use t()
-            accessibilityState={{ disabled: isSpeakDisabled }}
-            hitSlop={hitSlop}
+          style={styles.iconButton}
+          onPress={onSpeakPress}
+          disabled={isSpeakDisabled}
+          accessibilityLabel={t('iconInput.speakAccessibilityLabel')}
+          accessibilityState={{ disabled: isSpeakDisabled }}
+          hitSlop={hitSlop}
         >
           <FontAwesomeIcon icon={faVolumeUp} size={iconSize} color={speakIconColor} />
         </TouchableOpacity>
@@ -73,35 +79,35 @@ const IconInputComponent: React.FC<IconInputComponentProps> = ({
       {/* Central Input Area */}
       <View style={styles.inputArea}>
         <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.inputContentContainer}
-            keyboardShouldPersistTaps="handled"
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.inputContentContainer}
+          keyboardShouldPersistTaps="handled"
         >
-            {children ? children : <Text style={styles.placeholderText}>{t('iconInput.placeholder')}</Text>} {/* Use t() */}
+          {renderInputContent()}
         </ScrollView>
       </View>
 
       {/* Right Action Buttons (Backspace, Clear) */}
       <View style={[styles.actionSection, styles.actionSectionRight]}>
         <TouchableOpacity
-            style={styles.iconButton}
-            onPress={onBackspacePress}
-            disabled={isBackspaceDisabled}
-            accessibilityLabel={t('iconInput.backspaceAccessibilityLabel')} // Use t()
-            accessibilityState={{ disabled: isBackspaceDisabled }}
-            hitSlop={hitSlop}
+          style={styles.iconButton}
+          onPress={onBackspacePress}
+          disabled={isBackspaceDisabled}
+          accessibilityLabel={t('iconInput.backspaceAccessibilityLabel')}
+          accessibilityState={{ disabled: isBackspaceDisabled }}
+          hitSlop={hitSlop}
         >
           <FontAwesomeIcon icon={faBackspace} size={iconSize} color={backspaceIconColor} />
         </TouchableOpacity>
         <View style={styles.buttonSpacer} />
         <TouchableOpacity
-            style={styles.iconButton}
-            onPress={onClearPress}
-            disabled={isClearDisabled}
-            accessibilityLabel={t('iconInput.clearAccessibilityLabel')} // Use t()
-            accessibilityState={{ disabled: isClearDisabled }}
-            hitSlop={hitSlop}
+          style={styles.iconButton}
+          onPress={onClearPress}
+          disabled={isClearDisabled}
+          accessibilityLabel={t('iconInput.clearAccessibilityLabel')}
+          accessibilityState={{ disabled: isClearDisabled }}
+          hitSlop={hitSlop}
         >
           <FontAwesomeIcon icon={faTrash} size={smallIconSize} color={clearIconColor} />
         </TouchableOpacity>
@@ -110,16 +116,60 @@ const IconInputComponent: React.FC<IconInputComponentProps> = ({
   );
 };
 
-// --- Styles (Unchanged) ---
-const createThemedStyles = (theme: ThemeColors, fonts: FontSizes) => StyleSheet.create({
-  container: { flexDirection: 'row', alignItems: 'stretch', width: '100%', backgroundColor: theme.primary, minHeight: Platform.select({ ios: 70, default: 65 }), borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)', },
-  actionSection: { paddingHorizontal: 18, justifyContent: 'center', alignItems: 'center', },
-  actionSectionRight: { flexDirection: 'row', paddingRight: 20, },
-  inputArea: { flex: 1, backgroundColor: theme.card, marginVertical: 6, marginHorizontal: 0, borderRadius: 8, overflow: 'hidden', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth, borderColor: theme.border, },
-  inputContentContainer: { flexGrow: 1, alignItems: 'center', paddingHorizontal: 12, },
-  iconButton: { padding: 8, justifyContent: 'center', alignItems: 'center', },
-  buttonSpacer: { width: 15, },
-  placeholderText: { color: theme.disabled, fontSize: fonts.body, fontStyle: 'italic', },
-});
+// --- Styles ---
+const createThemedStyles = (theme: ThemeColors, fonts: FontSizes) =>
+  StyleSheet.create({
+    container: {
+      flexDirection: 'row',
+      alignItems: 'stretch',
+      width: '100%',
+      backgroundColor: theme.primary,
+      minHeight: Platform.select({ ios: 70, default: 65 }),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+    },
+    actionSection: {
+      paddingHorizontal: 18,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    actionSectionRight: {
+      flexDirection: 'row',
+      paddingRight: 20,
+    },
+    inputArea: {
+      flex: 1,
+      backgroundColor: theme.card,
+      marginVertical: 6,
+      marginHorizontal: 0,
+      borderRadius: 8,
+      overflow: 'hidden',
+      justifyContent: 'center',
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border,
+    },
+    inputContentContainer: {
+      flexGrow: 1,
+      alignItems: 'center',
+      paddingHorizontal: 12,
+    },
+    iconButton: {
+      padding: 8,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    buttonSpacer: {
+      width: 15,
+    },
+    placeholderText: {
+      color: theme.disabled,
+      fontSize: fonts.body,
+      fontStyle: 'italic',
+    },
+    inputText: {
+      color: theme.text,
+      fontSize: fonts.body,
+    },
+  });
 
 export default IconInputComponent;

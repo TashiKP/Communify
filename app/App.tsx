@@ -1,94 +1,123 @@
-// src/App.tsx
+// App.tsx - TEST 1 (FAILED): useAppearance() and theme.background
+
 import React, { useEffect } from 'react';
-import { SafeAreaView, StyleSheet, StatusBar, Platform, View, ActivityIndicator } from 'react-native';
+import { SafeAreaView, StyleSheet, /* StatusBar, */ View, ActivityIndicator, Text } from 'react-native'; // StatusBar still commented
 import { NavigationContainer } from '@react-navigation/native';
-import Orientation from 'react-native-orientation-locker';
+// import Orientation from 'react-native-orientation-locker'; // Still commented
 
-// Import Context Providers
 import { GridProvider } from './context/GridContext';
-import { AppearanceProvider, useAppearance } from './context/AppearanceContext';
-import { LanguageProvider } from './context/LanguageContext'; // Import LanguageProvider
-import AppNavigator from './Navigation/AppNavigator'; // Adjust path if necessary
+import { AppearanceProvider, useAppearance } from './context/AppearanceContext'; // RE-IMPORT useAppearance
+import { LanguageProvider } from './context/LanguageContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
-// --- Component to Apply Theme and Overlay ---
+import AuthNavigator from './navigation/AuthNavigator';
+import MainAppNavigator from './navigation/MainAppNavigator';
+
 const ThemedAppContent: React.FC = () => {
-    // useAppearance must be called within AppearanceProvider
-    const { theme, isLoadingAppearance, brightnessOverlayOpacity, statusBarStyle } = useAppearance();
+    // UNCOMMENT useAppearance and use theme, isLoadingAppearance
+    const { theme, isLoadingAppearance /*, brightnessOverlayOpacity, statusBarStyle */ } = useAppearance();
 
-    // Show loading indicator while appearance settings are being loaded
+    console.log('[ThemedAppContent] TEST 1: useAppearance. isLoadingAppearance:', isLoadingAppearance);
+
+    // ADD BACK loading check for appearance
     if (isLoadingAppearance) {
+        console.log('[ThemedAppContent] TEST 1: Appearance is loading.');
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#0077b6" /> {/* Default color or theme primary if available early */}
+                <ActivityIndicator size="large" color="#0077b6" />
             </View>
         );
     }
 
-    // Render the main app content with theme and overlay
+    // ADD BACK theme check
+    if (!theme) {
+        console.warn('[ThemedAppContent] TEST 1: Theme not ready. Fallback loading.');
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#0077b6" />
+            </View>
+        );
+    }
+
+    // Use theme for background, but keep StatusBar and Overlay commented for now
     return (
         <View style={[styles.appContainer, { backgroundColor: theme.background }]}>
-            <StatusBar
-                barStyle={statusBarStyle}
-                backgroundColor={theme.primary} // Set status bar background (Android)
-            />
-            <NavigationContainer>
-                <AppNavigator />
-            </NavigationContainer>
-
-            {/* Brightness Overlay - Renders on top if opacity > 0 */}
-            {brightnessOverlayOpacity > 0 && (
-                <View
-                    style={[
-                        styles.brightnessOverlay,
-                        { backgroundColor: `rgba(0, 0, 0, ${brightnessOverlayOpacity})` }
-                    ]}
-                    pointerEvents="none" // Allow touches to pass through
-                />
-            )}
+            {/* StatusBar component fully commented out */}
+            <MainAppNavigator />
+            {/* Brightness overlay fully commented out */}
         </View>
     );
 };
 
+const AppNavigationDecider: React.FC = () => {
+    const { userToken, isLoading: isAuthLoading } = useAuth();
 
-// --- Main App Component ---
+    console.log(
+        '[AppNavigationDecider] Evaluating: isAuthLoading:', isAuthLoading,
+        'userToken:', userToken ? `"${userToken.substring(0,10)}..."` : 'null'
+    );
+
+    if (isAuthLoading) {
+        console.log('[AppNavigationDecider] Auth is loading. Rendering loading indicator.');
+        return (
+            <View key="auth-loading-screen" style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#0077b6" />
+            </View>
+        );
+    }
+
+    if (userToken) {
+        console.log('[AppNavigationDecider] User token exists. Rendering ThemedAppContent (TEST 1).');
+        return <ThemedAppContent key="main-app-content-test1" />; // Update key for clarity
+    } else {
+        console.log('[AppNavigationDecider] No user token. Rendering AuthNavigator.');
+        return <AuthNavigator key="auth-navigator" />;
+    }
+};
+
 export default function App() {
-  useEffect(() => {
-    Orientation.lockToLandscape();
-    return () => {
-        Orientation.unlockAllOrientations();
-    };
-  }, []);
+    // useEffect(() => { // Still commented
+    //     // Orientation.lockToLandscape();
+    //     // return () => {
+    //     //     Orientation.unlockAllOrientations();
+    //     // };
+    // }, []);
 
-  return (
-    <AppearanceProvider>
-        <GridProvider>
-            <LanguageProvider> {/* LanguageProvider is added here */}
-                <SafeAreaView style={styles.safeAreaContainer}>
-                     <ThemedAppContent />
-                </SafeAreaView>
-            </LanguageProvider>
-        </GridProvider>
-    </AppearanceProvider>
-  );
+    console.log('[App] Component rendering/mounting.');
+
+    return (
+        <AuthProvider>
+            <AppearanceProvider> {/* Culprit is likely in here or useAppearance */}
+                <GridProvider>
+                    <LanguageProvider>
+                        <SafeAreaView style={styles.safeAreaContainer}>
+                            <NavigationContainer>
+                                <AppNavigationDecider />
+                            </NavigationContainer>
+                        </SafeAreaView>
+                    </LanguageProvider>
+                </GridProvider>
+            </AppearanceProvider>
+        </AuthProvider>
+    );
 }
 
-// --- Styles ---
 const styles = StyleSheet.create({
-  safeAreaContainer: {
-    flex: 1,
-    backgroundColor: '#FFFFFF', // A neutral default background
-  },
-  appContainer: {
-    flex: 1, // Ensure it fills the SafeAreaView
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF', // Consistent with safeAreaContainer default for loading
-  },
-  brightnessOverlay: {
-    ...StyleSheet.absoluteFillObject, // Cover the entire screen
-    zIndex: 9999, // Ensure it's on top of everything else if needed
-  },
+    safeAreaContainer: {
+        flex: 1,
+        backgroundColor: '#FFFFFF',
+    },
+    appContainer: {
+        flex: 1,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+    },
+    brightnessOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        zIndex: 9999,
+    },
 });

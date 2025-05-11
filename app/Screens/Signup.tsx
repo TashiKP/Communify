@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react';
+// src/Screens/SignupScreen.tsx
+import React, { useState, useCallback, useRef } from 'react'; // Added useRef
 import {
     View,
     Text,
@@ -8,7 +9,7 @@ import {
     SafeAreaView,
     KeyboardAvoidingView,
     Platform,
-    Dimensions,
+    // Dimensions, // Not used, can be removed
     StatusBar,
     TouchableWithoutFeedback,
     Keyboard,
@@ -18,25 +19,26 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../Navigation/types'; // Adjust the import path
+import { AuthStackParamList } from '../navigation/AuthNavigator'; // Correct ParamList import
 
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
-import { faUser, faCakeCandles, faVenusMars, faEnvelope, faLock } from '@fortawesome/free-solid-svg-icons';
+import { faUser, faCakeCandles, /*faVenusMars,*/ faEnvelope, faLock } from '@fortawesome/free-solid-svg-icons'; // faVenusMars not used in current UI
 
 // --- Colors ---
 const primaryColor = '#0077b6';
-const secondaryColor = '#00b4d8'; // Keep for potential accents or disabled states
-const backgroundColor = '#f8f9fa'; // Slightly off-white for main background
+const secondaryColor = '#00b4d8';
+const backgroundColor = '#f8f9fa';
 const whiteColor = '#ffffff';
-const textColor = '#212529'; // Slightly darker text for better contrast
-const placeholderColor = '#6c757d'; // Adjusted placeholder grey
+const textColor = '#212529';
+const placeholderColor = '#6c757d';
 const errorColor = '#dc3545';
-const lightGrey = '#e9ecef'; // For input backgrounds or borders
-const mediumGrey = '#ced4da'; // For borders
-const darkGrey = '#495057'; // For labels or secondary text
+// const lightGrey = '#e9ecef'; // Not used
+const mediumGrey = '#ced4da';
+const darkGrey = '#495057';
 
-// --- Component ---
-const SignupScreen = () => {
+type SignupScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Signup'>;
+
+const SignupScreen: React.FC = () => { // Added React.FC for typing
     const [fullName, setFullName] = useState('');
     const [age, setAge] = useState('');
     const [gender, setGender] = useState<'Male' | 'Female' | 'Other' | ''>('');
@@ -45,30 +47,26 @@ const SignupScreen = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+    const navigation = useNavigation<SignupScreenNavigationProp>();
 
-    // Define refs for inputs
-    const ageInputRef = React.createRef<TextInput>();
-    const emailInputRef = React.createRef<TextInput>();
-    const passwordInputRef = React.createRef<TextInput>();
-    // No specific ref needed for gender selection UI focus logic here
+    const ageInputRef = useRef<TextInput>(null); // Use useRef
+    const emailInputRef = useRef<TextInput>(null); // Use useRef
+    const passwordInputRef = useRef<TextInput>(null); // Use useRef
 
-    // --- Validation & Signup Logic ---
     const validateInput = useCallback(() => {
-        setError(null); // Clear previous error first
+        setError(null);
         if (!fullName.trim()) return 'Please enter your full name.';
         if (!age.trim()) return 'Please enter your age.';
         const numericAge = Number(age);
         if (isNaN(numericAge) || numericAge <= 0 || numericAge > 120) return 'Please enter a valid age.';
         if (!gender) return 'Please select your gender.';
-        // More robust email regex
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!email.trim() || !emailRegex.test(email)) return 'Please enter a valid email address.';
         if (!password || password.length < 6) return 'Password must be at least 6 characters long.';
         return null;
-    }, [fullName, age, gender, email, password]); // Dependencies for useCallback
+    }, [fullName, age, gender, email, password]);
 
-    const handleCreateAccount = useCallback(() => {
+    const handleCreateAccount = useCallback(async () => { // Made async for potential future API calls
         Keyboard.dismiss();
         const validationError = validateInput();
         if (validationError) {
@@ -76,31 +74,32 @@ const SignupScreen = () => {
             return;
         }
         setIsLoading(true);
-        setError(null); // Clear error on successful validation start
+        setError(null);
         console.log('Creating Account:', { fullName, age: Number(age), gender, email });
 
         // Simulate API Call
-        setTimeout(() => {
-            console.log('Account Created Successfully (Simulated)');
-            setIsLoading(false);
-             // Navigate to a confirmation or login screen, passing email if needed
-             // Example: Navigate to a SigninTwo screen if it exists and is defined
-             // Ensure 'SigninTwo' exists in RootStackParamList and accepts 'email' param
-             if (navigation.getState().routeNames.includes('SigninTwo')) {
-                 navigation.navigate('SigninTwo', { email: email });
-             } else {
-                 // Fallback: Navigate to Login or show success message
-                 Alert.alert('Account Created', 'Your account has been created successfully.');
-                 navigation.replace('Login'); // Or go back if appropriate
-             }
-        }, 1500);
-    }, [validateInput, navigation, email]); // Include navigation and email if used in success logic
+        await new Promise(resolve => setTimeout(resolve, 1500)); // Use await for clarity
+        
+        console.log('Account Created Successfully (Simulated)');
+        setIsLoading(false);
+        
+        // Check if SigninTwo route exists before navigating
+        // This is a good check but ensure 'SigninTwo' is part of AuthStackParamList if used
+        const currentRoutes = navigation.getParent()?.getState().routeNames || navigation.getState().routeNames;
+
+        if (currentRoutes.includes('SigninTwo')) {
+            navigation.navigate('SigninTwo', { email: email });
+        } else {
+            Alert.alert('Account Created', 'Your account has been created successfully.');
+            navigation.replace('Login');
+        }
+    }, [validateInput, navigation, email, fullName, age, gender, password]); // Added missing dependencies
 
     const navigateToLogin = useCallback(() => {
         if (navigation.canGoBack()) {
              navigation.goBack();
         } else {
-             navigation.replace('Login'); // Use replace if Signup is the root
+             navigation.replace('Login');
         }
     }, [navigation]);
 
@@ -113,23 +112,19 @@ const SignupScreen = () => {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.keyboardAvoidingView}
             >
-                {/* Use ScrollView to handle smaller screens or landscape */}
                 <ScrollView
                     contentContainerStyle={styles.scrollContainer}
-                    keyboardShouldPersistTaps="handled" // Allows taps on buttons while keyboard is up
+                    keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
                 >
                     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
                         <View style={styles.innerContainer}>
-                            {/* Header */}
                             <View style={styles.headerContainer}>
                                 <Text style={styles.title}>Create Your Account</Text>
                                 <Text style={styles.subtitle}>Fill in the details below to join us.</Text>
                             </View>
 
-                            {/* Form Fields */}
                             <View style={styles.form}>
-                                {/* Full Name Input */}
                                 <View style={styles.inputGroup}>
                                     <Text style={styles.label}>Full Name</Text>
                                     <View style={styles.inputWrapper}>
@@ -145,11 +140,11 @@ const SignupScreen = () => {
                                             returnKeyType="next"
                                             onSubmitEditing={() => ageInputRef.current?.focus()}
                                             blurOnSubmit={false}
+                                            editable={!isLoading}
                                         />
                                     </View>
                                 </View>
 
-                                {/* Age Input */}
                                 <View style={styles.inputGroup}>
                                     <Text style={styles.label}>Age</Text>
                                     <View style={styles.inputWrapper}>
@@ -160,37 +155,36 @@ const SignupScreen = () => {
                                             placeholder="Your Age"
                                             placeholderTextColor={placeholderColor}
                                             value={age}
-                                            onChangeText={(text) => setAge(text.replace(/[^0-9]/g, ''))} // Allow only numbers
+                                            onChangeText={(text) => setAge(text.replace(/[^0-9]/g, ''))}
                                             keyboardType="number-pad"
                                             maxLength={3}
-                                            returnKeyType="next" // Changed to next for gender selection conceptual flow
-                                            onSubmitEditing={() => emailInputRef.current?.focus()} // Focus email next
+                                            returnKeyType="next"
+                                            onSubmitEditing={() => Keyboard.dismiss()} // Dismiss keyboard before gender
                                             blurOnSubmit={false}
+                                            editable={!isLoading}
                                         />
                                     </View>
                                 </View>
 
-                                {/* Gender Selection */}
                                 <View style={styles.inputGroup}>
                                     <Text style={styles.label}>Gender</Text>
                                     <View style={styles.genderSegmentContainer}>
-                                        {GENDER_OPTIONS.map((option) => (
+                                        {GENDER_OPTIONS.map((option, index) => ( // Added index for key
                                             <TouchableOpacity
                                                 key={option}
                                                 style={[
                                                     styles.genderSegment,
                                                     gender === option && styles.genderSegmentSelected,
-                                                    // Add border radius adjustments for first/last items
-                                                    option === GENDER_OPTIONS[0] && styles.genderSegment,
-                                                    option === GENDER_OPTIONS[GENDER_OPTIONS.length - 1] && styles.genderSegmentLast,
+                                                    // No need for first/last specific styles if container has overflow:hidden
+                                                    index === GENDER_OPTIONS.length - 1 && { borderRightWidth: 0 } // remove border for last only
                                                 ]}
                                                 onPress={() => {
                                                     setGender(option);
-                                                    Keyboard.dismiss(); // Dismiss keyboard on selection
-                                                    // Optionally focus next input after short delay
-                                                    // setTimeout(() => emailInputRef.current?.focus(), 100);
+                                                    Keyboard.dismiss();
+                                                    setTimeout(() => emailInputRef.current?.focus(), 100); // Focus next after selection
                                                 }}
                                                 activeOpacity={0.8}
+                                                disabled={isLoading}
                                             >
                                                 <Text style={[
                                                     styles.genderSegmentText,
@@ -202,7 +196,6 @@ const SignupScreen = () => {
                                 </View>
 
 
-                                {/* Email Input */}
                                 <View style={styles.inputGroup}>
                                     <Text style={styles.label}>Email Address</Text>
                                     <View style={styles.inputWrapper}>
@@ -220,11 +213,11 @@ const SignupScreen = () => {
                                             returnKeyType="next"
                                             onSubmitEditing={() => passwordInputRef.current?.focus()}
                                             blurOnSubmit={false}
+                                            editable={!isLoading}
                                         />
                                     </View>
                                 </View>
 
-                                {/* Password Input */}
                                 <View style={styles.inputGroup}>
                                      <Text style={styles.label}>Password</Text>
                                     <View style={styles.inputWrapper}>
@@ -237,23 +230,21 @@ const SignupScreen = () => {
                                             value={password}
                                             onChangeText={setPassword}
                                             secureTextEntry
-                                            returnKeyType="go" // 'go' suggests final action
-                                            onSubmitEditing={handleCreateAccount} // Trigger signup on submit
+                                            returnKeyType="go"
+                                            onSubmitEditing={handleCreateAccount}
+                                            editable={!isLoading}
                                         />
                                     </View>
                                 </View>
                             </View>
 
-                            {/* Error Message Display */}
                             {error && (
                                 <View style={styles.errorContainer}>
                                     <Text style={styles.errorText}>{error}</Text>
                                 </View>
                             )}
 
-                            {/* Actions */}
                             <View style={styles.actionsContainer}>
-                                {/* Create Account Button */}
                                 <TouchableOpacity
                                     style={[styles.createButton, isLoading && styles.buttonDisabled]}
                                     onPress={handleCreateAccount}
@@ -266,7 +257,6 @@ const SignupScreen = () => {
                                     }
                                 </TouchableOpacity>
 
-                                {/* Login Link */}
                                 <View style={styles.footerContainer}>
                                     <Text style={styles.footerText}>Already have an account? </Text>
                                     <TouchableOpacity onPress={navigateToLogin} disabled={isLoading} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
@@ -282,61 +272,60 @@ const SignupScreen = () => {
     );
 };
 
-// --- Styles --- (Professional Redesign)
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: backgroundColor, // Use the light background for the whole screen
+        backgroundColor: backgroundColor,
     },
     keyboardAvoidingView: {
         flex: 1,
     },
     scrollContainer: {
-        flexGrow: 1, // Ensure content can grow to fill space
-        justifyContent: 'center', // Center content vertically if it's short
+        flexGrow: 1,
+        justifyContent: 'center',
     },
     innerContainer: {
         paddingHorizontal: 25,
-        paddingVertical: 30, // Add vertical padding
+        paddingVertical: 30,
     },
     headerContainer: {
         alignItems: 'center',
-        marginBottom: 40, // More space after header
+        marginBottom: 40,
     },
     title: {
-        fontSize: 26, // Slightly smaller but still prominent
-        fontWeight: 'bold', // Explicitly bold
-        color: textColor, // Use the main text color
+        fontSize: 26,
+        fontWeight: 'bold',
+        color: textColor,
         textAlign: 'center',
         marginBottom: 8,
     },
     subtitle: {
         fontSize: 15,
-        color: darkGrey, // Use a darker grey for subtitle
+        color: darkGrey,
         textAlign: 'center',
         lineHeight: 22,
     },
     form: {
-        marginBottom: 20, // Space between form and error/actions
+        marginBottom: 20,
     },
     inputGroup: {
-        marginBottom: 22, // Consistent spacing between form groups
+        marginBottom: 22,
     },
     label: {
         fontSize: 14,
-        fontWeight: '500', // Medium weight for labels
+        fontWeight: '500',
         color: darkGrey,
-        marginBottom: 8, // Space between label and input
-        marginLeft: 2, // Slight indent for alignment
+        marginBottom: 8,
+        marginLeft: 2,
     },
     inputWrapper: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: whiteColor, // White background for inputs
+        backgroundColor: whiteColor,
         borderWidth: 1,
-        borderColor: mediumGrey, // Standard border color
-        borderRadius: 8, // Slightly reduced border radius
-        height: 52, // Standard height
+        borderColor: mediumGrey,
+        borderRadius: 8,
+        height: 52,
         paddingHorizontal: 12,
     },
     inputIcon: {
@@ -347,72 +336,66 @@ const styles = StyleSheet.create({
         height: '100%',
         fontSize: 16,
         color: textColor,
-        paddingVertical: 0, // Reset default padding
+        paddingVertical: 0,
     },
-    // --- Gender Segmented Control Styles ---
     genderSegmentContainer: {
         flexDirection: 'row',
-        borderRadius: 8, // Match input border radius
+        borderRadius: 8,
         borderWidth: 1.5,
-        borderColor: primaryColor, // Use primary color for the outer border
-        overflow: 'hidden', // Clip children to rounded corners
-        height: 48, // Slightly shorter than inputs maybe? Or match height 52? Let's try 48.
+        borderColor: primaryColor,
+        overflow: 'hidden',
+        height: 48,
     },
     genderSegment: {
-        flex: 1, // Each segment takes equal width
+        flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        borderRightWidth: 1.5, // Separator line
+        borderRightWidth: 1.5,
         borderRightColor: primaryColor,
-        backgroundColor: whiteColor, // Default background
+        backgroundColor: whiteColor,
     },
-    genderSegmentLast: {
-        borderRightWidth: 0, // No border on the last item
-    },
+    // genderSegmentLast: { // This style was duplicated and not correctly applied before
+    //     borderRightWidth: 0,
+    // },
     genderSegmentSelected: {
-        backgroundColor: primaryColor, // Selected background is primary color
+        backgroundColor: primaryColor,
     },
     genderSegmentText: {
         fontSize: 15,
         fontWeight: '500',
-        color: primaryColor, // Default text color matches primary
+        color: primaryColor,
     },
     genderSegmentTextSelected: {
-        color: whiteColor, // Selected text is white
+        color: whiteColor,
         fontWeight: 'bold',
     },
-    // Remove border radius adjustments for first/last if the container handles overflow: 'hidden'
-    // genderSegmentFirst: { borderTopLeftRadius: 8, borderBottomLeftRadius: 8 },
-    // genderSegmentLast: { borderTopRightRadius: 8, borderBottomRightRadius: 8, borderRightWidth: 0 },
-    // --- End Gender Styles ---
-
     errorContainer: {
-        marginVertical: 15, // Space around error message
+        marginVertical: 15,
         paddingHorizontal: 10,
         paddingVertical: 8,
-        backgroundColor: '#f8d7da', // Light red background for error
-        borderColor: '#f5c6cb', // Red border
+        backgroundColor: '#f8d7da',
+        borderColor: '#f5c6cb',
         borderWidth: 1,
         borderRadius: 6,
         alignItems: 'center',
     },
     errorText: {
-        color: '#721c24', // Darker red text for error
+        color: '#721c24',
         fontSize: 14,
         fontWeight: '500',
         textAlign: 'center',
     },
     actionsContainer: {
-        marginTop: 10, // Space above the button
+        marginTop: 10,
     },
     createButton: {
         backgroundColor: primaryColor,
-        paddingVertical: 15, // Button padding
-        borderRadius: 8, // Match input radius
+        paddingVertical: 15,
+        borderRadius: 8,
         alignItems: 'center',
-        justifyContent: 'center', // Center content (for ActivityIndicator)
-        minHeight: 52, // Ensure consistent height
-        shadowColor: '#000', // Subtle shadow
+        justifyContent: 'center',
+        minHeight: 52,
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.15,
         shadowRadius: 4,
@@ -424,23 +407,23 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
     buttonDisabled: {
-        backgroundColor: mediumGrey, // Grey out disabled button
+        backgroundColor: mediumGrey,
         shadowOpacity: 0,
         elevation: 0,
     },
     footerContainer: {
-        marginTop: 25, // Space above footer link
+        marginTop: 25,
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
     },
     footerText: {
-        color: darkGrey, // Use darker grey for footer text
+        color: darkGrey,
         fontSize: 14,
     },
     linkText: {
         color: primaryColor,
-        fontWeight: 'bold', // Bold link
+        fontWeight: 'bold',
         fontSize: 14,
         marginLeft: 5,
     },

@@ -1,4 +1,3 @@
-// src/components/Navbar.tsx
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
@@ -13,88 +12,106 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import { faUserCircle } from '@fortawesome/free-solid-svg-icons';
 import ProfileModal from './ProfileModal';
-import { useNavigation, NavigationProp } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useTranslation } from 'react-i18next'; // <-- Import useTranslation
+import { useTranslation } from 'react-i18next';
 
 import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext';
-import { useLanguage, LanguageCode } from '../context/LanguageContext'; // Use updated context
-// --- Import Typography Utility ---
-import { getLanguageSpecificTextStyle } from '../styles/typography'; // Adjust path
+import { useLanguage, LanguageCode } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
+import { getLanguageSpecificTextStyle } from '../styles/typography';
 
-type RootStackParamList = { Login: undefined };
 const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
-const AUTH_TOKEN_KEY = '@MyApp:AuthToken'; // Use your actual key
 
-const Navbar = () => {
+const Navbar: React.FC = () => {
   const { theme, fonts } = useAppearance();
-  const { currentLanguage, changeLanguage } = useLanguage(); // Removed isTranslatingSymbols since it’s not used
-  const { t, i18n } = useTranslation(); // <-- Get the t function
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const { currentLanguage, changeLanguage } = useLanguage();
+  const { signOut } = useAuth();
+  const { t } = useTranslation();
 
   const [profileModalVisible, setProfileModalVisible] = useState(false);
-  // Initialize animation based on current language state
   const toggleAnim = useRef(new Animated.Value(currentLanguage === 'en' ? 0 : 1)).current;
 
+  const [profileName, setProfileName] = useState(() => t('profile.defaultUserName', 'Communify User'));
+  const [profileAvatar, setProfileAvatar] = useState<string | undefined>(undefined);
+  const profileEmail = 'user@example.com';
+
   const styles = useMemo(
-    () => createThemedStyles(theme, fonts, i18n.language),
-    [theme, fonts, i18n.language] // Added i18n.language to dependencies
+    () => createThemedStyles(theme, fonts, currentLanguage),
+    [theme, fonts, currentLanguage]
   );
 
-  // Animate toggle when language changes
   useEffect(() => {
     Animated.timing(toggleAnim, {
       toValue: currentLanguage === 'en' ? 0 : 1,
       duration: 250,
       easing: Easing.bezier(0.25, 0.1, 0.25, 1),
-      useNativeDriver: false, // 'left' animation needs JS driver
+      useNativeDriver: false,
     }).start();
+
+    return () => {
+      toggleAnim.stopAnimation();
+    };
   }, [currentLanguage, toggleAnim]);
 
-  // Calculate slider position
   const sliderPosition = toggleAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['5%', '55%'], // Adjusted to account for Dzongkha text width
+    outputRange: ['5%', '55%'],
   });
 
-  // Handler to toggle language via context (which uses i18next)
   const toggleLanguageHandler = useCallback(() => {
     const newLang: LanguageCode = currentLanguage === 'en' ? 'dzo' : 'en';
-    console.log('Toggling language to:', newLang); // Debug log
     changeLanguage(newLang);
   }, [currentLanguage, changeLanguage]);
 
-  // Profile modal handlers
   const openProfileModal = useCallback(() => setProfileModalVisible(true), []);
   const closeProfileModal = useCallback(() => setProfileModalVisible(false), []);
 
-  // Logout handler
   const handleLogout = async () => {
-    closeProfileModal();
+    console.log('[Navbar] Logout initiated. Closing modal.');
+    closeProfileModal(); // Modal closes
+
+    // --- DELAY REMOVED ---
+    // console.log('[Navbar] Modal closed, delaying signOut.');
+    // await new Promise(resolve => setTimeout(resolve, 300));
+    // --- END DELAY REMOVED ---
+
+    console.log('[Navbar] Calling auth.signOut() immediately after modal close.');
     try {
-      await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
-      navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+      await signOut();
+      console.log('[Navbar] auth.signOut() completed successfully.');
     } catch (e) {
-      console.error('Logout failed', e);
-      // Use t function for alert message
-      Alert.alert(t('profile.logoutErrorTitle'), t('profile.logoutErrorMessage'));
+      console.error('[Navbar] Error during signOut:', e);
+      Alert.alert(
+        t('profile.logoutErrorTitle', 'Logout Error'),
+        t('profile.logoutErrorMessage', 'Could not log out. Please try again.')
+      );
     }
   };
 
-  // Dummy profile data (replace with actual data source)
+  const handleSaveProfile = useCallback(async (newName: string, newAvatarUri?: string | null) => {
+    console.log('[Navbar] Attempting to save profile. Name:', newName, 'Avatar:', newAvatarUri);
+    return new Promise<void>((resolve) => {
+      setTimeout(() => {
+        setProfileName(newName);
+        setProfileAvatar(newAvatarUri ?? undefined);
+        console.log('[Navbar] Profile updated locally.');
+        resolve();
+      }, 500);
+    });
+  }, []);
+
   const userProfileData = useMemo(
     () => ({
-      name: 'User Name', // TODO: Replace with actual data or translation key
-      email: 'user@example.com', // TODO: Replace with actual data
-      avatar: '',
+      name: profileName,
+      email: profileEmail,
+      avatar: profileAvatar,
     }),
-    []
+    [profileName, profileEmail, profileAvatar]
   );
 
   return (
     <>
       <View style={styles.navbar}>
-        {/* Left Section: Language Toggle */}
+        {/* ... rest of Navbar JSX ... */}
         <View style={styles.navSectionLeft}>
           <TouchableOpacity
             style={styles.toggleButton}
@@ -102,51 +119,52 @@ const Navbar = () => {
             activeOpacity={0.8}
             hitSlop={hitSlop}
             accessibilityRole="switch"
-            accessibilityLabel={t('navbar.toggleLanguage')} // Use t()
+            accessibilityLabel={t('navbar.toggleLanguage', 'Toggle language')}
             accessibilityState={{ checked: currentLanguage === 'dzo' }}
           >
-            {/* Static text labels for the background */}
-            <Text style={[styles.toggleText, styles.toggleTextInactive]}>{t('navbar.langEng')}</Text>
-            <Text style={[styles.toggleText, styles.toggleTextInactive]}>{t('navbar.langDzo')}</Text>
-            {/* Animated slider with the currently active language */}
+            <View style={styles.toggleTextContainer}>
+              <Text style={[styles.toggleText, styles.toggleTextInactive]}>
+                {t('navbar.langEng', 'EN')}
+              </Text>
+              <Text style={[styles.toggleText, styles.toggleTextInactive]}>
+                {t('navbar.langDzo', 'DZ')}
+              </Text>
+            </View>
             <Animated.View style={[styles.toggleSlider, { left: sliderPosition }]}>
               <Text style={styles.toggleTextActive}>
-                {currentLanguage === 'en' ? t('navbar.langEng') : t('navbar.langDzo')}
+                {currentLanguage === 'en' ? t('navbar.langEng', 'EN') : t('navbar.langDzo', 'DZ')}
               </Text>
             </Animated.View>
           </TouchableOpacity>
         </View>
 
-        {/* Center Section: App Title */}
         <View style={styles.navSectionCenter}>
-          <Text style={styles.navbarTitle}>{t('appName')}</Text> {/* Use t() */}
+          <Text style={styles.navbarTitle}>{t('appName', 'Communify')}</Text>
         </View>
 
-        {/* Right Section: Profile Icon */}
         <View style={styles.navSectionRight}>
           <TouchableOpacity
             onPress={openProfileModal}
             hitSlop={hitSlop}
             accessibilityRole="button"
-            accessibilityLabel={t('navbar.profileButton')} // Use t()
+            accessibilityLabel={t('navbar.profileButton', 'Open profile')}
           >
             <FontAwesomeIcon icon={faUserCircle} size={fonts.h1 * 1.1} color={theme.white} />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Profile Modal Component */}
-      <ProfileModal // Ensure ProfileModal uses useTranslation internally for its text
+      <ProfileModal
         visible={profileModalVisible}
         onClose={closeProfileModal}
         onLogout={handleLogout}
         userProfile={userProfileData}
+        onSave={handleSaveProfile}
       />
     </>
   );
 };
 
-// --- Helper Function for Themed Styles ---
 const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguage: string) =>
   StyleSheet.create({
     navbar: {
@@ -182,14 +200,19 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
       height: 30,
       borderRadius: 15,
       backgroundColor: theme.isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
-      flexDirection: 'row',
-      justifyContent: 'space-between', // Changed to space-between for better text separation
-      alignItems: 'center',
       position: 'relative',
       overflow: 'hidden',
     },
+    toggleTextContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      alignItems: 'center',
+      width: '100%',
+      height: '100%',
+      paddingHorizontal: 4,
+    },
     toggleSlider: {
-      width: '50%', // Adjusted to fit text width
+      width: '50%',
       height: '88%',
       borderRadius: 12,
       marginVertical: '6%',
@@ -204,20 +227,21 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
       elevation: 2,
     },
     toggleText: {
-      ...getLanguageSpecificTextStyle('caption', fonts, currentLanguage), // Apply typography for caption
+      ...getLanguageSpecificTextStyle('caption', fonts, currentLanguage),
       fontWeight: 'bold',
-      paddingHorizontal: 2, // Reduced padding to fit text
+      fontSize: fonts.caption * 0.9,
     },
     toggleTextInactive: {
       color: theme.isDark ? 'rgba(255, 255, 255, 0.6)' : 'rgba(255, 255, 255, 0.7)',
     },
     toggleTextActive: {
-      ...getLanguageSpecificTextStyle('caption', fonts, currentLanguage), // Apply typography for caption
+      ...getLanguageSpecificTextStyle('caption', fonts, currentLanguage),
       color: theme.primary,
       fontWeight: 'bold',
+      fontSize: fonts.caption * 0.9,
     },
     navbarTitle: {
-      ...getLanguageSpecificTextStyle('h1', fonts, currentLanguage), // Apply typography for h1
+      ...getLanguageSpecificTextStyle('h1', fonts, currentLanguage),
       color: theme.white,
       fontWeight: 'bold',
     },

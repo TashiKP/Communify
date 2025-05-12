@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
+import 'react-native-get-random-values';
 import {
     SafeAreaView,
     StyleSheet,

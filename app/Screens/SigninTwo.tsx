@@ -1,168 +1,215 @@
 // src/Screens/SigninTwo.tsx
-import React, { useState, useCallback, useRef } from 'react'; // Added useRef
+import React, { useState, useCallback } from 'react';
 import {
-    View,
-    Text,
-    TouchableOpacity,
-    StyleSheet,
-    SafeAreaView,
-    KeyboardAvoidingView,
-    Platform,
-    // Dimensions, // Not used
-    StatusBar,
-    TouchableWithoutFeedback,
-    Keyboard,
-    ActivityIndicator,
-    Alert,
-    ScrollView,
-    Image,
-    TextInput
+    View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
+    KeyboardAvoidingView, Platform, StatusBar, TouchableWithoutFeedback, Keyboard,
+    ActivityIndicator, Alert, ScrollView 
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import {
-    faUser, faChildReaching, faCommentDots, faComments, faBrain, faKeyboard,
     faCheckCircle, faArrowLeft, faThLarge, faTh, faGripVertical,
-    faUserCircle, faCamera
+    faLeaf, faLightbulb, faPuzzlePiece, faStar,
 } from '@fortawesome/free-solid-svg-icons';
-import { launchImageLibrary, ImageLibraryOptions, Asset, ImagePickerResponse } from 'react-native-image-picker';
-import { AuthStackParamList } from '../navigation/AuthNavigator'; // Assuming SigninTwo is part of AuthStack
-import { useAuth } from '../context/AuthContext'; // Import useAuth
 
-// --- Colors ---
-const primaryColor = '#0077b6';
-// const secondaryColor = '#00b4d8'; // Not used currently
-const backgroundColor = '#f8f9fa';
-const whiteColor = '#ffffff';
-const textColor = '#212529';
-const placeholderColor = '#6c757d';
-const lightGrey = '#e9ecef';
-const mediumGrey = '#ced4da';
-const darkGrey = '#495057';
-// const errorColor = '#dc3545'; // Not used directly in styles, but good to have
-const selectedTint = '#e7f5ff';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ASYNC_STORAGE_KEYS } from '../constants/storageKeys';
 
-// --- Types ---
-type CommunicationStyle = 'Emerging' | 'Context-Dependent' | 'Independent' | 'Literate';
-type CommunicatorType = 'Self' | 'Child' | 'Client/Patient';
+import { AuthStackParamList } from '../navigation/AuthNavigator';
+import { AuthUser, useAuth } from '../context/AuthContext';
+import apiService, {
+    handleApiError,
+    UserRegisterPayload,
+    Gender,
+    UserRead,
+    ParentalSettingsUpdatePayload,
+    ParentalSettingsValueUpdate,
+    AppearanceSettingsUpdatePayload
+} from '../services/apiService';
+
+import * as appColors from '../../app/constants/colors';
+import * as appDimensions from '../../app/constants/dimensions';
+
+// Types
 type GridLayoutType = 'simple' | 'standard' | 'dense';
+export type AsdLevelType = 'low' | 'medium' | 'high' | 'noAsd';
 
-// Navigation prop type specific to this screen within AuthStack
 type SigninTwoScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'SigninTwo'>;
 type SigninTwoScreenRouteProp = RouteProp<AuthStackParamList, 'SigninTwo'>;
 
-
-const SigninTwo: React.FC = () => { // Added React.FC
+const SigninTwo: React.FC = () => {
     const navigation = useNavigation<SigninTwoScreenNavigationProp>();
     const route = useRoute<SigninTwoScreenRouteProp>();
-    const { signIn } = useAuth(); // Get signIn from AuthContext
+    const { setUser } = useAuth();
+    const { signupData } = route.params;
 
-    const userEmail = route.params?.email || 'User';
-    const initialUserName = userEmail.includes('@') ? userEmail.split('@')[0] : userEmail;
-    const [userName, setUserName] = useState(initialUserName.charAt(0).toUpperCase() + initialUserName.slice(1));
-
-    const [avatarUri, setAvatarUri] = useState<string | undefined>(undefined);
-    const [communicatorType, setCommunicatorType] = useState<CommunicatorType | null>(null);
-    const [commStyle, setCommStyle] = useState<CommunicationStyle | null>(null);
+    // State
+    // Keep userName state to hold the name passed from the previous screen for registration payload
+    const [userName] = useState(signupData.fullName || '');
+    const [asdLevel, setAsdLevel] = useState<AsdLevelType | null>(null);
     const [gridLayout, setGridLayout] = useState<GridLayoutType>('standard');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // const nameInputRef = useRef<TextInput>(null); // Ref for name input if needed for focus
+    // UI Options
+    const asdLevelOptions: { type: AsdLevelType; label: string; description: string; icon: any }[] = [
+        { type: 'noAsd', label: 'No Specific ASD Needs', description: 'General app experience, no ASD-specific aids.', icon: faLeaf },
+        { type: 'low', label: 'Low Support Needs', description: 'Minor adjustments, more independence (Level 1).', icon: faLightbulb },
+        { type: 'medium', label: 'Medium Support Needs', description: 'Structured support, visual aids helpful (Level 2).', icon: faPuzzlePiece },
+        { type: 'high', label: 'High Support Needs', description: 'Significant support, simplified interface (Level 3).', icon: faStar },
+    ];
 
-    const communicatorOptions: { type: CommunicatorType; label: string; icon: any }[] = [
-        { type: 'Self', label: 'Myself', icon: faUser },
-        { type: 'Child', label: 'My Child', icon: faChildReaching },
-        { type: 'Client/Patient', label: 'Client/Patient', icon: faUser },
-    ];
-    const commStyleOptions: { type: CommunicationStyle; label: string; description: string; icon: any }[] = [
-        { type: 'Emerging', label: 'Emerging', description: 'Starting with single symbols, needs significant support.', icon: faCommentDots },
-        { type: 'Context-Dependent', label: 'Context-Dependent', description: 'Uses symbol combinations in familiar situations.', icon: faComments },
-        { type: 'Independent', label: 'Independent', description: 'Combines symbols creatively across settings.', icon: faBrain },
-        { type: 'Literate', label: 'Literate', description: 'Primarily uses text/keyboard input.', icon: faKeyboard },
-    ];
     const gridLayoutOptions: { type: GridLayoutType; label: string; icon: any }[] = [
         { type: 'simple', label: 'Simple', icon: faGripVertical },
         { type: 'standard', label: 'Standard', icon: faTh },
         { type: 'dense', label: 'Dense', icon: faThLarge },
     ];
 
-    const pickImage = useCallback(() => {
-        const options: ImageLibraryOptions = { mediaType: 'photo', quality: 0.7, selectionLimit: 1 };
-        launchImageLibrary(options, (response: ImagePickerResponse) => {
-            if (response.didCancel) { console.log('User cancelled image picker'); return; }
-            if (response.errorCode) { console.log('ImagePicker Error: ', response.errorMessage); setError('Could not load image.'); return; }
-            if (response.assets && response.assets[0]?.uri) {
-                setAvatarUri(response.assets[0].uri);
-                setError(null);
-            }
-        });
-    }, []);
-
+    // Validate remaining fields
     const validateSetup = useCallback((): boolean => {
         setError(null);
-        if (!userName.trim()) { setError("Please enter the user's name."); return false; }
-        if (!communicatorType) { setError("Please select who will use the app."); return false; }
-        if (!commStyle) { setError("Please select the primary communication style."); return false; }
+        if (!userName.trim()) { setError("User name is missing from previous step."); return false; }
+        if (!asdLevel) { setError("Please select the ASD support level."); return false; }
         return true;
-    }, [userName, communicatorType, commStyle]);
+    }, [userName, asdLevel, setError]); // userName is still a dependency
 
     const handleCompleteSetup = useCallback(async () => {
         Keyboard.dismiss();
+        setError(null);
+
         if (!validateSetup()) return;
 
         setIsLoading(true);
-        setError(null);
-        const setupData = {
-            name: userName.trim(),
-            avatar: avatarUri,
-            primaryUser: communicatorType,
-            communicationStyle: commStyle,
-            preferredLayout: gridLayout
+
+        // Use the userName state (passed from previous screen) for registration
+        const registrationPayload: UserRegisterPayload = {
+            name: userName.trim(), // Use the stored userName
+            email: signupData.email,
+            password: signupData.password,
+            ...(signupData.age && { age: Number(signupData.age) }),
+            ...(signupData.gender && { gender: signupData.gender.toLowerCase() as Gender }),
         };
-        console.log('Completing Setup Data:', setupData);
+
+        let registeredUser: UserRead | null = null;
+        let authToken: string | null = null;
 
         try {
-            // Simulate API Call to finalize user setup and get a token
-            await new Promise(resolve => setTimeout(resolve, 1500));
-            const tokenFromSetup = `user-setup-token-${Date.now()}`; // This would come from your backend
-            // const userDataFromSetup = { name: userName.trim(), email: userEmail, ...otherDetails }; // Optional
+            registeredUser = await apiService.register(registrationPayload);
+            const userId = registeredUser.id;
 
-            console.log('[SigninTwo] Setup success, calling auth.signIn with token:', tokenFromSetup);
-            await signIn(tokenFromSetup /*, userDataFromSetup */);
-            // Navigation to Home screen (via MainAppNavigator) will now happen automatically
-            // due to AuthContext state change and AppNavigationDecider.
+            const tokenResponse = await apiService.login(signupData.email, signupData.password);
+            authToken = tokenResponse.access_token;
+
+            const parentalSettingsToUpdateValue: Partial<ParentalSettingsValueUpdate> = {};
+            if (asdLevel) {
+                parentalSettingsToUpdateValue.asd_level = asdLevel;
+            }
+            console.log('[SigninTwo] Before sending Parental Settings Update:');
+            console.log('[SigninTwo] Selected asdLevel state:', asdLevel);
+            console.log('[SigninTwo] parentalSettingsToUpdateValue object:', parentalSettingsToUpdateValue);
+
+            if (Object.keys(parentalSettingsToUpdateValue).length > 0) {
+                const parentalPayload: ParentalSettingsUpdatePayload = {
+                    value: parentalSettingsToUpdateValue
+                };
+                console.log('[SigninTwo] Sending parentalPayload:', JSON.stringify(parentalPayload, null, 2)); // Log the actual payload
+                await apiService.updateParentalSettings(parentalPayload);
+                console.log('[SigninTwo] Parental settings API call made.');
+            } else {
+                console.log('[SigninTwo] No parental settings to update, skipping API call.');
+            }
+            const appearanceSettingsToUpdate: Partial<AppearanceSettingsUpdatePayload> = {};
+            if (gridLayout) {
+                appearanceSettingsToUpdate.symbol_grid_layout = gridLayout;
+            }
+
+            if (Object.keys(appearanceSettingsToUpdate).length > 0) {
+                await apiService.updateAppearanceSettings(appearanceSettingsToUpdate);
+            }
+
+            if (setUser && authToken && registeredUser) {
+                const userForContext: Omit<AuthUser, "localAvatarPath"> = {
+                    id: registeredUser.id,
+                    email: registeredUser.email,
+                    name: registeredUser.name, // Use name from registeredUser response
+                    age: registeredUser.age,
+                    gender: registeredUser.gender,
+                    user_type: registeredUser.user_type,
+                    is_active: registeredUser.is_active,
+                };
+                 setUser(prev => ({
+                     ...prev,
+                     ...(userForContext as AuthUser),
+                     localAvatarPath: signupData.avatarUri,
+                     isAuthenticated: true,
+                 }));
+            }
+
+            if (signupData.avatarUri && userId) {
+                try {
+                    const avatarStorageKey = `${ASYNC_STORAGE_KEYS.USER_AVATAR_URI_PREFIX}${userId}`;
+                    await AsyncStorage.setItem(avatarStorageKey, signupData.avatarUri);
+                } catch (storageError) {
+                    console.error('[SigninTwo] Error saving avatar URI to AsyncStorage:', storageError);
+                    Alert.alert("Avatar Note", "Your account was created, but there was an issue saving your avatar preference locally.");
+                }
+            }
+
+            Alert.alert(
+                "Setup Complete!",
+                "Your account and preferences have been configured.",
+                [{ text: "Let's Go!", onPress: () => navigation.replace('Login') }]
+            );
+
         } catch (apiError: any) {
-            console.error("[SigninTwo] Setup completion API error:", apiError);
-            setError(apiError.message || 'Failed to complete setup. Please try again.');
+            const errorInfo = handleApiError(apiError);
+            setError(errorInfo.message || 'Failed to complete setup. Please try again.');
+            if (errorInfo.details) {
+                console.warn('[SigninTwo] Validation Details from API:', errorInfo.details);
+            }
+            if (registeredUser && !authToken) {
+                Alert.alert("Registration Succeeded", "Your account was created, but setting preferences failed. Please try logging in.");
+            }
         } finally {
             setIsLoading(false);
         }
-    }, [validateSetup, userName, avatarUri, communicatorType, commStyle, gridLayout, signIn, userEmail]); // Added signIn, userEmail
+    }, [
+        validateSetup,
+        userName, // Still needed for registration payload
+        signupData,
+        asdLevel,
+        gridLayout,
+        navigation,
+        setUser,
+        setError,
+    ]);
 
     const handleGoBack = useCallback(() => {
         if (navigation.canGoBack()) {
             navigation.goBack();
         } else {
-            navigation.replace('Signup'); // Or 'Login' if that's more appropriate
+            navigation.replace('Signup');
         }
     }, [navigation]);
 
+    // Update validation check for button state
+    const isFormCurrentlyValid = !!userName.trim() && !!asdLevel;
+
     return (
         <SafeAreaView style={styles.safeArea}>
-            <StatusBar barStyle="dark-content" backgroundColor={backgroundColor} />
+            <StatusBar barStyle="dark-content" backgroundColor={appColors.BACKGROUND_COLOR} />
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.keyboardAvoidingView}
             >
-                 <View style={styles.header}>
-                     <TouchableOpacity onPress={handleGoBack} style={styles.backButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                         <FontAwesomeIcon icon={faArrowLeft} size={20} color={primaryColor} />
-                     </TouchableOpacity>
-                     <Text style={styles.headerTitle}>Account Setup</Text>
-                     <View style={styles.headerSpacer} />
-                 </View>
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={handleGoBack} style={styles.backButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                        <FontAwesomeIcon icon={faArrowLeft} size={appDimensions.ICON_SIZE_MEDIUM} color={appColors.PRIMARY_COLOR} />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Personalize Your Experience</Text>
+                    <View style={styles.headerSpacer} />
+                </View>
 
                 <ScrollView
                     contentContainerStyle={styles.scrollContainer}
@@ -172,81 +219,29 @@ const SigninTwo: React.FC = () => { // Added React.FC
                     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
                         <View style={styles.innerContainer}>
                             <Text style={styles.introText}>
-                                Personalize your experience. You can change these settings later.
+                                Almost there! Just a few more details to tailor the app for you.
+                                These can be changed later in settings.
                             </Text>
-
                             <View style={styles.formSection}>
-                                <Text style={styles.sectionTitle}>Profile</Text>
-                                <View style={styles.avatarContainer}>
-                                    <TouchableOpacity style={styles.avatarTouchable} onPress={pickImage}>
-                                        {avatarUri ? (
-                                            <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
-                                        ) : (
-                                            <View style={styles.avatarPlaceholder}>
-                                                <FontAwesomeIcon icon={faUserCircle} size={50} color={mediumGrey} />
-                                                <View style={styles.cameraIconOverlay}>
-                                                    <FontAwesomeIcon icon={faCamera} size={14} color={whiteColor} />
-                                                </View>
-                                            </View>
-                                        )}
-                                    </TouchableOpacity>
-                                    <View style={styles.avatarInputContainer}>
-                                        <Text style={styles.label}>User's Name</Text>
-                                        <TextInput
-                                            style={styles.input}
-                                            placeholder="Enter name"
-                                            placeholderTextColor={placeholderColor}
-                                            value={userName}
-                                            onChangeText={setUserName}
-                                            autoCapitalize="words"
-                                            returnKeyType="done" // Or "next" if more fields follow closely
-                                            maxLength={50}
-                                            editable={!isLoading}
-                                        />
-                                         <Text style={styles.avatarHelperText}>Tap the circle to add an avatar.</Text>
-                                    </View>
-                                </View>
-                            </View>
-
-                            <View style={styles.formSection}>
-                                <Text style={styles.label}>This app is primarily for:</Text>
-                                <View style={styles.buttonGroup}>
-                                    {communicatorOptions.map(opt => {
-                                        const isSelected = communicatorType === opt.type;
-                                        return (
-                                            <TouchableOpacity
-                                                key={opt.type}
-                                                style={[styles.selectButton, isSelected && styles.selectButtonSelected]}
-                                                onPress={() => setCommunicatorType(opt.type)}
-                                                activeOpacity={0.7}
-                                                disabled={isLoading} >
-                                                <FontAwesomeIcon icon={opt.icon} size={18} style={styles.buttonIcon} color={isSelected ? whiteColor : primaryColor} />
-                                                <Text style={[styles.selectButtonText, isSelected && styles.selectButtonTextSelected]}>{opt.label}</Text>
-                                            </TouchableOpacity>
-                                        );
-                                    })}
-                                </View>
-                            </View>
-
-                            <View style={styles.formSection}>
-                                <Text style={styles.label}>Primary Communication Style:</Text>
+                                <Text style={styles.label}>ASD Support Level:</Text>
                                 <View style={styles.optionsList}>
-                                    {commStyleOptions.map((option) => {
-                                        const isSelected = commStyle === option.type;
+                                    {asdLevelOptions.map((option) => {
+                                        const isSelected = asdLevel === option.type;
                                         return (
                                             <TouchableOpacity
                                                 key={option.type}
                                                 style={[styles.optionCard, isSelected && styles.optionCardSelected]}
-                                                onPress={() => setCommStyle(option.type)}
+                                                onPress={() => setAsdLevel(option.type)}
                                                 activeOpacity={0.8}
-                                                disabled={isLoading} >
-                                                <FontAwesomeIcon icon={option.icon} size={22} color={isSelected ? primaryColor : darkGrey} style={styles.optionIcon} />
+                                                disabled={isLoading}
+                                            >
+                                                <FontAwesomeIcon icon={option.icon} size={appDimensions.ICON_SIZE_OPTION_CARD} color={isSelected ? appColors.PRIMARY_COLOR : appColors.TEXT_COLOR_SECONDARY} style={styles.optionIcon} />
                                                 <View style={styles.optionTextWrapper}>
                                                     <Text style={[styles.optionLabel, isSelected && styles.optionLabelSelected]}>{option.label}</Text>
                                                     <Text style={[styles.optionDescription, isSelected && styles.optionDescriptionSelected]}>{option.description}</Text>
                                                 </View>
                                                 <View style={[styles.checkIndicatorBase, isSelected && styles.checkIndicatorSelected]}>
-                                                    {isSelected && <FontAwesomeIcon icon={faCheckCircle} size={20} color={whiteColor} />}
+                                                    {isSelected && <FontAwesomeIcon icon={faCheckCircle} size={appDimensions.ICON_SIZE_MEDIUM} color={appColors.WHITE_COLOR} />}
                                                 </View>
                                             </TouchableOpacity>
                                         );
@@ -254,36 +249,42 @@ const SigninTwo: React.FC = () => { // Added React.FC
                                 </View>
                             </View>
 
-                             <View style={styles.formSection}>
+                            <View style={styles.formSection}>
                                 <Text style={styles.label}>Preferred Symbol Grid Layout:</Text>
                                 <View style={styles.buttonGroup}>
                                     {gridLayoutOptions.map(opt => {
                                         const isSelected = gridLayout === opt.type;
-                                        return(
+                                        return (
                                             <TouchableOpacity
                                                 key={opt.type}
                                                 style={[styles.selectButton, styles.gridButton, isSelected && styles.selectButtonSelected]}
                                                 onPress={() => setGridLayout(opt.type)}
                                                 activeOpacity={0.7}
-                                                disabled={isLoading} >
-                                                <FontAwesomeIcon icon={opt.icon} size={20} style={styles.buttonIcon} color={isSelected ? whiteColor : primaryColor} />
+                                                disabled={isLoading}
+                                            >
+                                                <FontAwesomeIcon icon={opt.icon} size={appDimensions.ICON_SIZE_MEDIUM} style={styles.buttonIcon} color={isSelected ? appColors.WHITE_COLOR : appColors.PRIMARY_COLOR} />
                                                 <Text style={[styles.selectButtonText, styles.gridButtonText, isSelected && styles.selectButtonTextSelected]}>{opt.label}</Text>
                                             </TouchableOpacity>
                                         );
                                     })}
                                 </View>
-                             </View>
+                            </View>
 
-                            {error && ( <View style={styles.errorContainer}><Text style={styles.errorText}>{error}</Text></View> )}
+                            {error && (
+                                <View style={styles.errorContainer}>
+                                    <Text style={styles.errorText}>{error}</Text>
+                                </View>
+                            )}
 
                             <TouchableOpacity
-                                style={[styles.submitButton, (isLoading || !commStyle || !communicatorType || !userName.trim()) && styles.buttonDisabled]}
+                                style={[styles.submitButton, (isLoading || !isFormCurrentlyValid) && styles.buttonDisabled]}
                                 onPress={handleCompleteSetup}
-                                disabled={isLoading || !commStyle || !communicatorType || !userName.trim()}
-                                activeOpacity={0.75} >
+                                disabled={isLoading || !isFormCurrentlyValid}
+                                activeOpacity={0.75}
+                            >
                                 {isLoading
-                                    ? <ActivityIndicator size="small" color={whiteColor} />
-                                    : <Text style={styles.submitButtonText}>Complete Setup & Start</Text>
+                                    ? <ActivityIndicator size="small" color={appColors.WHITE_COLOR} />
+                                    : <Text style={styles.submitButtonText}>Complete Setup & Register</Text>
                                 }
                             </TouchableOpacity>
                         </View>
@@ -295,51 +296,176 @@ const SigninTwo: React.FC = () => { // Added React.FC
 };
 
 // --- Styles ---
+// Styles remain the same
 const styles = StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: backgroundColor },
+    safeArea: { flex: 1, backgroundColor: appColors.BACKGROUND_COLOR },
     keyboardAvoidingView: { flex: 1 },
-    header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, paddingVertical: 12, backgroundColor: whiteColor, borderBottomWidth: 1, borderBottomColor: lightGrey },
-    backButton: { padding: 5 },
-    headerTitle: { flex: 1, fontSize: 18, fontWeight: '600', color: textColor, textAlign: 'center', marginHorizontal: 10 },
-    headerSpacer: { width: 30 },
-    scrollContainer: { flexGrow: 1, paddingBottom: 50 },
-    innerContainer: { paddingHorizontal: 20, paddingTop: 25 },
-    introText: { fontSize: 16, color: darkGrey, textAlign: 'center', marginBottom: 35, lineHeight: 23 },
-    formSection: { marginBottom: 30 },
-    sectionTitle: { fontSize: 20, fontWeight: 'bold', color: textColor, marginBottom: 20 },
-    label: { fontSize: 15, fontWeight: '500', color: darkGrey, marginBottom: 10 },
-    avatarContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
-    avatarTouchable: { marginRight: 15 },
-    avatarImage: { width: 80, height: 80, borderRadius: 40, backgroundColor: lightGrey, borderWidth: 2, borderColor: primaryColor },
-    avatarPlaceholder: { width: 80, height: 80, borderRadius: 40, backgroundColor: lightGrey, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: mediumGrey, position: 'relative' },
-    cameraIconOverlay: { position: 'absolute', bottom: 3, right: 3, backgroundColor: primaryColor, borderRadius: 10, padding: 4 },
-    avatarInputContainer: { flex: 1 },
-    input: { backgroundColor: whiteColor, borderWidth: 1, borderColor: mediumGrey, borderRadius: 8, paddingHorizontal: 15, height: 50, fontSize: 16, color: textColor },
-    avatarHelperText: { fontSize: 12, color: placeholderColor, marginTop: 5 },
-    buttonGroup: { flexDirection: 'row', gap: 12 },
-    selectButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1.5, borderColor: mediumGrey, backgroundColor: whiteColor, flex: 1, minHeight: 50 },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: appDimensions.PADDING_HEADER_HORIZONTAL,
+        paddingVertical: appDimensions.PADDING_HEADER_VERTICAL,
+        backgroundColor: appColors.WHITE_COLOR,
+        borderBottomWidth: appDimensions.BORDER_WIDTH_INPUT,
+        borderBottomColor: appColors.BORDER_COLOR_LIGHT,
+    },
+    backButton: { padding: appDimensions.PADDING_ICON_BUTTON },
+    headerTitle: {
+        flex: 1,
+        fontSize: appDimensions.FONT_SIZE_PAGE_HEADER,
+        fontWeight: '600',
+        color: appColors.TEXT_COLOR_PRIMARY,
+        textAlign: 'center',
+        marginHorizontal: appDimensions.ICON_MARGIN_RIGHT,
+    },
+    headerSpacer: { width: appDimensions.ICON_SIZE_MEDIUM + (appDimensions.PADDING_ICON_BUTTON * 2) },
+    scrollContainer: { flexGrow: 1, paddingBottom: appDimensions.MARGIN_LARGE },
+    innerContainer: {
+        paddingHorizontal: appDimensions.MARGIN_MEDIUM,
+        paddingTop: appDimensions.MARGIN_MEDIUM,
+    },
+    introText: {
+        fontSize: appDimensions.FONT_SIZE_INPUT,
+        color: appColors.TEXT_COLOR_SECONDARY,
+        textAlign: 'center',
+        marginBottom: appDimensions.MARGIN_LARGE,
+        lineHeight: appDimensions.LINE_HEIGHT_INTRO,
+    },
+    formSection: { marginBottom: appDimensions.MARGIN_LARGE },
+    label: {
+        fontSize: appDimensions.FONT_SIZE_SUBTITLE,
+        fontWeight: '500',
+        color: appColors.TEXT_COLOR_SECONDARY,
+        marginBottom: appDimensions.MARGIN_SMALL,
+    },
+    input: { // Style is kept in case you need other inputs later, but not used now
+        backgroundColor: appColors.WHITE_COLOR,
+        borderWidth: appDimensions.BORDER_WIDTH_INPUT,
+        borderColor: appColors.BORDER_COLOR_MEDIUM,
+        borderRadius: appDimensions.BORDER_RADIUS_INPUT,
+        paddingHorizontal: appDimensions.PADDING_INPUT_HORIZONTAL_PROFILE,
+        height: appDimensions.INPUT_HEIGHT_PROFILE,
+        fontSize: appDimensions.FONT_SIZE_INPUT,
+        color: appColors.TEXT_COLOR_PRIMARY,
+    },
+    buttonGroup: {
+        flexDirection: 'row',
+        gap: appDimensions.MARGIN_SMALL,
+    },
+    selectButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: appDimensions.PADDING_MEDIUM,
+        paddingHorizontal: appDimensions.PADDING_SMALL,
+        borderRadius: appDimensions.BORDER_RADIUS_BUTTON,
+        borderWidth: appDimensions.BORDER_WIDTH_GENDER_SEGMENT,
+        borderColor: appColors.BORDER_COLOR_MEDIUM,
+        backgroundColor: appColors.WHITE_COLOR,
+        flex: 1,
+        minHeight: appDimensions.BUTTON_MIN_HEIGHT_PROFILE,
+    },
     gridButton: {},
-    selectButtonSelected: { backgroundColor: primaryColor, borderColor: primaryColor },
-    buttonIcon: { marginRight: 8 },
-    selectButtonText: { fontSize: 14, fontWeight: '600', color: primaryColor, textAlign: 'center' },
-    gridButtonText: { fontSize: 14 },
-    selectButtonTextSelected: { color: whiteColor },
+    selectButtonSelected: {
+        backgroundColor: appColors.PRIMARY_COLOR,
+        borderColor: appColors.PRIMARY_COLOR,
+    },
+    buttonIcon: { marginRight: appDimensions.MARGIN_SMALL },
+    selectButtonText: {
+        fontSize: appDimensions.FONT_SIZE_LABEL,
+        fontWeight: '600',
+        color: appColors.PRIMARY_COLOR,
+        textAlign: 'center',
+    },
+    gridButtonText: {
+        fontSize: appDimensions.FONT_SIZE_LABEL,
+    },
+    selectButtonTextSelected: { color: appColors.WHITE_COLOR },
     optionsList: {},
-    optionCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: whiteColor, padding: 15, borderRadius: 10, borderWidth: 1.5, borderColor: mediumGrey, marginBottom: 12, minHeight: 80 },
-    optionCardSelected: { borderColor: primaryColor, backgroundColor: selectedTint },
-    optionIcon: { marginRight: 15, width: 25, textAlign: 'center' },
-    optionTextWrapper: { flex: 1, marginRight: 10 },
-    optionLabel: { fontSize: 16, fontWeight: 'bold', color: textColor, marginBottom: 4 },
-    optionLabelSelected: { color: primaryColor },
-    optionDescription: { fontSize: 13, color: darkGrey, lineHeight: 18 },
-    optionDescriptionSelected: { color: primaryColor },
-    checkIndicatorBase: { width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, borderColor: mediumGrey, justifyContent: 'center', alignItems: 'center', backgroundColor: whiteColor },
-    checkIndicatorSelected: { borderColor: primaryColor, backgroundColor: primaryColor },
-    errorContainer: { marginVertical: 15, paddingHorizontal: 15, paddingVertical: 10, backgroundColor: '#f8d7da', borderColor: '#f5c6cb', borderWidth: 1, borderRadius: 8 },
-    errorText: { color: '#721c24', fontSize: 14, fontWeight: '500', textAlign: 'center' },
-    submitButton: { backgroundColor: primaryColor, paddingVertical: 16, borderRadius: 8, alignItems: 'center', justifyContent: 'center', minHeight: 52, marginTop: 20 },
-    submitButtonText: { color: whiteColor, fontWeight: 'bold', fontSize: 16 },
-    buttonDisabled: { backgroundColor: mediumGrey, opacity: 0.7 },
+    optionCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: appColors.WHITE_COLOR,
+        padding: appDimensions.PADDING_MEDIUM,
+        borderRadius: appDimensions.BORDER_RADIUS_CARD,
+        borderWidth: appDimensions.BORDER_WIDTH_GENDER_SEGMENT,
+        borderColor: appColors.BORDER_COLOR_MEDIUM,
+        marginBottom: appDimensions.MARGIN_MEDIUM,
+        minHeight: appDimensions.OPTION_CARD_MIN_HEIGHT,
+    },
+    optionCardSelected: {
+        borderColor: appColors.PRIMARY_COLOR,
+        backgroundColor: appColors.BACKGROUND_SELECTED_LIGHT,
+    },
+    optionIcon: {
+        marginRight: appDimensions.PADDING_MEDIUM,
+        width: appDimensions.ICON_SIZE_OPTION_CARD + 5,
+        textAlign: 'center',
+    },
+    optionTextWrapper: {
+        flex: 1,
+        marginRight: appDimensions.MARGIN_SMALL,
+    },
+    optionLabel: {
+        fontSize: appDimensions.FONT_SIZE_INPUT,
+        fontWeight: 'bold',
+        color: appColors.TEXT_COLOR_PRIMARY,
+        marginBottom: appDimensions.MARGIN_XXSMALL,
+    },
+    optionLabelSelected: { color: appColors.PRIMARY_COLOR },
+    optionDescription: {
+        fontSize: appDimensions.FONT_SIZE_DESCRIPTION,
+        color: appColors.TEXT_COLOR_SECONDARY,
+        lineHeight: appDimensions.LINE_HEIGHT_DESCRIPTION,
+    },
+    optionDescriptionSelected: { color: appColors.TEXT_COLOR_SECONDARY },
+    checkIndicatorBase: {
+        width: appDimensions.CHECK_INDICATOR_SIZE,
+        height: appDimensions.CHECK_INDICATOR_SIZE,
+        borderRadius: appDimensions.CHECK_INDICATOR_SIZE / 2,
+        borderWidth: appDimensions.BORDER_WIDTH_GENDER_SEGMENT,
+        borderColor: appColors.BORDER_COLOR_MEDIUM,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: appColors.WHITE_COLOR,
+    },
+    checkIndicatorSelected: {
+        borderColor: appColors.PRIMARY_COLOR,
+        backgroundColor: appColors.PRIMARY_COLOR,
+    },
+    errorContainer: {
+        marginVertical: appDimensions.MARGIN_MEDIUM,
+        paddingHorizontal: appDimensions.PADDING_MEDIUM,
+        paddingVertical: appDimensions.PADDING_SMALL,
+        backgroundColor: appColors.ERROR_COLOR_BACKGROUND,
+        borderColor: appColors.ERROR_COLOR_BORDER,
+        borderWidth: appDimensions.BORDER_WIDTH_ERROR,
+        borderRadius: appDimensions.BORDER_RADIUS_BUTTON,
+    },
+    errorText: {
+        color: appColors.ERROR_COLOR_TEXT,
+        fontSize: appDimensions.FONT_SIZE_ERROR,
+        fontWeight: '500',
+        textAlign: 'center',
+    },
+    submitButton: {
+        backgroundColor: appColors.BUTTON_PRIMARY_BACKGROUND,
+        paddingVertical: appDimensions.PADDING_LARGE,
+        borderRadius: appDimensions.BORDER_RADIUS_BUTTON,
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: appDimensions.BUTTON_MIN_HEIGHT,
+        marginTop: appDimensions.MARGIN_MEDIUM,
+    },
+    submitButtonText: {
+        color: appColors.BUTTON_PRIMARY_TEXT,
+        fontWeight: 'bold',
+        fontSize: appDimensions.FONT_SIZE_BUTTON,
+    },
+    buttonDisabled: {
+        backgroundColor: appColors.BUTTON_DISABLED_BACKGROUND,
+        opacity: appDimensions.OPACITY_DISABLED,
+    },
 });
 
 export default SigninTwo;

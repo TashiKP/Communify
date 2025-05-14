@@ -60,7 +60,7 @@ const Menu: React.FC<MenuProps> = ({
     onTtsSettingsSave,
 }) => {
     // --- Hooks ---
-    const { theme, fonts, isLoadingAppearance } = useAppearance(); // baseFonts for English
+    const { theme, fonts, isLoadingAppearance } = useAppearance();
     const { t, i18n } = useTranslation();
     const currentLanguage = i18n.language;
 
@@ -77,7 +77,6 @@ const Menu: React.FC<MenuProps> = ({
     const [passcodeExists, setPasscodeExists] = useState(false);
     const isMountedRef = useRef(true);
 
-    // --- Menu Items Configuration ---
     const menuItems = useMemo(() => [
         { id: 'display', icon: faDesktop, labelKey: 'menu.displayOptions' },
         { id: 'selection', icon: faShapes, labelKey: 'menu.symbolSelection' },
@@ -86,23 +85,18 @@ const Menu: React.FC<MenuProps> = ({
         { id: 'about', icon: faInfoCircle, labelKey: 'menu.aboutUs' },
     ], []);
 
-    // Combined loading state for initial menu item enabling/disabling
     const isLoadingInitialMenuSettings = isLoadingAppearance || isLoadingSelection || isLoadingParental;
 
-    // --- Mount/Unmount Effect & i18n Log ---
     useEffect(() => {
         isMountedRef.current = true;
-        console.log('Menu.tsx: Mounted. typeof t =', typeof t, 'i18n initialized:', i18n.isInitialized);
         return () => { isMountedRef.current = false; };
-    }, [t, i18n.isInitialized]);
+    }, []);
 
-    // --- Dynamic Styles ---
     const styles = useMemo(() => createThemedMenuStyles(theme, fonts, currentLanguage), [theme, fonts, currentLanguage]);
 
-    // --- Effect to load Menu-managed settings ---
     useEffect(() => {
         const loadMenuSettings = async () => {
-            if (!isMountedRef.current || typeof t !== 'function') return; // Guard
+            if (!isMountedRef.current || typeof t !== 'function') return;
             setIsLoadingSelection(true); setIsLoadingParental(true);
             try {
                 const [hasPC, selectionJson, parentalJson] = await Promise.all([
@@ -122,18 +116,17 @@ const Menu: React.FC<MenuProps> = ({
                 if(isMountedRef.current) {
                     setSelectionModeValue(defaultSelectionMode);
                     setParentalSettings(defaultParentalSettings);
-                    Alert.alert(t('common.error'), t('menu.errors.loadSettingsFail'));
+                    if (typeof t === 'function') Alert.alert(t('common.error'), t('menu.errors.loadSettingsFail'));
                 }
             } finally {
                 if(isMountedRef.current) { setIsLoadingSelection(false); setIsLoadingParental(false); }
             }
         };
-        if (typeof t === 'function' && i18n.isInitialized) { // Ensure t is ready
+        if (typeof t === 'function' && i18n.isInitialized) {
             loadMenuSettings();
         }
-    }, [t, i18n.isInitialized]); // Re-run if t becomes available
+    }, [t, i18n.isInitialized]);
 
-    // --- Handlers ---
     const handleCloseSubModal = useCallback(() => { setActiveModal(null); }, []);
 
     const handleMenuPress = useCallback(async (itemId: string) => {
@@ -198,8 +191,7 @@ const Menu: React.FC<MenuProps> = ({
 
     const memoizedParentalSettings = useMemo(() => parentalSettings, [parentalSettings]);
 
-    // --- Render Guard for i18n ---
-    if (!i18n.isInitialized || typeof t !== 'function') {
+    if (!i18n.isInitialized || typeof t !== 'function' || isLoadingAppearance) {
         return (
             <View style={[styles.menuContainerIfLoading, { justifyContent: 'center', alignItems: 'center' }]}>
                 <ActivityIndicator size="large" color={theme.primary || '#0077b6'} />
@@ -250,8 +242,7 @@ const Menu: React.FC<MenuProps> = ({
                 <View style={styles.menuFooter} />
             </Animated.View>
 
-            {/* Sub-Modals / Screens */}
-             <Modal visible={activeModal === 'display'} animationType="slide" transparent={false} onRequestClose={handleCloseSubModal} >
+            <Modal visible={activeModal === 'display'} animationType="slide" transparent={false} onRequestClose={handleCloseSubModal} >
                 {activeModal === 'display' && <DisplayOptionsScreen onClose={handleCloseSubModal} />}
             </Modal>
              <Modal visible={activeModal === 'selection'} animationType="slide" transparent={false} onRequestClose={handleCloseSubModal} >
@@ -272,13 +263,11 @@ const Menu: React.FC<MenuProps> = ({
     );
 };
 
-// --- Themed Styles for Menu ---
 const createThemedMenuStyles = (theme: ThemeColors, baseFonts: FontSizes, language: string) => StyleSheet.create({
-    menuContainerIfLoading: { // For the render guard
+    menuContainerIfLoading: {
         position: 'absolute', left: 0, top: 0, bottom: 0,
         width: menuWidth,
-        backgroundColor: theme.card || '#FFFFFF', // Fallback color
-        // Ensure this style doesn't rely on 't' if used in the guard
+        backgroundColor: theme.card || '#FFFFFF',
     },
     overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0, 0, 0, 0.5)', },
     menuContainer: { position: 'absolute', left: 0, top: 0, bottom: 0, width: menuWidth, backgroundColor: theme.card, shadowColor: '#000', shadowOffset: { width: 2, height: 0 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 16, },
@@ -295,7 +284,7 @@ const createThemedMenuStyles = (theme: ThemeColors, baseFonts: FontSizes, langua
     menuTitle: {
         fontWeight: 'bold',
         color: theme.text,
-        ...getLanguageSpecificTextStyle('h1', baseFonts, language), // Use typography utility
+        ...getLanguageSpecificTextStyle('h1', baseFonts, language),
     },
     closeButtonInternal: { padding: 8, },
     menuScrollView: { flex: 1, },
@@ -306,7 +295,7 @@ const createThemedMenuStyles = (theme: ThemeColors, baseFonts: FontSizes, langua
         color: theme.text,
         flex: 1,
         fontWeight: '500',
-        ...getLanguageSpecificTextStyle('body', baseFonts, language), // Use typography utility
+        ...getLanguageSpecificTextStyle('body', baseFonts, language),
     },
     menuArrow: { marginLeft: 8, color: theme.disabled, },
     menuFooter: { height: Platform.OS === 'ios' ? 40 : 30, backgroundColor: theme.card, borderTopWidth: 1, borderTopColor: theme.border },

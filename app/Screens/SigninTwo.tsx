@@ -3,7 +3,7 @@ import React, { useState, useCallback } from 'react';
 import {
     View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
     KeyboardAvoidingView, Platform, StatusBar, TouchableWithoutFeedback, Keyboard,
-    ActivityIndicator, Alert, ScrollView 
+    ActivityIndicator, Alert, ScrollView
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -23,17 +23,18 @@ import apiService, {
     UserRegisterPayload,
     Gender,
     UserRead,
-    ParentalSettingsUpdatePayload,
-    ParentalSettingsValueUpdate,
-    AppearanceSettingsUpdatePayload
-} from '../services/apiService';
+    ParentalSettingsData, // This is what saveParentalSettings expects as Partial input
+    AsdLevel as ApiAsdLevel, // Import AsdLevel from apiService to ensure type consistency
+    GridLayoutType as ApiGridLayoutType, // Import GridLayoutType from apiService
+    AppearanceSettingsUpdatePayload // This is for the *value* part of appearance settings PATCH
+} from '../services/apiService'; // Correct path
 
-import * as appColors from '../../app/constants/colors';
-import * as appDimensions from '../../app/constants/dimensions';
+import * as appColors from '../../app/constants/colors'; // Assuming path is correct
+import * as appDimensions from '../../app/constants/dimensions'; // Assuming path is correct
 
-// Types
-type GridLayoutType = 'simple' | 'standard' | 'dense';
-export type AsdLevelType = 'low' | 'medium' | 'high' | 'noAsd';
+// Types for local state should align with API service types if possible
+type LocalGridLayoutType = ApiGridLayoutType; // Use the type from apiService
+export type LocalAsdLevelType = ApiAsdLevel; // Use the type from apiService
 
 type SigninTwoScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'SigninTwo'>;
 type SigninTwoScreenRouteProp = RouteProp<AuthStackParamList, 'SigninTwo'>;
@@ -44,35 +45,35 @@ const SigninTwo: React.FC = () => {
     const { setUser } = useAuth();
     const { signupData } = route.params;
 
-    // State
-    // Keep userName state to hold the name passed from the previous screen for registration payload
     const [userName] = useState(signupData.fullName || '');
-    const [asdLevel, setAsdLevel] = useState<AsdLevelType | null>(null);
-    const [gridLayout, setGridLayout] = useState<GridLayoutType>('standard');
+    const [asdLevel, setAsdLevel] = useState<LocalAsdLevelType | null>(null); // Use LocalAsdLevelType
+    const [gridLayout, setGridLayout] = useState<LocalGridLayoutType>('standard'); // Use LocalGridLayoutType
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // UI Options
-    const asdLevelOptions: { type: AsdLevelType; label: string; description: string; icon: any }[] = [
+    const asdLevelOptions: { type: LocalAsdLevelType | 'noAsd'; label: string; description: string; icon: any }[] = [
         { type: 'noAsd', label: 'No Specific ASD Needs', description: 'General app experience, no ASD-specific aids.', icon: faLeaf },
         { type: 'low', label: 'Low Support Needs', description: 'Minor adjustments, more independence (Level 1).', icon: faLightbulb },
         { type: 'medium', label: 'Medium Support Needs', description: 'Structured support, visual aids helpful (Level 2).', icon: faPuzzlePiece },
         { type: 'high', label: 'High Support Needs', description: 'Significant support, simplified interface (Level 3).', icon: faStar },
     ];
 
-    const gridLayoutOptions: { type: GridLayoutType; label: string; icon: any }[] = [
+    const gridLayoutOptions: { type: LocalGridLayoutType; label: string; icon: any }[] = [
         { type: 'simple', label: 'Simple', icon: faGripVertical },
         { type: 'standard', label: 'Standard', icon: faTh },
         { type: 'dense', label: 'Dense', icon: faThLarge },
     ];
 
-    // Validate remaining fields
     const validateSetup = useCallback((): boolean => {
         setError(null);
         if (!userName.trim()) { setError("User name is missing from previous step."); return false; }
-        if (!asdLevel) { setError("Please select the ASD support level."); return false; }
+        if (asdLevel === undefined || asdLevel === null) { // Check against null explicitly if 'noAsd' maps to null
+             const noAsdOptionSelected = asdLevelOptions.find(opt => opt.type === 'noAsd');
+             if (asdLevel === null && noAsdOptionSelected) { /* This is fine */ }
+             else { setError("Please select the ASD support level."); return false; }
+        }
         return true;
-    }, [userName, asdLevel, setError]); // userName is still a dependency
+    }, [userName, asdLevel, asdLevelOptions]);
 
     const handleCompleteSetup = useCallback(async () => {
         Keyboard.dismiss();
@@ -82,9 +83,8 @@ const SigninTwo: React.FC = () => {
 
         setIsLoading(true);
 
-        // Use the userName state (passed from previous screen) for registration
         const registrationPayload: UserRegisterPayload = {
-            name: userName.trim(), // Use the stored userName
+            name: userName.trim(),
             email: signupData.email,
             password: signupData.password,
             ...(signupData.age && { age: Number(signupData.age) }),
@@ -96,70 +96,84 @@ const SigninTwo: React.FC = () => {
 
         try {
             registeredUser = await apiService.register(registrationPayload);
-            const userId = registeredUser.id;
+            // const userId = registeredUser.id; // userId available if needed
 
+            // Login immediately after registration to get a token for subsequent settings updates
             const tokenResponse = await apiService.login(signupData.email, signupData.password);
             authToken = tokenResponse.access_token;
+            // Note: apiService automatically stores the token, so subsequent calls will be authenticated
 
-            const parentalSettingsToUpdateValue: Partial<ParentalSettingsValueUpdate> = {};
-            if (asdLevel) {
-                parentalSettingsToUpdateValue.asd_level = asdLevel;
+            // Prepare an object with only the parental settings that need to be updated (camelCase)
+            const parentalSettingsToUpdate: Partial<ParentalSettingsData> = {};
+            if (asdLevel) { // asdLevel from state can be 'low', 'medium', 'high', or 'noAsd' (string)
+                // apiService.saveParentalSettings expects camelCase, and its mapping function
+                // mapFrontendToApiParentalValues will convert 'noAsd' string to the API expected value or null
+                parentalSettingsToUpdate.asdLevel = asdLevel === 'noAsd' ? null : asdLevel;
             }
-            console.log('[SigninTwo] Before sending Parental Settings Update:');
-            console.log('[SigninTwo] Selected asdLevel state:', asdLevel);
-            console.log('[SigninTwo] parentalSettingsToUpdateValue object:', parentalSettingsToUpdateValue);
+            // Add other parental settings if collected in this screen
 
-            if (Object.keys(parentalSettingsToUpdateValue).length > 0) {
-                const parentalPayload: ParentalSettingsUpdatePayload = {
-                    value: parentalSettingsToUpdateValue
-                };
-                console.log('[SigninTwo] Sending parentalPayload:', JSON.stringify(parentalPayload, null, 2)); // Log the actual payload
-                await apiService.updateParentalSettings(parentalPayload);
+            console.log('[SigninTwo] parentalSettingsToUpdate (camelCase):', JSON.stringify(parentalSettingsToUpdate, null, 2));
+
+            if (Object.keys(parentalSettingsToUpdate).length > 0) {
+                // Pass the camelCase settings object directly.
+                // apiService.saveParentalSettings will handle wrapping it in "value" and converting to snake_case.
+                await apiService.saveParentalSettings(parentalSettingsToUpdate);
                 console.log('[SigninTwo] Parental settings API call made.');
             } else {
                 console.log('[SigninTwo] No parental settings to update, skipping API call.');
             }
+
+            // Prepare appearance settings update (camelCase)
             const appearanceSettingsToUpdate: Partial<AppearanceSettingsUpdatePayload> = {};
             if (gridLayout) {
-                appearanceSettingsToUpdate.symbol_grid_layout = gridLayout;
+                // Use camelCase for the payload to saveAppearanceSettings
+                appearanceSettingsToUpdate.symbolGridLayout = gridLayout;
             }
+            // Add other appearance settings if collected
+
+            console.log('[SigninTwo] appearanceSettingsToUpdate (camelCase):', JSON.stringify(appearanceSettingsToUpdate, null, 2));
 
             if (Object.keys(appearanceSettingsToUpdate).length > 0) {
-                await apiService.updateAppearanceSettings(appearanceSettingsToUpdate);
+                // Call the correct function for appearance settings
+                await apiService.saveAppearanceSettings(appearanceSettingsToUpdate);
+                console.log('[SigninTwo] Appearance settings API call made.');
+            } else {
+                console.log('[SigninTwo] No appearance settings to update, skipping API call.');
             }
+
 
             if (setUser && authToken && registeredUser) {
                 const userForContext: Omit<AuthUser, "localAvatarPath"> = {
                     id: registeredUser.id,
                     email: registeredUser.email,
-                    name: registeredUser.name, // Use name from registeredUser response
+                    name: registeredUser.name,
                     age: registeredUser.age,
                     gender: registeredUser.gender,
-                    user_type: registeredUser.user_type,
-                    is_active: registeredUser.is_active,
+                    user_type: registeredUser.userType,
+                    is_active: registeredUser.isActive,
                 };
                  setUser(prev => ({
                      ...prev,
-                     ...(userForContext as AuthUser),
+                     ...(userForContext as AuthUser), // Type assertion if confident
                      localAvatarPath: signupData.avatarUri,
                      isAuthenticated: true,
                  }));
             }
 
-            if (signupData.avatarUri && userId) {
+            if (signupData.avatarUri && registeredUser?.id) { // Check registeredUser.id
                 try {
-                    const avatarStorageKey = `${ASYNC_STORAGE_KEYS.USER_AVATAR_URI_PREFIX}${userId}`;
+                    const avatarStorageKey = `${ASYNC_STORAGE_KEYS.USER_AVATAR_URI_PREFIX}${registeredUser.id}`;
                     await AsyncStorage.setItem(avatarStorageKey, signupData.avatarUri);
                 } catch (storageError) {
                     console.error('[SigninTwo] Error saving avatar URI to AsyncStorage:', storageError);
-                    Alert.alert("Avatar Note", "Your account was created, but there was an issue saving your avatar preference locally.");
+                    // Non-critical error, proceed
                 }
             }
 
             Alert.alert(
                 "Setup Complete!",
                 "Your account and preferences have been configured.",
-                [{ text: "Let's Go!", onPress: () => navigation.replace('Login') }]
+                [{ text: "Let's Go!", onPress: () => navigation.navigate('Login') }] // Example navigation
             );
 
         } catch (apiError: any) {
@@ -168,46 +182,53 @@ const SigninTwo: React.FC = () => {
             if (errorInfo.details) {
                 console.warn('[SigninTwo] Validation Details from API:', errorInfo.details);
             }
-            if (registeredUser && !authToken) {
-                Alert.alert("Registration Succeeded", "Your account was created, but setting preferences failed. Please try logging in.");
+            // If registration succeeded but settings failed, user might still want to login
+            if (registeredUser && !authToken) { // This condition might be tricky if token was fetched but settings failed
+                Alert.alert("Registration Succeeded", "Your account was created, but applying initial preferences failed. You can adjust them in settings after logging in.");
+                // Navigate to Login so they can try logging in
+                navigation.replace('Login');
+            } else if (!registeredUser) {
+                // Registration itself failed
+                Alert.alert("Registration Failed", errorInfo.message || "Could not create your account. Please try again.");
             }
         } finally {
             setIsLoading(false);
         }
     }, [
         validateSetup,
-        userName, // Still needed for registration payload
+        userName,
         signupData,
         asdLevel,
         gridLayout,
         navigation,
         setUser,
-        setError,
+        setError, // setError should be stable from useState
     ]);
 
     const handleGoBack = useCallback(() => {
         if (navigation.canGoBack()) {
             navigation.goBack();
         } else {
+            // Fallback if there's no screen to go back to in this stack
             navigation.replace('Signup');
         }
     }, [navigation]);
 
-    // Update validation check for button state
-    const isFormCurrentlyValid = !!userName.trim() && !!asdLevel;
+    const isFormCurrentlyValid = !!userName.trim() && (asdLevel !== null && asdLevel !== undefined) && !!gridLayout;
+
 
     return (
         <SafeAreaView style={styles.safeArea}>
-            <StatusBar barStyle="dark-content" backgroundColor={appColors.BACKGROUND_COLOR} />
+            <StatusBar barStyle={Platform.OS === "ios" ? "dark-content" : "light-content"} backgroundColor={appColors.WHITE_COLOR} />
             <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined} // 'height' can be problematic
                 style={styles.keyboardAvoidingView}
             >
                 <View style={styles.header}>
                     <TouchableOpacity onPress={handleGoBack} style={styles.backButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                         <FontAwesomeIcon icon={faArrowLeft} size={appDimensions.ICON_SIZE_MEDIUM} color={appColors.PRIMARY_COLOR} />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Personalize Your Experience</Text>
+                    <Text style={styles.headerTitle}>Personalize Experience</Text>
                     <View style={styles.headerSpacer} />
                 </View>
 
@@ -219,19 +240,18 @@ const SigninTwo: React.FC = () => {
                     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
                         <View style={styles.innerContainer}>
                             <Text style={styles.introText}>
-                                Almost there! Just a few more details to tailor the app for you.
-                                These can be changed later in settings.
+                                Almost there! Just a few more details to tailor the app. These can be changed later.
                             </Text>
                             <View style={styles.formSection}>
                                 <Text style={styles.label}>ASD Support Level:</Text>
                                 <View style={styles.optionsList}>
                                     {asdLevelOptions.map((option) => {
-                                        const isSelected = asdLevel === option.type;
+                                        const isSelected = asdLevel === option.type || (option.type === 'noAsd' && asdLevel === null);
                                         return (
                                             <TouchableOpacity
                                                 key={option.type}
                                                 style={[styles.optionCard, isSelected && styles.optionCardSelected]}
-                                                onPress={() => setAsdLevel(option.type)}
+                                                onPress={() => setAsdLevel(option.type)} // Store 'noAsd' string in state
                                                 activeOpacity={0.8}
                                                 disabled={isLoading}
                                             >
@@ -296,176 +316,42 @@ const SigninTwo: React.FC = () => {
 };
 
 // --- Styles ---
-// Styles remain the same
 const styles = StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: appColors.BACKGROUND_COLOR },
+    safeArea: { flex: 1, backgroundColor: appColors.WHITE_COLOR }, // Changed for consistency with header
     keyboardAvoidingView: { flex: 1 },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: appDimensions.PADDING_HEADER_HORIZONTAL,
-        paddingVertical: appDimensions.PADDING_HEADER_VERTICAL,
-        backgroundColor: appColors.WHITE_COLOR,
-        borderBottomWidth: appDimensions.BORDER_WIDTH_INPUT,
-        borderBottomColor: appColors.BORDER_COLOR_LIGHT,
-    },
+    header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: appDimensions.PADDING_HEADER_HORIZONTAL, paddingVertical: appDimensions.PADDING_HEADER_VERTICAL, backgroundColor: appColors.WHITE_COLOR, borderBottomWidth: appDimensions.BORDER_WIDTH_INPUT, borderBottomColor: appColors.BORDER_COLOR_LIGHT, },
     backButton: { padding: appDimensions.PADDING_ICON_BUTTON },
-    headerTitle: {
-        flex: 1,
-        fontSize: appDimensions.FONT_SIZE_PAGE_HEADER,
-        fontWeight: '600',
-        color: appColors.TEXT_COLOR_PRIMARY,
-        textAlign: 'center',
-        marginHorizontal: appDimensions.ICON_MARGIN_RIGHT,
-    },
-    headerSpacer: { width: appDimensions.ICON_SIZE_MEDIUM + (appDimensions.PADDING_ICON_BUTTON * 2) },
-    scrollContainer: { flexGrow: 1, paddingBottom: appDimensions.MARGIN_LARGE },
-    innerContainer: {
-        paddingHorizontal: appDimensions.MARGIN_MEDIUM,
-        paddingTop: appDimensions.MARGIN_MEDIUM,
-    },
-    introText: {
-        fontSize: appDimensions.FONT_SIZE_INPUT,
-        color: appColors.TEXT_COLOR_SECONDARY,
-        textAlign: 'center',
-        marginBottom: appDimensions.MARGIN_LARGE,
-        lineHeight: appDimensions.LINE_HEIGHT_INTRO,
-    },
+    headerTitle: { flex: 1, fontSize: appDimensions.FONT_SIZE_PAGE_HEADER, fontWeight: '600', color: appColors.TEXT_COLOR_PRIMARY, textAlign: 'center', marginHorizontal: appDimensions.ICON_MARGIN_RIGHT, },
+    headerSpacer: { width: (appDimensions.ICON_SIZE_MEDIUM || 20) + ((appDimensions.PADDING_ICON_BUTTON || 5) * 2) }, // Added fallbacks
+    scrollContainer: { flexGrow: 1, paddingBottom: appDimensions.MARGIN_LARGE, backgroundColor: appColors.BACKGROUND_COLOR }, // Added BG color
+    innerContainer: { paddingHorizontal: appDimensions.MARGIN_MEDIUM, paddingTop: appDimensions.MARGIN_MEDIUM, },
+    introText: { fontSize: appDimensions.FONT_SIZE_INPUT, color: appColors.TEXT_COLOR_SECONDARY, textAlign: 'center', marginBottom: appDimensions.MARGIN_LARGE, lineHeight: appDimensions.LINE_HEIGHT_INTRO, },
     formSection: { marginBottom: appDimensions.MARGIN_LARGE },
-    label: {
-        fontSize: appDimensions.FONT_SIZE_SUBTITLE,
-        fontWeight: '500',
-        color: appColors.TEXT_COLOR_SECONDARY,
-        marginBottom: appDimensions.MARGIN_SMALL,
-    },
-    input: { // Style is kept in case you need other inputs later, but not used now
-        backgroundColor: appColors.WHITE_COLOR,
-        borderWidth: appDimensions.BORDER_WIDTH_INPUT,
-        borderColor: appColors.BORDER_COLOR_MEDIUM,
-        borderRadius: appDimensions.BORDER_RADIUS_INPUT,
-        paddingHorizontal: appDimensions.PADDING_INPUT_HORIZONTAL_PROFILE,
-        height: appDimensions.INPUT_HEIGHT_PROFILE,
-        fontSize: appDimensions.FONT_SIZE_INPUT,
-        color: appColors.TEXT_COLOR_PRIMARY,
-    },
-    buttonGroup: {
-        flexDirection: 'row',
-        gap: appDimensions.MARGIN_SMALL,
-    },
-    selectButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: appDimensions.PADDING_MEDIUM,
-        paddingHorizontal: appDimensions.PADDING_SMALL,
-        borderRadius: appDimensions.BORDER_RADIUS_BUTTON,
-        borderWidth: appDimensions.BORDER_WIDTH_GENDER_SEGMENT,
-        borderColor: appColors.BORDER_COLOR_MEDIUM,
-        backgroundColor: appColors.WHITE_COLOR,
-        flex: 1,
-        minHeight: appDimensions.BUTTON_MIN_HEIGHT_PROFILE,
-    },
+    label: { fontSize: appDimensions.FONT_SIZE_SUBTITLE, fontWeight: '500', color: appColors.TEXT_COLOR_SECONDARY, marginBottom: appDimensions.MARGIN_SMALL, },
+    buttonGroup: { flexDirection: 'row', gap: appDimensions.MARGIN_SMALL, },
+    selectButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: appDimensions.PADDING_MEDIUM, paddingHorizontal: appDimensions.PADDING_SMALL, borderRadius: appDimensions.BORDER_RADIUS_BUTTON, borderWidth: appDimensions.BORDER_WIDTH_GENDER_SEGMENT, borderColor: appColors.BORDER_COLOR_MEDIUM, backgroundColor: appColors.WHITE_COLOR, flex: 1, minHeight: appDimensions.BUTTON_MIN_HEIGHT_PROFILE, },
     gridButton: {},
-    selectButtonSelected: {
-        backgroundColor: appColors.PRIMARY_COLOR,
-        borderColor: appColors.PRIMARY_COLOR,
-    },
+    selectButtonSelected: { backgroundColor: appColors.PRIMARY_COLOR, borderColor: appColors.PRIMARY_COLOR, },
     buttonIcon: { marginRight: appDimensions.MARGIN_SMALL },
-    selectButtonText: {
-        fontSize: appDimensions.FONT_SIZE_LABEL,
-        fontWeight: '600',
-        color: appColors.PRIMARY_COLOR,
-        textAlign: 'center',
-    },
-    gridButtonText: {
-        fontSize: appDimensions.FONT_SIZE_LABEL,
-    },
+    selectButtonText: { fontSize: appDimensions.FONT_SIZE_LABEL, fontWeight: '600', color: appColors.PRIMARY_COLOR, textAlign: 'center', },
+    gridButtonText: { fontSize: appDimensions.FONT_SIZE_LABEL, },
     selectButtonTextSelected: { color: appColors.WHITE_COLOR },
     optionsList: {},
-    optionCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: appColors.WHITE_COLOR,
-        padding: appDimensions.PADDING_MEDIUM,
-        borderRadius: appDimensions.BORDER_RADIUS_CARD,
-        borderWidth: appDimensions.BORDER_WIDTH_GENDER_SEGMENT,
-        borderColor: appColors.BORDER_COLOR_MEDIUM,
-        marginBottom: appDimensions.MARGIN_MEDIUM,
-        minHeight: appDimensions.OPTION_CARD_MIN_HEIGHT,
-    },
-    optionCardSelected: {
-        borderColor: appColors.PRIMARY_COLOR,
-        backgroundColor: appColors.BACKGROUND_SELECTED_LIGHT,
-    },
-    optionIcon: {
-        marginRight: appDimensions.PADDING_MEDIUM,
-        width: appDimensions.ICON_SIZE_OPTION_CARD + 5,
-        textAlign: 'center',
-    },
-    optionTextWrapper: {
-        flex: 1,
-        marginRight: appDimensions.MARGIN_SMALL,
-    },
-    optionLabel: {
-        fontSize: appDimensions.FONT_SIZE_INPUT,
-        fontWeight: 'bold',
-        color: appColors.TEXT_COLOR_PRIMARY,
-        marginBottom: appDimensions.MARGIN_XXSMALL,
-    },
+    optionCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: appColors.WHITE_COLOR, padding: appDimensions.PADDING_MEDIUM, borderRadius: appDimensions.BORDER_RADIUS_CARD, borderWidth: appDimensions.BORDER_WIDTH_GENDER_SEGMENT, borderColor: appColors.BORDER_COLOR_MEDIUM, marginBottom: appDimensions.MARGIN_MEDIUM, minHeight: appDimensions.OPTION_CARD_MIN_HEIGHT, },
+    optionCardSelected: { borderColor: appColors.PRIMARY_COLOR, backgroundColor: appColors.BACKGROUND_SELECTED_LIGHT, },
+    optionIcon: { marginRight: appDimensions.PADDING_MEDIUM, width: (appDimensions.ICON_SIZE_OPTION_CARD || 20) + 5, textAlign: 'center', }, // Added fallback
+    optionTextWrapper: { flex: 1, marginRight: appDimensions.MARGIN_SMALL, },
+    optionLabel: { fontSize: appDimensions.FONT_SIZE_INPUT, fontWeight: 'bold', color: appColors.TEXT_COLOR_PRIMARY, marginBottom: appDimensions.MARGIN_XXSMALL, },
     optionLabelSelected: { color: appColors.PRIMARY_COLOR },
-    optionDescription: {
-        fontSize: appDimensions.FONT_SIZE_DESCRIPTION,
-        color: appColors.TEXT_COLOR_SECONDARY,
-        lineHeight: appDimensions.LINE_HEIGHT_DESCRIPTION,
-    },
-    optionDescriptionSelected: { color: appColors.TEXT_COLOR_SECONDARY },
-    checkIndicatorBase: {
-        width: appDimensions.CHECK_INDICATOR_SIZE,
-        height: appDimensions.CHECK_INDICATOR_SIZE,
-        borderRadius: appDimensions.CHECK_INDICATOR_SIZE / 2,
-        borderWidth: appDimensions.BORDER_WIDTH_GENDER_SEGMENT,
-        borderColor: appColors.BORDER_COLOR_MEDIUM,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: appColors.WHITE_COLOR,
-    },
-    checkIndicatorSelected: {
-        borderColor: appColors.PRIMARY_COLOR,
-        backgroundColor: appColors.PRIMARY_COLOR,
-    },
-    errorContainer: {
-        marginVertical: appDimensions.MARGIN_MEDIUM,
-        paddingHorizontal: appDimensions.PADDING_MEDIUM,
-        paddingVertical: appDimensions.PADDING_SMALL,
-        backgroundColor: appColors.ERROR_COLOR_BACKGROUND,
-        borderColor: appColors.ERROR_COLOR_BORDER,
-        borderWidth: appDimensions.BORDER_WIDTH_ERROR,
-        borderRadius: appDimensions.BORDER_RADIUS_BUTTON,
-    },
-    errorText: {
-        color: appColors.ERROR_COLOR_TEXT,
-        fontSize: appDimensions.FONT_SIZE_ERROR,
-        fontWeight: '500',
-        textAlign: 'center',
-    },
-    submitButton: {
-        backgroundColor: appColors.BUTTON_PRIMARY_BACKGROUND,
-        paddingVertical: appDimensions.PADDING_LARGE,
-        borderRadius: appDimensions.BORDER_RADIUS_BUTTON,
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: appDimensions.BUTTON_MIN_HEIGHT,
-        marginTop: appDimensions.MARGIN_MEDIUM,
-    },
-    submitButtonText: {
-        color: appColors.BUTTON_PRIMARY_TEXT,
-        fontWeight: 'bold',
-        fontSize: appDimensions.FONT_SIZE_BUTTON,
-    },
-    buttonDisabled: {
-        backgroundColor: appColors.BUTTON_DISABLED_BACKGROUND,
-        opacity: appDimensions.OPACITY_DISABLED,
-    },
+    optionDescription: { fontSize: appDimensions.FONT_SIZE_DESCRIPTION, color: appColors.TEXT_COLOR_SECONDARY, lineHeight: appDimensions.LINE_HEIGHT_DESCRIPTION, },
+    optionDescriptionSelected: { color: appColors.TEXT_COLOR_SECONDARY }, // Usually doesn't change color much
+    checkIndicatorBase: { width: appDimensions.CHECK_INDICATOR_SIZE, height: appDimensions.CHECK_INDICATOR_SIZE, borderRadius: appDimensions.CHECK_INDICATOR_SIZE / 2, borderWidth: appDimensions.BORDER_WIDTH_GENDER_SEGMENT, borderColor: appColors.BORDER_COLOR_MEDIUM, justifyContent: 'center', alignItems: 'center', backgroundColor: appColors.WHITE_COLOR, },
+    checkIndicatorSelected: { borderColor: appColors.PRIMARY_COLOR, backgroundColor: appColors.PRIMARY_COLOR, },
+    errorContainer: { marginVertical: appDimensions.MARGIN_MEDIUM, paddingHorizontal: appDimensions.PADDING_MEDIUM, paddingVertical: appDimensions.PADDING_SMALL, backgroundColor: appColors.ERROR_COLOR_BACKGROUND, borderColor: appColors.ERROR_COLOR_BORDER, borderWidth: appDimensions.BORDER_WIDTH_ERROR, borderRadius: appDimensions.BORDER_RADIUS_BUTTON, },
+    errorText: { color: appColors.ERROR_COLOR_TEXT, fontSize: appDimensions.FONT_SIZE_ERROR, fontWeight: '500', textAlign: 'center', },
+    submitButton: { backgroundColor: appColors.BUTTON_PRIMARY_BACKGROUND, paddingVertical: appDimensions.PADDING_LARGE, borderRadius: appDimensions.BORDER_RADIUS_BUTTON, alignItems: 'center', justifyContent: 'center', minHeight: appDimensions.BUTTON_MIN_HEIGHT, marginTop: appDimensions.MARGIN_MEDIUM, },
+    submitButtonText: { color: appColors.BUTTON_PRIMARY_TEXT, fontWeight: 'bold', fontSize: appDimensions.FONT_SIZE_BUTTON, },
+    buttonDisabled: { backgroundColor: appColors.BUTTON_DISABLED_BACKGROUND, opacity: appDimensions.OPACITY_DISABLED, },
 });
 
 export default SigninTwo;

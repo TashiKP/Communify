@@ -1,3 +1,4 @@
+import 'react-native-url-polyfill/auto';
 import React, { useEffect, useMemo } from 'react';
 import 'react-native-get-random-values';
 import {

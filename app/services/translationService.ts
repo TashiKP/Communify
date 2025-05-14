@@ -1,10 +1,9 @@
 // src/services/translationService.ts
 import axios from 'axios';
 import { Alert } from 'react-native';
+import {API_BASE_MODEL_URL} from "../config/apiConfig"
 
-// IMPORTANT: Replace with your ngrok URL or permanent backend URL
-const API_BASE_URL = 'https://f6dc-34-169-206-62.ngrok-free.app';
-const BATCH_TRANSLATE_API_URL = `${API_BASE_URL}/batch-translate`;
+const BATCH_TRANSLATE_API_URL = `${API_BASE_MODEL_URL}/batch-translate`;
 
 interface BatchTranslateRequest {
   words: string[];

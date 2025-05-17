@@ -5,7 +5,6 @@ import {
   Image,
   StyleSheet,
   ActivityIndicator,
-  Platform,
   TouchableOpacity,
 } from 'react-native';
 import axios, { CancelTokenSource, AxiosError } from 'axios';
@@ -21,87 +20,94 @@ interface CateComponentProps {
   languageForArasaac: string;
   isSelected?: boolean;
   onPress?: () => void;
+  themeBorderColor?: string; // Added as an optional prop
 }
 
 const CateComponent: React.FC<CateComponentProps> = React.memo(
-  ({ keyword, iconKeywordForArasaac, languageForArasaac, isSelected = false, onPress }) => {
+  ({ keyword, iconKeywordForArasaac, languageForArasaac, isSelected = false, onPress, themeBorderColor }) => {
     const { theme, fonts } = useAppearance();
     const { t, i18n } = useTranslation();
     const currentLanguage = i18n.language;
-    const styles = useMemo(
-      () => createThemedStyles(theme, fonts, isSelected, currentLanguage),
-      [theme, fonts, isSelected, currentLanguage]
-    );
 
     const [pictogramUrl, setPictogramUrl] = useState<string | null>(null);
-    const [loading, setLoading] = useState<boolean>(true);
-    const [fetchAttempted, setFetchAttempted] = useState<boolean>(false);
+    const [loading, setLoading] = useState<boolean>(false);
+    const [errorOccurred, setErrorOccurred] = useState<boolean>(false);
+
     const isMountedRef = useRef(true);
     const cancelTokenSourceRef = useRef<CancelTokenSource | null>(null);
 
+    const styles = useMemo(
+      () => createThemedStyles(theme, fonts, isSelected, currentLanguage, themeBorderColor),
+      [theme, fonts, isSelected, currentLanguage, themeBorderColor]
+    );
+
     useEffect(() => {
       isMountedRef.current = true;
-      console.log(`CateComponent: Mounted for keyword "${keyword}", iconKeyword: "${iconKeywordForArasaac}"`);
+      console.log(`CateComponent: Mounted/Updated for keyword "${keyword}", iconKeyword: "${iconKeywordForArasaac}"`);
+
       return () => {
         isMountedRef.current = false;
         console.log(`CateComponent: Unmounted for keyword "${keyword}"`);
-        if (cancelTokenSourceRef.current) {
-          cancelTokenSourceRef.current.cancel('Component unmounted');
-        }
       };
-    }, []);
+    }, [keyword, iconKeywordForArasaac]);
 
     useEffect(() => {
-      if (!isMountedRef.current) return;
       setPictogramUrl(null);
-      setLoading(true);
-      setFetchAttempted(false);
+      setErrorOccurred(false);
 
-      if (
+      const isSpecialKeyword =
         !iconKeywordForArasaac ||
         iconKeywordForArasaac.toLowerCase() === 'contextual' ||
-        iconKeywordForArasaac.toLowerCase() === 'custom'
-      ) {
-        if (isMountedRef.current) setLoading(false);
+        iconKeywordForArasaac.toLowerCase() === 'custom';
+
+      if (isSpecialKeyword) {
+        setLoading(false);
         return;
       }
 
-      let timer: NodeJS.Timeout | null = null;
-      cancelTokenSourceRef.current = axios.CancelToken.source(); // Create new cancel token
+      setLoading(true);
+      cancelTokenSourceRef.current = axios.CancelToken.source();
+      const currentToken = cancelTokenSourceRef.current;
+
       const fetchPictogram = async () => {
-        if (!isMountedRef.current) return;
-        setFetchAttempted(true);
         const searchUrl = `https://api.arasaac.org/api/pictograms/${languageForArasaac}/search/${encodeURIComponent(
           iconKeywordForArasaac
         )}`;
         try {
           const response = await axios.get(searchUrl, {
-            cancelToken: cancelTokenSourceRef.current?.token,
+            cancelToken: currentToken.token,
           });
-          if (isMountedRef.current && response.data?.[0]?._id) {
-            setPictogramUrl(`https://static.arasaac.org/pictograms/${response.data[0]._id}/${response.data[0]._id}_300.png`);
-          } else if (isMountedRef.current) {
-            setPictogramUrl(null);
+
+          if (isMountedRef.current) {
+            if (response.data?.[0]?._id) {
+              setPictogramUrl(`https://static.arasaac.org/pictograms/${response.data[0]._id}/${response.data[0]._id}_300.png`);
+            } else {
+              setPictogramUrl(null);
+              setErrorOccurred(true);
+            }
           }
         } catch (err) {
           if (axios.isCancel(err)) {
-            // Ignore cancellation errors
+            console.log(`CateComponent: Arasaac fetch cancelled for '${iconKeywordForArasaac}'.`);
             return;
           }
           if (isMountedRef.current) {
             console.error(`CateComponent: Arasaac fetch error for '${iconKeywordForArasaac}':`, (err as Error).message);
             setPictogramUrl(null);
+            setErrorOccurred(true);
           }
         } finally {
-          if (isMountedRef.current) setLoading(false);
+          if (isMountedRef.current) {
+            setLoading(false);
+          }
         }
       };
-      timer = setTimeout(fetchPictogram, 50);
+
+      fetchPictogram();
+
       return () => {
-        if (timer) clearTimeout(timer);
-        if (cancelTokenSourceRef.current) {
-          cancelTokenSourceRef.current.cancel('Component unmounted');
-        }
+        console.log(`CateComponent: Cleanup for fetch effect (keyword: ${iconKeywordForArasaac}). Cancelling request.`);
+        currentToken.cancel('Component unmounted or dependencies changed, cancelling pictogram fetch.');
       };
     }, [iconKeywordForArasaac, languageForArasaac]);
 
@@ -110,10 +116,19 @@ const CateComponent: React.FC<CateComponentProps> = React.memo(
     };
 
     const iconColor = isSelected ? theme.primary : theme.textSecondary;
-
     const accessibilityLabelText = isSelected
       ? t('cateComponent.selectedAccessibilityLabel', { category: keyword })
       : t('cateComponent.accessibilityLabel', { category: keyword });
+
+    const renderIcon = () => {
+      if (loading) {
+        return <ActivityIndicator size="small" color={theme.textSecondary} />;
+      }
+      if (pictogramUrl) {
+        return <Image source={{ uri: pictogramUrl }} style={styles.symbolImage} resizeMode="contain" />;
+      }
+      return <FontAwesomeIcon icon={faFolder} size={fonts.h2} color={iconColor} />;
+    };
 
     return (
       <TouchableOpacity
@@ -124,26 +139,7 @@ const CateComponent: React.FC<CateComponentProps> = React.memo(
         accessibilityRole="button"
         accessibilityState={{ selected: isSelected }}
       >
-        <View style={styles.iconContainer}>
-          {loading && fetchAttempted && <ActivityIndicator size="small" color={theme.textSecondary} />}
-          {!loading && pictogramUrl && (
-            <Image source={{ uri: pictogramUrl }} style={styles.symbolImage} resizeMode="contain" />
-          )}
-          {!loading &&
-            (!pictogramUrl ||
-              (!fetchAttempted &&
-                (iconKeywordForArasaac.toLowerCase() === 'contextual' ||
-                  iconKeywordForArasaac.toLowerCase() === 'custom'))) && (
-              <FontAwesomeIcon icon={faFolder} size={fonts.h2} color={iconColor} />
-            )}
-          {!loading &&
-            !pictogramUrl &&
-            fetchAttempted &&
-            iconKeywordForArasaac.toLowerCase() !== 'contextual' &&
-            iconKeywordForArasaac.toLowerCase() !== 'custom' && (
-              <FontAwesomeIcon icon={faFolder} size={fonts.h2} color={iconColor} />
-            )}
-        </View>
+        <View style={styles.iconContainer}>{renderIcon()}</View>
         <Text style={styles.keywordText} numberOfLines={2} ellipsizeMode="tail">
           {keyword}
         </Text>
@@ -153,7 +149,7 @@ const CateComponent: React.FC<CateComponentProps> = React.memo(
   }
 );
 
-const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, isSelected: boolean, currentLanguage: string) => {
+const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, isSelected: boolean, currentLanguage: string, themeBorderColor?: string) => {
   const bodyTextStyles = getLanguageSpecificTextStyle('body', fonts, currentLanguage);
 
   return StyleSheet.create({
@@ -174,7 +170,7 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, isSelected: bo
       borderRadius: 6,
       overflow: 'hidden',
       borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.border,
+      borderColor: themeBorderColor || theme.border, // Use themeBorderColor if provided, fall back to theme.border
     },
     symbolImage: {
       width: '85%',

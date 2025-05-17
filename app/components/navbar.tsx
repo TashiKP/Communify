@@ -1,3 +1,4 @@
+// src/components/Navbar.tsx
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
@@ -8,53 +9,77 @@ import {
   Animated,
   Easing,
   Alert,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import { faUserCircle } from '@fortawesome/free-solid-svg-icons';
-import ProfileModal from './ProfileModal';
 import { useTranslation } from 'react-i18next';
+import RNFS from 'react-native-fs'; // Keep for profile save logic
 
-import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext';
-import { useLanguage, LanguageCode } from '../context/LanguageContext';
-import { useAuth } from '../context/AuthContext';
-import { getLanguageSpecificTextStyle } from '../styles/typography';
+// --- React Navigation Imports ---
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { MainAppStackParamList } from '../navigation/MainAppNavigator'; // Adjust path if necessary
+
+// --- App Imports ---
+import ProfileModal from './ProfileModal'; // Adjust path if necessary
+import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext'; // Adjust path if necessary
+import { useLanguage, LanguageCode } from '../context/LanguageContext'; // Adjust path if necessary
+import { useAuth } from '../context/AuthContext'; // Adjust path if necessary
+import { getLanguageSpecificTextStyle } from '../styles/typography'; // Adjust path if necessary
+import apiService, { handleApiError, UserRead } from '../services/apiService'; // Adjust path if necessary
+// import { ASYNC_STORAGE_KEYS } from '../constants/storageKeys'; // Uncomment if ASYNC_STORAGE_KEYS is used
 
 const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
+
+type NavbarNavigationProp = NativeStackNavigationProp<MainAppStackParamList>;
 
 const Navbar: React.FC = () => {
   const { theme, fonts } = useAppearance();
   const { currentLanguage, changeLanguage } = useLanguage();
-  const { signOut } = useAuth();
+  const { user: authUser, setUser: setAuthContextUser, updateUserAvatarInContextAndStorage } = useAuth();
   const { t } = useTranslation();
+  const navigation = useNavigation<NavbarNavigationProp>();
 
   const [profileModalVisible, setProfileModalVisible] = useState(false);
   const toggleAnim = useRef(new Animated.Value(currentLanguage === 'en' ? 0 : 1)).current;
-
-  const [profileName, setProfileName] = useState(() => t('profile.defaultUserName', 'Communify User'));
-  const [profileAvatar, setProfileAvatar] = useState<string | undefined>(undefined);
-  const profileEmail = 'user@example.com';
+  const isMountedRef = useRef(true); // To prevent state updates on unmounted component
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   const styles = useMemo(
     () => createThemedStyles(theme, fonts, currentLanguage),
     [theme, fonts, currentLanguage]
   );
 
+  // Effect for managing the mounted state of the component
   useEffect(() => {
-    Animated.timing(toggleAnim, {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  // Effect for language toggle animation
+  useEffect(() => {
+    const animation = Animated.timing(toggleAnim, {
       toValue: currentLanguage === 'en' ? 0 : 1,
       duration: 250,
       easing: Easing.bezier(0.25, 0.1, 0.25, 1),
-      useNativeDriver: false,
-    }).start();
+      useNativeDriver: false, // Necessary for 'left' style animation
+    });
+
+    animation.start();
 
     return () => {
-      toggleAnim.stopAnimation();
+      // Stop the animation when the component unmounts or currentLanguage/toggleAnim changes
+      animation.stop();
     };
   }, [currentLanguage, toggleAnim]);
 
   const sliderPosition = toggleAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['5%', '55%'],
+    outputRange: ['5%', '55%'], // Adjust these values based on your layout
   });
 
   const toggleLanguageHandler = useCallback(() => {
@@ -62,56 +87,90 @@ const Navbar: React.FC = () => {
     changeLanguage(newLang);
   }, [currentLanguage, changeLanguage]);
 
-  const openProfileModal = useCallback(() => setProfileModalVisible(true), []);
-  const closeProfileModal = useCallback(() => setProfileModalVisible(false), []);
-
-  const handleLogout = async () => {
-    console.log('[Navbar] Logout initiated. Closing modal.');
-    closeProfileModal(); // Modal closes
-
-    // --- DELAY REMOVED ---
-    // console.log('[Navbar] Modal closed, delaying signOut.');
-    // await new Promise(resolve => setTimeout(resolve, 300));
-    // --- END DELAY REMOVED ---
-
-    console.log('[Navbar] Calling auth.signOut() immediately after modal close.');
-    try {
-      await signOut();
-      console.log('[Navbar] auth.signOut() completed successfully.');
-    } catch (e) {
-      console.error('[Navbar] Error during signOut:', e);
-      Alert.alert(
-        t('profile.logoutErrorTitle', 'Logout Error'),
-        t('profile.logoutErrorMessage', 'Could not log out. Please try again.')
-      );
-    }
-  };
-
-  const handleSaveProfile = useCallback(async (newName: string, newAvatarUri?: string | null) => {
-    console.log('[Navbar] Attempting to save profile. Name:', newName, 'Avatar:', newAvatarUri);
-    return new Promise<void>((resolve) => {
-      setTimeout(() => {
-        setProfileName(newName);
-        setProfileAvatar(newAvatarUri ?? undefined);
-        console.log('[Navbar] Profile updated locally.');
-        resolve();
-      }, 500);
-    });
+  const openProfileModal = useCallback(() => {
+    if (isMountedRef.current) setProfileModalVisible(true);
   }, []);
 
-  const userProfileData = useMemo(
-    () => ({
-      name: profileName,
-      email: profileEmail,
-      avatar: profileAvatar,
-    }),
-    [profileName, profileEmail, profileAvatar]
-  );
+  const closeProfileModal = useCallback(() => {
+    if (isMountedRef.current) setProfileModalVisible(false);
+  }, []);
+
+  const handleLogoutNavigation = useCallback(() => {
+    if (profileModalVisible) {
+      closeProfileModal(); // Ensure modal is closed before navigating
+    }
+    console.log('[Navbar] Logout initiated. Navigating to LoggingOut screen.');
+    navigation.navigate('LoggingOut');
+  }, [profileModalVisible, closeProfileModal, navigation]);
+
+  const handleSaveProfile = useCallback(async (
+    newName: string,
+    avatarUpdateInstruction?: string | null // Can be a new path, null to remove, or undefined if no change
+  ) => {
+    if (!authUser || !setAuthContextUser || !updateUserAvatarInContextAndStorage) {
+      Alert.alert(t('common.error', 'Authentication Error'), "User not authenticated. Cannot save profile.");
+      return;
+    }
+
+    if (isMountedRef.current) setIsSavingProfile(true);
+
+    try {
+      let updatedUserFromApi: UserRead | null = null;
+      const trimmedNewName = newName.trim();
+
+      // Update name if changed
+      if (trimmedNewName !== authUser.name) {
+        updatedUserFromApi = await apiService.updateCurrentUserProfile({ name: trimmedNewName });
+      }
+
+      let finalLocalAvatarPathForContext = authUser.localAvatarPath;
+
+      // Handle avatar update if instruction is provided (not undefined)
+      if (avatarUpdateInstruction !== undefined) { // An avatar update IS requested
+        const oldLocalAvatarPathFromContext = authUser.localAvatarPath;
+        await updateUserAvatarInContextAndStorage(authUser.id, avatarUpdateInstruction);
+        finalLocalAvatarPathForContext = avatarUpdateInstruction;
+        if (oldLocalAvatarPathFromContext && oldLocalAvatarPathFromContext !== finalLocalAvatarPathForContext) {
+            const pathToDelete = oldLocalAvatarPathFromContext.replace('file://', '');
+            try {
+              if (await RNFS.exists(pathToDelete)) {
+                  await RNFS.unlink(pathToDelete);
+                  console.log('[Navbar] Successfully deleted old avatar file:', pathToDelete);
+              }
+            } catch (deleteError) {
+              console.error("[Navbar] Error deleting old avatar file:", deleteError);
+            }
+        }
+      }
+
+      // Update AuthContext
+      setAuthContextUser(prevUser => {
+        if (!prevUser) return null;
+        return {
+          ...prevUser,
+          name: updatedUserFromApi?.name || trimmedNewName, // Use API name if available, else trimmed input
+          ...(updatedUserFromApi ? { age: updatedUserFromApi.age, gender: updatedUserFromApi.gender } : {}), // Spread other details if API call was made
+          localAvatarPath: finalLocalAvatarPathForContext,
+        };
+      });
+
+      if (isMountedRef.current) {
+        Alert.alert(t('profile.saveSuccessTitle', 'Profile Updated'), t('profile.saveSuccessMessage', 'Your profile has been updated.'));
+        closeProfileModal();
+      }
+    } catch (error) {
+      const apiError = handleApiError(error);
+      if (isMountedRef.current) {
+        Alert.alert(t('profile.errors.saveFailTitle', 'Update Failed'), apiError.message);
+      }
+    } finally {
+      if (isMountedRef.current) setIsSavingProfile(false);
+    }
+  }, [authUser, setAuthContextUser, updateUserAvatarInContextAndStorage, t, closeProfileModal]);
 
   return (
     <>
       <View style={styles.navbar}>
-        {/* ... rest of Navbar JSX ... */}
         <View style={styles.navSectionLeft}>
           <TouchableOpacity
             style={styles.toggleButton}
@@ -119,20 +178,16 @@ const Navbar: React.FC = () => {
             activeOpacity={0.8}
             hitSlop={hitSlop}
             accessibilityRole="switch"
-            accessibilityLabel={t('navbar.toggleLanguage', 'Toggle language')}
+            accessibilityLabel={t('navbar.toggleLanguage')}
             accessibilityState={{ checked: currentLanguage === 'dzo' }}
           >
             <View style={styles.toggleTextContainer}>
-              <Text style={[styles.toggleText, styles.toggleTextInactive]}>
-                {t('navbar.langEng', 'EN')}
-              </Text>
-              <Text style={[styles.toggleText, styles.toggleTextInactive]}>
-                {t('navbar.langDzo', 'DZ')}
-              </Text>
+              <Text style={[styles.toggleText, styles.toggleTextInactive]}>EN</Text>
+              <Text style={[styles.toggleText, styles.toggleTextInactive]}>DZ</Text>
             </View>
             <Animated.View style={[styles.toggleSlider, { left: sliderPosition }]}>
               <Text style={styles.toggleTextActive}>
-                {currentLanguage === 'en' ? t('navbar.langEng', 'EN') : t('navbar.langDzo', 'DZ')}
+                {currentLanguage === 'en' ? 'EN' : 'DZ'}
               </Text>
             </Animated.View>
           </TouchableOpacity>
@@ -147,20 +202,30 @@ const Navbar: React.FC = () => {
             onPress={openProfileModal}
             hitSlop={hitSlop}
             accessibilityRole="button"
-            accessibilityLabel={t('navbar.profileButton', 'Open profile')}
+            accessibilityLabel={t('navbar.profileButton')}
+            disabled={!authUser || isSavingProfile} // Disable if no user or currently saving
           >
-            <FontAwesomeIcon icon={faUserCircle} size={fonts.h1 * 1.1} color={theme.white} />
+            {isSavingProfile && authUser ? (
+                <ActivityIndicator size={fonts.h1 * 0.8} color={theme.white} />
+            ) : authUser?.localAvatarPath ? (
+              <Image source={{ uri: authUser.localAvatarPath }} style={styles.navbarAvatar} />
+            ) : (
+              <FontAwesomeIcon icon={faUserCircle} size={fonts.h1 * 1.0} color={theme.white} />
+            )}
           </TouchableOpacity>
         </View>
       </View>
 
-      <ProfileModal
-        visible={profileModalVisible}
-        onClose={closeProfileModal}
-        onLogout={handleLogout}
-        userProfile={userProfileData}
-        onSave={handleSaveProfile}
-      />
+      {profileModalVisible && authUser && (
+          <ProfileModal
+            visible={profileModalVisible}
+            onClose={closeProfileModal}
+            onLogout={handleLogoutNavigation}
+            onSave={handleSaveProfile}
+            // Ensure ProfileModal receives necessary props like authUser for initial values
+            // currentUser={authUser} // Example: if ProfileModal needs the user object
+          />
+      )}
     </>
   );
 };
@@ -171,27 +236,28 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: theme.primary,
-      paddingTop: Platform.OS === 'ios' ? 10 : 5,
+      paddingTop: Platform.OS === 'ios' ? 40 : 10,
       paddingBottom: 10,
       paddingHorizontal: 15,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: theme.isDark ? 0.3 : 0.15,
+      shadowOpacity: theme.isDark ? 0.4 : 0.1,
       shadowRadius: 3,
-      elevation: 4,
+      elevation: 5,
+      zIndex: 10, // Ensure Navbar is above other content
     },
     navSectionLeft: {
-      width: 70,
+      width: 70, // Fixed width for alignment
       justifyContent: 'center',
       alignItems: 'flex-start',
     },
     navSectionCenter: {
-      flex: 1,
+      flex: 1, // Takes remaining space
       justifyContent: 'center',
       alignItems: 'center',
     },
     navSectionRight: {
-      width: 70,
+      width: 70, // Fixed width for alignment
       justifyContent: 'center',
       alignItems: 'flex-end',
     },
@@ -199,9 +265,9 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
       width: 65,
       height: 30,
       borderRadius: 15,
-      backgroundColor: theme.isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
-      position: 'relative',
-      overflow: 'hidden',
+      backgroundColor: theme.isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)',
+      justifyContent: 'center',
+      position: 'relative', // For absolute positioning of the slider
     },
     toggleTextContainer: {
       flexDirection: 'row',
@@ -209,41 +275,47 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
       alignItems: 'center',
       width: '100%',
       height: '100%',
-      paddingHorizontal: 4,
+      paddingHorizontal: 5,
     },
     toggleSlider: {
-      width: '50%',
-      height: '88%',
+      width: '48%', // Or a fixed pixel value
+      height: '80%',
       borderRadius: 12,
-      marginVertical: '6%',
       backgroundColor: theme.white,
       position: 'absolute',
+      top: '10%',
       justifyContent: 'center',
       alignItems: 'center',
-      shadowColor: '#000',
+      elevation: 1, // Android shadow
+      shadowColor: '#000', // iOS shadow
       shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.2,
+      shadowOpacity: 0.1,
       shadowRadius: 1,
-      elevation: 2,
     },
     toggleText: {
       ...getLanguageSpecificTextStyle('caption', fonts, currentLanguage),
       fontWeight: 'bold',
-      fontSize: fonts.caption * 0.9,
+      fontSize: fonts.caption * 0.85, // Adjust multiplier as needed
     },
     toggleTextInactive: {
-      color: theme.isDark ? 'rgba(255, 255, 255, 0.6)' : 'rgba(255, 255, 255, 0.7)',
+      color: theme.isDark ? 'rgba(255,255,255,0.7)' : theme.white,
     },
     toggleTextActive: {
       ...getLanguageSpecificTextStyle('caption', fonts, currentLanguage),
       color: theme.primary,
       fontWeight: 'bold',
-      fontSize: fonts.caption * 0.9,
+      fontSize: fonts.caption * 0.85, // Adjust multiplier as needed
     },
     navbarTitle: {
       ...getLanguageSpecificTextStyle('h1', fonts, currentLanguage),
       color: theme.white,
       fontWeight: 'bold',
+    },
+    navbarAvatar: {
+      width: fonts.h1 * 1.0, // Dynamic size based on font settings
+      height: fonts.h1 * 1.0,
+      borderRadius: (fonts.h1 * 1.0) / 2, // Make it a circle
+      backgroundColor: theme.disabled, // Placeholder background if image fails
     },
   });
 

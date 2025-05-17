@@ -13,8 +13,7 @@ import {
   Platform,
 } from 'react-native';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
-import { faLock, faTimes } from '@fortawesome/free-solid-svg-icons'; // faCheck removed as button has text
-// Removed KeychainService import as we'll use apiService
+import { faLock, faTimes } from '@fortawesome/free-solid-svg-icons';
 import { useTranslation } from 'react-i18next';
 
 // --- API Service ---
@@ -25,8 +24,8 @@ import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceCont
 // --- Import Typography Utility ---
 import { getLanguageSpecificTextStyle } from '../styles/typography'; // Adjust path
 
-// --- Local Constants ---
-const errorColor = '#dc3545'; // Or from theme.error if defined
+// --- Local Constant for Error Color ---
+const DEDICATED_ERROR_COLOR = '#dc3545';
 
 // --- Component Props ---
 interface PasscodePromptModalProps {
@@ -58,30 +57,28 @@ const PasscodePromptModal: React.FC<PasscodePromptModalProps> = ({ visible, onCl
   }, []);
 
   const handleVerify = async () => {
-    if (!enteredPasscode.trim() || isLoading) return; // Check for non-empty passcode
+    if (!enteredPasscode.trim() || isLoading) return;
     if (isMountedRef.current) setError(null);
     if (isMountedRef.current) setIsLoading(true);
     Keyboard.dismiss();
 
     try {
-      // --- API Integration: Call API to verify passcode ---
       const verificationResult = await apiService.verifyParentalPasscode(enteredPasscode);
 
       if (isMountedRef.current) {
         if (verificationResult.isCorrect) {
-          setEnteredPasscode(''); // Clear on success
+          setEnteredPasscode('');
           onVerified();
-          // onClose(); // Often onVerified implies closing, or parent handles it.
         } else {
           setError(verificationResult.message || t('passcodePrompt.errors.incorrectApi', 'Incorrect passcode.'));
-          setEnteredPasscode(''); // Clear on error
+          setEnteredPasscode('');
           inputRef.current?.focus();
         }
       }
-    } catch (apiError) { // Should be caught by apiService, but defensive
+    } catch (apiError) {
       console.error('Passcode verification unexpected error:', apiError);
       if (isMountedRef.current) {
-        const extractedError = handleApiError(apiError); // Use your handler
+        const extractedError = handleApiError(apiError);
         setError(extractedError.message || t('passcodePrompt.errors.verificationFailedApi', 'Verification failed. Please try again.'));
         setEnteredPasscode('');
       }
@@ -93,10 +90,9 @@ const PasscodePromptModal: React.FC<PasscodePromptModalProps> = ({ visible, onCl
   };
 
   const handleCancel = () => {
-    if (isLoading) return; // Prevent closing while loading
+    if (isLoading) return;
     setEnteredPasscode('');
     setError(null);
-    // setIsLoading(false); // isLoading should be false if not in handleVerify
     onClose();
   };
 
@@ -105,22 +101,21 @@ const PasscodePromptModal: React.FC<PasscodePromptModalProps> = ({ visible, onCl
       // Reset state when modal becomes visible, then focus
       if (isMountedRef.current) {
         setEnteredPasscode('');
-        setError(null);
-        setIsLoading(false); // Ensure loading is reset
+        setError(null); // This clears any previous error message
+        setIsLoading(false);
       }
       const timer = setTimeout(() => {
         if (isMountedRef.current) inputRef.current?.focus();
-      }, Platform.OS === 'ios' ? 200 : 300); // Slightly longer delay for Android focus
+      }, Platform.OS === 'ios' ? 200 : 300);
       return () => clearTimeout(timer);
     }
-    // No need to reset state on close here, handleCancel does it, or onVerified.
   }, [visible]);
 
   return (
     <Modal visible={visible} transparent={true} animationType="fade" onRequestClose={handleCancel}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <View style={styles.modalOverlay}>
-          <TouchableWithoutFeedback accessible={false}> {/* Prevents outer dismiss if tapping modal content */}
+          <TouchableWithoutFeedback accessible={false}> 
             <View style={styles.modalContainer}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>{t('passcodePrompt.title')}</Text>
@@ -150,10 +145,10 @@ const PasscodePromptModal: React.FC<PasscodePromptModalProps> = ({ visible, onCl
                     placeholderTextColor={theme.disabled || '#aaa'}
                     returnKeyType="done"
                     onSubmitEditing={handleVerify}
-                    autoFocus={false} // Focus is handled by useEffect
+                    autoFocus={false}
                     selectionColor={theme.primary || '#007aff'}
                     keyboardAppearance={theme.isDark ? 'dark' : 'light'}
-                    blurOnSubmit={false} // Keep keyboard if verify fails
+                    blurOnSubmit={false}
                   />
                 </View>
 
@@ -190,7 +185,7 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
   return StyleSheet.create({
     modalOverlay: {
       flex: 1,
-      backgroundColor: theme.isDark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.6)', // Darker overlay
+      backgroundColor: theme.isDark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.6)',
       justifyContent: 'center',
       alignItems: 'center',
       padding: 20,
@@ -206,37 +201,37 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
       shadowOpacity: 0.25,
       shadowRadius: 4,
       elevation: 5,
-      borderWidth: theme.isDark ? StyleSheet.hairlineWidth : 0, // Subtle border for dark theme
+      borderWidth: theme.isDark ? StyleSheet.hairlineWidth : 0,
       borderColor: theme.border || '#444',
     },
     modalHeader: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center', // Center title by default
+      justifyContent: 'center',
       paddingVertical: 14,
-      paddingHorizontal: 15, // Overall padding
+      paddingHorizontal: 15,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border || '#ddd',
-      position: 'relative', // For absolute positioning of close button
-      backgroundColor: theme.background || '#f8f8f8', // Slightly different header bg
+      position: 'relative',
+      backgroundColor: theme.background || '#f8f8f8',
     },
     modalTitle: {
       ...getLanguageSpecificTextStyle('h2', fonts, currentLanguage),
       fontSize: h2FontSize,
-      fontWeight: '600', // Slightly less bold than 'bold'
+      fontWeight: '600',
       color: theme.text || '#000',
-      textAlign: 'center', // Explicitly center
-      flex: 1, // Allow title to take space and center
-      marginHorizontal: 40, // Space for close button without overlap
+      textAlign: 'center',
+      flex: 1,
+      marginHorizontal: 40,
     },
     closeButton: {
       position: 'absolute',
-      right: 0, // Position to the very right
+      right: 0,
       top: 0,
       bottom: 0,
       justifyContent: 'center',
-      paddingHorizontal: 15, // Clickable area
-      zIndex: 1, // Ensure it's above title if text is long
+      paddingHorizontal: 15,
+      zIndex: 1,
     },
     modalBody: {
       padding: 25,
@@ -247,7 +242,7 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
       color: theme.textSecondary || '#555',
       textAlign: 'center',
       marginBottom: 20,
-      lineHeight: bodyFontSize * 1.4, // Better readability
+      lineHeight: bodyFontSize * 1.4,
     },
     inputWrapper: {
       flexDirection: 'row',
@@ -256,7 +251,7 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
       borderWidth: 1,
       borderColor: theme.border || '#ccc',
       borderRadius: 8,
-      height: 50, // Consistent height
+      height: 50,
       paddingHorizontal: 12,
       marginBottom: 15,
     },
@@ -273,7 +268,7 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
     errorText: {
       ...getLanguageSpecificTextStyle('caption', fonts, currentLanguage),
       fontSize: captionFontSize,
-      color: errorColor, // Use defined errorColor
+      color: DEDICATED_ERROR_COLOR,
       textAlign: 'center',
       marginBottom: 15,
       fontWeight: '500',
@@ -283,7 +278,7 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
       paddingVertical: 14,
       borderRadius: 8,
       alignItems: 'center',
-      minHeight: 48, // Good tap target size
+      minHeight: 48,
       justifyContent: 'center',
     },
     verifyButtonText: {
@@ -292,8 +287,8 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
       fontWeight: 'bold',
     },
     buttonDisabled: {
-      backgroundColor: theme.disabled || '#ccc', // Use theme disabled color
-      opacity: 0.7, // Keep opacity for visual cue
+      backgroundColor: theme.disabled || '#ccc',
+      opacity: 0.7,
     },
   });
 };

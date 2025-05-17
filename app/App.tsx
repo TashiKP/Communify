@@ -1,26 +1,27 @@
 import 'react-native-url-polyfill/auto';
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import 'react-native-get-random-values';
 import {
-    SafeAreaView,
-    StyleSheet,
-    StatusBar,
-    View,
-    ActivityIndicator,
-    Text,
+  SafeAreaView,
+  StyleSheet,
+  StatusBar,
+  View,
+  ActivityIndicator,
+  Text,
 } from 'react-native';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
 import Orientation from 'react-native-orientation-locker';
 import * as Sentry from '@sentry/react-native';
 
 // --- Import Constants ---
 import {
-    LOADER_COLOR,
-    DEFAULT_BACKGROUND_COLOR,
-    ERROR_FALLBACK_TEXT_COLOR,
-    ERROR_FALLBACK_MESSAGE_COLOR,
-    ERROR_DETAILS_COLOR,
-} from './constants/colors'; // Or import from './constants' if using barrel file fully
+  LOADER_COLOR,
+  DEFAULT_BACKGROUND_COLOR,
+  ERROR_FALLBACK_TEXT_COLOR,
+  ERROR_FALLBACK_MESSAGE_COLOR,
+  ERROR_DETAILS_COLOR,
+} from './constants/colors';
 import { TestIDs } from './constants/testIDs';
 
 // Contexts
@@ -33,7 +34,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import AuthNavigator from './navigation/AuthNavigator';
 import MainAppNavigator from './navigation/MainAppNavigator';
 
-// --- Error Boundary (Simple Example) ---
+// --- Error Boundary ---
 interface ErrorBoundaryProps {
   children: React.ReactNode;
   fallback?: React.ReactNode;
@@ -54,14 +55,14 @@ class AppErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundary
     return { hasError: true, error };
   }
 
-componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("ErrorBoundary caught an error:", error, errorInfo);
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('ErrorBoundary caught an error:', error, errorInfo);
     Sentry.captureException(error, {
-        extra: {
-            componentStack: errorInfo.componentStack,
-        },
+      extra: {
+        componentStack: errorInfo.componentStack,
+      },
     });
-}
+  }
 
   render() {
     if (this.state.hasError) {
@@ -86,143 +87,178 @@ componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
   }
 }
 
-// --- Themed Content (Main App UI after loading) ---
-const ThemedAppContent: React.FC = () => {
-    const { theme, brightnessOverlayOpacity, statusBarStyle } = useAppearance();
+// --- Transition Screen ---
+const TransitionScreen: React.FC = () => {
+  const { signOut, isLoading: isAuthLoading } = useAuth();
+  const { theme } = useAppearance();
+  const [isTransitioning, setIsTransitioning] = useState(true);
 
+  useEffect(() => {
+    let isMounted = true;
+    const performLogout = async () => {
+      try {
+        await signOut();
+        if (isMounted) {
+          // Wait for cleanup
+          await new Promise(resolve => setTimeout(resolve, 200));
+          setIsTransitioning(false);
+        }
+      } catch (error) {
+        console.error('[TransitionScreen] Logout failed:', error);
+        setIsTransitioning(false);
+      }
+    };
+
+    performLogout();
+
+    return () => {
+      isMounted = false;
+      console.log('[TransitionScreen] Unmounted');
+    };
+  }, [signOut]);
+
+  if (isTransitioning || isAuthLoading) {
     return (
-        <View style={[styles.appContainer, { backgroundColor: theme.background }]}>
-            <StatusBar
-                barStyle={statusBarStyle}
-                backgroundColor={theme.primary}
-                translucent={false}
-            />
-            <MainAppNavigator />
-            {brightnessOverlayOpacity > 0 && (
-                <View
-                    style={[
-                        styles.brightnessOverlay,
-                        { backgroundColor: `rgba(0, 0, 0, ${brightnessOverlayOpacity})` },
-                    ]}
-                    pointerEvents="none"
-                />
-            )}
-        </View>
+      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={LOADER_COLOR} />
+        <Text style={[styles.text, { color: theme.text }]}>Logging out...</Text>
+      </View>
     );
+  }
+
+  return null; // Transition complete, navigator will switch
 };
 
-// --- Component to Decide Between Loading, Auth, or Main App ---
-const AppLoadingOrContent: React.FC = () => {
-    const { userToken, isLoading: isAuthLoading } = useAuth();
-    const { isLoadingAppearance, theme } = useAppearance();
+// --- Themed Content ---
+const ThemedAppContent: React.FC = () => {
+  const { theme, brightnessOverlayOpacity, statusBarStyle } = useAppearance();
 
-    const isAppLoading = isAuthLoading || isLoadingAppearance;
+  return (
+    <View style={[styles.appContainer, { backgroundColor: theme.background }]}>
+      <StatusBar
+        barStyle={statusBarStyle}
+        backgroundColor={theme.primary}
+        translucent={false}
+      />
+      <MainAppNavigator />
+      {brightnessOverlayOpacity > 0 && (
+        <View
+          style={[
+            styles.brightnessOverlay,
+            { backgroundColor: `rgba(0, 0, 0, ${brightnessOverlayOpacity})` },
+          ]}
+          pointerEvents="none"
+        />
+      )}
+    </View>
+  );
+};
 
-    const navigationTheme = useMemo(() => {
-        if (!theme) {
-            return DefaultTheme;
-        }
-        return theme.isDark ? DarkTheme : DefaultTheme;
-        // More detailed theme mapping:
-        // return {
-        //   ...(theme.isDark ? DarkTheme : DefaultTheme),
-        //   colors: {
-        //     ...(theme.isDark ? DarkTheme.colors : DefaultTheme.colors),
-        //     background: theme.background,
-        //     card: theme.card,
-        //     text: theme.text,
-        //     primary: theme.primary,
-        //     border: theme.border,
-        //   },
-        // };
-    }, [theme]);
+// --- Root Navigator ---
+const RootStack = createStackNavigator();
 
-    if (isAppLoading) {
-        return (
-            <View style={styles.loadingContainer} testID={TestIDs.APP_LOADING_INDICATOR}>
-                <ActivityIndicator size="large" color={LOADER_COLOR} />
-            </View>
-        );
-    }
+const AppNavigator: React.FC = () => {
+  const { userToken, isLoading: isAuthLoading } = useAuth();
+  const { theme, isLoadingAppearance } = useAppearance();
 
+  const navigationTheme = useMemo(() => {
+    return theme.isDark ? DarkTheme : DefaultTheme;
+  }, [theme]);
+
+  if (isAuthLoading || isLoadingAppearance) {
     return (
-        <NavigationContainer theme={navigationTheme}>
-            {userToken ? <ThemedAppContent /> : <AuthNavigator />}
-        </NavigationContainer>
+      <View style={styles.loadingContainer} testID={TestIDs.APP_LOADING_INDICATOR}>
+        <ActivityIndicator size="large" color={LOADER_COLOR} />
+      </View>
     );
+  }
+
+  return (
+    <NavigationContainer theme={navigationTheme}>
+      <RootStack.Navigator screenOptions={{ headerShown: false }}>
+        {userToken ? (
+          <RootStack.Screen name="MainApp" component={ThemedAppContent} />
+        ) : userToken === null ? ( // Check for null instead of false
+          <RootStack.Screen name="Auth" component={AuthNavigator} />
+        ) : (
+          <RootStack.Screen name="Transition" component={TransitionScreen} />
+        )}
+      </RootStack.Navigator>
+    </NavigationContainer>
+  );
 };
 
 // --- Main App Component ---
 export default function App() {
-    useEffect(() => {
-        Orientation.lockToLandscape();
-        // return () => {
-        //     Orientation.unlockAllOrientations();
-        // };
-    }, []);
+  useEffect(() => {
+    Orientation.lockToLandscape();
+    return () => {
+      Orientation.unlockAllOrientations();
+    };
+  }, []);
 
-    // Sentry.init({ dsn: "YOUR_SENTRY_DSN" });
-
-    return (
-        <AppErrorBoundary>
-            <AuthProvider>
-                <AppearanceProvider>
-                    <GridProvider>
-                        <LanguageProvider>
-                            <SafeAreaView style={styles.safeAreaContainer}>
-                                <AppLoadingOrContent />
-                            </SafeAreaView>
-                        </LanguageProvider>
-                    </GridProvider>
-                </AppearanceProvider>
-            </AuthProvider>
-        </AppErrorBoundary>
-    );
+  return (
+    <AppErrorBoundary>
+      <AuthProvider>
+        <AppearanceProvider>
+          <GridProvider>
+            <LanguageProvider>
+              <SafeAreaView style={styles.safeAreaContainer}>
+                <AppNavigator />
+              </SafeAreaView>
+            </LanguageProvider>
+          </GridProvider>
+        </AppearanceProvider>
+      </AuthProvider>
+    </AppErrorBoundary>
+  );
 }
 
 // --- Styles ---
 const styles = StyleSheet.create({
-    safeAreaContainer: {
-        flex: 1,
-        backgroundColor: DEFAULT_BACKGROUND_COLOR,
-    },
-    appContainer: {
-        flex: 1,
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: DEFAULT_BACKGROUND_COLOR,
-    },
-    brightnessOverlay: {
-        ...StyleSheet.absoluteFillObject,
-        zIndex: 9999,
-    },
-    errorFallbackContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-        backgroundColor: DEFAULT_BACKGROUND_COLOR,
-    },
-    errorFallbackText: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        textAlign: 'center',
-        marginBottom: 10,
-        color: ERROR_FALLBACK_TEXT_COLOR,
-    },
-    errorFallbackMessage: {
-        fontSize: 16,
-        textAlign: 'center',
-        marginBottom: 20,
-        color: ERROR_FALLBACK_MESSAGE_COLOR,
-    },
-    errorDetails: {
-        fontSize: 12,
-        textAlign: 'center',
-        color: ERROR_DETAILS_COLOR,
-        marginTop: 10,
-    },
+  safeAreaContainer: {
+    flex: 1,
+    backgroundColor: DEFAULT_BACKGROUND_COLOR,
+  },
+  appContainer: {
+    flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  brightnessOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 9999,
+  },
+  errorFallbackContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: DEFAULT_BACKGROUND_COLOR,
+  },
+  errorFallbackText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 10,
+    color: ERROR_FALLBACK_TEXT_COLOR,
+  },
+  errorFallbackMessage: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 20,
+    color: ERROR_FALLBACK_MESSAGE_COLOR,
+  },
+  errorDetails: {
+    fontSize: 12,
+    textAlign: 'center',
+    color: ERROR_DETAILS_COLOR,
+    marginTop: 10,
+  },
+  text: {
+    marginTop: 20,
+  },
 });

@@ -8,50 +8,52 @@ import {
     faDesktop, faShapes, faCommentDots, faUserShield, faInfoCircle, faChevronRight, faTimes
 } from '@fortawesome/free-solid-svg-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as KeychainService from '../services/keychainService'; // Ensure path is correct
+import * as KeychainService from '../services/keychainService';
 import { useTranslation } from 'react-i18next';
 
-// --- Import Context Hooks & Types ---
 import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext';
-// --- Import Typography Utility ---
-import { getLanguageSpecificTextStyle } from '../styles/typography'; // Adjust path as needed
+import { getLanguageSpecificTextStyle } from '../styles/typography';
 
-// --- Import Other Components/Screens/Types --- (Adjust paths as necessary)
 import DisplayOptionsScreen from './DisplayOptionsScreen';
 import SelectionModeScreen from './SelectionModeScreen';
 import ParentalControls from './ParentalControls';
-import { ParentalSettingsData } from './parental/types';
+import apiService, { ParentalSettingsData } from '../services/apiService'; // Import apiService and ParentalSettingsData
 import SymbolVoiceOverScreen, { VoiceSettingData } from './SymbolVoiceOverScreen';
 import AboutScreen from './AboutScreen';
 import PasscodePromptModal from './PasscodePromptModal';
 
-// --- Types ---
 type Mode = 'drag' | 'longClick';
 
-// --- Storage Keys ---
 const SELECTION_MODE_STORAGE_KEY = '@Communify:selectionMode';
-const PARENTAL_SETTINGS_STORAGE_KEY = '@Communify:parentalSettings';
+const PARENTAL_SETTINGS_STORAGE_KEY = '@Communify:parentalSettings'; // For caching
 
-// --- Default Values ---
 const defaultSelectionMode: Mode | null = 'drag';
-const defaultParentalSettings: ParentalSettingsData = { blockViolence: false, blockInappropriate: false, dailyLimitHours: '', asdLevel: null, downtimeEnabled: false, downtimeDays: [], downtimeStart: '21:00', downtimeEnd: '07:00', requirePasscode: false, notifyEmails: [] };
+const defaultParentalSettings: ParentalSettingsData = {
+    blockViolence: false,
+    blockInappropriate: false,
+    dailyLimitHours: '',
+    asdLevel: null,
+    downtimeEnabled: false,
+    downtimeDays: [],
+    downtimeStart: '21:00',
+    downtimeEnd: '07:00',
+    requirePasscode: false,
+    notifyEmails: [],
+    dataSharingPreference: false,
+};
 
-// --- Constants ---
 const screenWidth = Dimensions.get('window').width;
-export const menuWidth = screenWidth * 0.25; // Export if used by HomeScreen for animation
+export const menuWidth = screenWidth * 0.25;
 const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
 
-// --- Component Props Interface ---
 interface MenuProps {
     slideAnim: Animated.Value;
     overlayAnim: Animated.Value;
     closeMenu: () => void;
     currentTtsSettings: VoiceSettingData;
     onTtsSettingsSave: (settings: VoiceSettingData) => void;
-    // onGridLayoutSave removed as DisplayOptionsScreen handles it via context
 }
 
-// --- Component ---
 const Menu: React.FC<MenuProps> = ({
     slideAnim,
     overlayAnim,
@@ -59,22 +61,29 @@ const Menu: React.FC<MenuProps> = ({
     currentTtsSettings,
     onTtsSettingsSave,
 }) => {
-    // --- Hooks ---
     const { theme, fonts, isLoadingAppearance } = useAppearance();
     const { t, i18n } = useTranslation();
     const currentLanguage = i18n.language;
 
-    // --- State ---
     const [activeModal, setActiveModal] = useState<string | null>(null);
     const [selectionModeValue, setSelectionModeValue] = useState<Mode | null>(defaultSelectionMode);
+    
+    // parentalSettings is now primarily sourced from API
     const [parentalSettings, setParentalSettings] = useState<ParentalSettingsData>(defaultParentalSettings);
+    
     const [isLoadingSelection, setIsLoadingSelection] = useState(true);
-    const [isLoadingParental, setIsLoadingParental] = useState(true);
+    const [isLoadingParentalSettings, setIsLoadingParentalSettings] = useState(true); // For fetching parental settings initially
+    const [isCheckingPasscodeForMenu, setIsCheckingPasscodeForMenu] = useState(false); // For specific backend check on menu press
+
     const [isSavingSelection, setIsSavingSelection] = useState(false);
-    const [isSavingParental, setIsSavingParental] = useState(false);
+    // isSavingParental (for AsyncStorage cache update)
+    const [isUpdatingParentalCache, setIsUpdatingParentalCache] = useState(false); 
+    
     const [isPasscodePromptVisible, setIsPasscodePromptVisible] = useState(false);
     const [targetModalId, setTargetModalId] = useState<string | null>(null);
-    const [passcodeExists, setPasscodeExists] = useState(false);
+    // passcodeExists can still reflect local keychain for UI hints in ParentalControls,
+    // but menu decision uses backend check.
+    const [localKeychainPasscodeExists, setLocalKeychainPasscodeExists] = useState(false); 
     const isMountedRef = useRef(true);
 
     const menuItems = useMemo(() => [
@@ -85,7 +94,8 @@ const Menu: React.FC<MenuProps> = ({
         { id: 'about', icon: faInfoCircle, labelKey: 'menu.aboutUs' },
     ], []);
 
-    const isLoadingInitialMenuSettings = isLoadingAppearance || isLoadingSelection || isLoadingParental;
+    // Combined loading state for initial settings
+    const isLoadingInitialSettings = isLoadingAppearance || isLoadingSelection || isLoadingParentalSettings;
 
     useEffect(() => {
         isMountedRef.current = true;
@@ -94,65 +104,137 @@ const Menu: React.FC<MenuProps> = ({
 
     const styles = useMemo(() => createThemedMenuStyles(theme, fonts, currentLanguage), [theme, fonts, currentLanguage]);
 
+    // Effect to load all necessary initial settings
     useEffect(() => {
-        const loadMenuSettings = async () => {
+        const loadAllMenuData = async () => {
             if (!isMountedRef.current || typeof t !== 'function') return;
-            setIsLoadingSelection(true); setIsLoadingParental(true);
+            
+            setIsLoadingSelection(true);
+            setIsLoadingParentalSettings(true);
+
             try {
-                const [hasPC, selectionJson, parentalJson] = await Promise.all([
-                    KeychainService.hasPasscode(),
+                const [selectionJson, fetchedParentalSettings, keychainHasPasscode] = await Promise.all([
                     AsyncStorage.getItem(SELECTION_MODE_STORAGE_KEY),
-                    AsyncStorage.getItem(PARENTAL_SETTINGS_STORAGE_KEY),
+                    apiService.fetchParentalSettings(), // Fetch parental settings from API
+                    KeychainService.hasPasscode() // Check local keychain status
                 ]);
+
                 if (!isMountedRef.current) return;
-                setPasscodeExists(hasPC);
+
+                // Set selection mode
                 if (selectionJson === 'drag' || selectionJson === 'longClick') setSelectionModeValue(selectionJson as Mode);
                 else if (selectionJson === 'null') setSelectionModeValue(null);
                 else setSelectionModeValue(defaultSelectionMode);
-                if (parentalJson) setParentalSettings({ ...defaultParentalSettings, ...JSON.parse(parentalJson) });
-                else setParentalSettings(defaultParentalSettings);
-            } catch (e) {
-                console.error("Menu: Failed to load selection/parental settings", e);
-                if(isMountedRef.current) {
+
+                // Set parental settings from API
+                setParentalSettings({ ...defaultParentalSettings, ...fetchedParentalSettings });
+                // Cache fetched parental settings
+                AsyncStorage.setItem(PARENTAL_SETTINGS_STORAGE_KEY, JSON.stringify(fetchedParentalSettings)).catch(cacheError => {
+                    console.warn("Menu: Failed to cache parental settings", cacheError);
+                });
+
+
+                setLocalKeychainPasscodeExists(keychainHasPasscode);
+
+            } catch (error) {
+                console.error("Menu: Failed to load initial menu data", error);
+                if(isMountedRef.current && typeof t === 'function') {
+                    Alert.alert(t('common.error'), t('menu.errors.loadSettingsFail'));
+                    // Fallback to defaults
                     setSelectionModeValue(defaultSelectionMode);
                     setParentalSettings(defaultParentalSettings);
-                    if (typeof t === 'function') Alert.alert(t('common.error'), t('menu.errors.loadSettingsFail'));
+                    setLocalKeychainPasscodeExists(false);
                 }
             } finally {
-                if(isMountedRef.current) { setIsLoadingSelection(false); setIsLoadingParental(false); }
+                if(isMountedRef.current) {
+                    setIsLoadingSelection(false);
+                    setIsLoadingParentalSettings(false);
+                }
             }
         };
+
         if (typeof t === 'function' && i18n.isInitialized) {
-            loadMenuSettings();
+            loadAllMenuData();
         }
     }, [t, i18n.isInitialized]);
 
     const handleCloseSubModal = useCallback(() => { setActiveModal(null); }, []);
 
     const handleMenuPress = useCallback(async (itemId: string) => {
-        if (typeof t !== 'function' || !isMountedRef.current) return;
+        if (!isMountedRef.current || typeof t !== 'function' || isCheckingPasscodeForMenu) return;
+
         const protectedItems = ['parental', 'voiceover', 'display', 'selection'];
-        if (itemId === 'about') { setActiveModal(itemId); return; }
-        if (isLoadingInitialMenuSettings && protectedItems.includes(itemId)) {
-            Alert.alert(t('menu.loadingTitle'), t('menu.loadingMessage'));
+
+        if (itemId === 'about') {
+            setActiveModal(itemId);
             return;
         }
-        if (protectedItems.includes(itemId)) {
-            const requirePasscode = parentalSettings.requirePasscode;
-            const currentPasscodeExists = await KeychainService.hasPasscode();
-            if (!isMountedRef.current) return;
-            setPasscodeExists(currentPasscodeExists);
-            if (requirePasscode && currentPasscodeExists) {
-                setTargetModalId(itemId); setIsPasscodePromptVisible(true); return;
-            } else if (requirePasscode && !currentPasscodeExists) {
-                 Alert.alert(t('menu.errors.passcodeRequiredTitle'), t('menu.errors.passcodeRequiredMessage')); return;
-            }
-        }
-        setActiveModal(itemId);
-    }, [parentalSettings.requirePasscode, isLoadingInitialMenuSettings, t]);
 
-    const handlePasscodeVerified = useCallback(() => { if(isMountedRef.current) {setIsPasscodePromptVisible(false); if (targetModalId) { setActiveModal(targetModalId); setTargetModalId(null); }}}, [targetModalId]);
-    const handlePasscodeCancel = useCallback(() => { if(isMountedRef.current) {setIsPasscodePromptVisible(false); setTargetModalId(null);}}, []);
+        if (isLoadingInitialSettings) { // Check if initial settings (including parental) are still loading
+            Alert.alert(t('menu.loadingTitle', 'Loading...'), t('menu.loadingMessage', 'Settings are loading, please wait.'));
+            return;
+        }
+
+        if (protectedItems.includes(itemId)) {
+            // parentalSettings.requirePasscode is now sourced from the backend via fetchParentalSettings
+            if (parentalSettings.requirePasscode) {
+                setIsCheckingPasscodeForMenu(true);
+                setTargetModalId(itemId); // Optimistically set target modal
+                try {
+                    const backendPasscodeStatus = await apiService.checkBackendHasParentalPasscode();
+                    if (!isMountedRef.current) return;
+
+                    if (backendPasscodeStatus.exists) {
+                        // Passcode IS REQUIRED by settings AND it EXISTS on the backend. Show prompt.
+                        setIsPasscodePromptVisible(true);
+                    } else {
+                        // Passcode IS REQUIRED by settings, BUT NOT SET UP on the backend.
+                        Alert.alert(
+                            t('menu.errors.passcodeIssueTitle', 'Passcode Setup Issue'),
+                            t('menu.errors.passcodeRequiredButNotConfiguredMenu', 'A passcode is required by your settings, but it appears none is configured on the server. Please visit Parental Controls to set up a passcode.'),
+                            // Decide action: either block or allow with warning.
+                            // For "if not set allow access", this would mean:
+                            // [{ text: t('common.ok'), onPress: () => { setActiveModal(itemId); } }]
+                            // For now, just an OK button, not opening the item.
+                            [{ text: t('common.ok') }]
+                        );
+                        setTargetModalId(null); // Clear target as we are not proceeding to prompt
+                    }
+                } catch (error) {
+                    if (!isMountedRef.current) return;
+                    console.error("Menu: Error checking backend passcode status for menu access:", error);
+                    Alert.alert(t('common.error'), t('menu.errors.passcodeStatusCheckFailedMenu', 'Could not verify passcode status. Please try again.'));
+                    setTargetModalId(null); // Clear target on error
+                } finally {
+                    if (isMountedRef.current) setIsCheckingPasscodeForMenu(false);
+                }
+            } else {
+                // parentalSettings.requirePasscode is FALSE. Allow access directly.
+                setActiveModal(itemId);
+            }
+        } else {
+            // Item is not in the protectedItems list. Allow access directly.
+            setActiveModal(itemId);
+        }
+    }, [parentalSettings, isLoadingInitialSettings, isCheckingPasscodeForMenu, t, i18n.language, targetModalId]);
+
+
+    const handlePasscodeVerified = useCallback(() => {
+        if (isMountedRef.current) {
+            setIsPasscodePromptVisible(false);
+            if (targetModalId) {
+                setActiveModal(targetModalId);
+            }
+            setTargetModalId(null);
+        }
+    }, [targetModalId]);
+
+    const handlePasscodeCancel = useCallback(() => {
+        if (isMountedRef.current) {
+            setIsPasscodePromptVisible(false);
+            setTargetModalId(null);
+        }
+    }, []);
 
     const handleSelectionSave = useCallback(async (mode: Mode | null) => {
         if (typeof t !== 'function' || !isMountedRef.current) return;
@@ -163,7 +245,7 @@ const Menu: React.FC<MenuProps> = ({
             Alert.alert(t('menu.saveSuccessTitle'), t('menu.saveSuccessSelection'));
         } catch (error) {
             console.error("Menu: Failed save selection:", error);
-            Alert.alert(t('common.error'), t('menu.errors.saveSelectionFail'));
+            if(isMountedRef.current) Alert.alert(t('common.error'), t('menu.errors.saveSelectionFail'));
             throw error;
         } finally {
             if(isMountedRef.current) setIsSavingSelection(false);
@@ -171,23 +253,30 @@ const Menu: React.FC<MenuProps> = ({
         }
     }, [handleCloseSubModal, t]);
 
-    const handleParentalSave = useCallback(async (settings: ParentalSettingsData) => {
+    const handleParentalSettingsUpdate = useCallback(async (updatedSettingsFromApi: ParentalSettingsData) => {
         if (typeof t !== 'function' || !isMountedRef.current) return;
-        setIsSavingParental(true);
+        
+        setIsUpdatingParentalCache(true);
         try {
-            await AsyncStorage.setItem(PARENTAL_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
-            setParentalSettings(settings);
+            // Update Menu's local state with the latest from ParentalControls (which got it from API)
+            setParentalSettings(updatedSettingsFromApi);
+            
+            // Update AsyncStorage cache
+            await AsyncStorage.setItem(PARENTAL_SETTINGS_STORAGE_KEY, JSON.stringify(updatedSettingsFromApi));
+            
+            // Re-check local keychain status as it might have changed (e.g., passcode set/removed)
             const hasPC = await KeychainService.hasPasscode();
-            if(isMountedRef.current) setPasscodeExists(hasPC);
-            Alert.alert(t('menu.saveSuccessTitle'), t('menu.saveSuccessParental'));
+            if(isMountedRef.current) setLocalKeychainPasscodeExists(hasPC);
+
         } catch (error) {
-            console.error("Menu: Failed save parental:", error);
-            Alert.alert(t('common.error'), t('menu.errors.saveParentalFail'));
+            console.error("Menu: Failed to update local parental settings cache after API save:", error);
+            if (isMountedRef.current && typeof t === 'function') {
+                Alert.alert(t('common.error'), t('menu.errors.saveParentalFail'));
+            }
         } finally {
-            if(isMountedRef.current) setIsSavingParental(false);
-            handleCloseSubModal();
+            if(isMountedRef.current) setIsUpdatingParentalCache(false);
         }
-    }, [handleCloseSubModal, t]);
+    }, [t]);
 
     const memoizedParentalSettings = useMemo(() => parentalSettings, [parentalSettings]);
 
@@ -203,23 +292,30 @@ const Menu: React.FC<MenuProps> = ({
          <ScrollView style={styles.menuScrollView} contentContainerStyle={styles.scrollContentContainer} showsVerticalScrollIndicator={false}>
              {menuItems.map((item) => {
                  const label = t(item.labelKey);
-                 const isDisabledByLoading = isLoadingInitialMenuSettings && item.id !== 'about';
+                 // Item is disabled if initial settings are loading OR if a passcode check is underway for THIS item
+                 const isDisabledByLoading = isLoadingInitialSettings || (isCheckingPasscodeForMenu && targetModalId === item.id);
+                 const isProtectedItem = ['parental', 'voiceover', 'display', 'selection'].includes(item.id);
+
                  return (
                      <TouchableOpacity
                         key={item.id}
                         style={styles.menuItem}
                         onPress={() => handleMenuPress(item.id)}
                         activeOpacity={0.7}
-                        disabled={isDisabledByLoading}
+                        disabled={isDisabledByLoading && isProtectedItem && item.id !== 'about'}
                         accessibilityRole="button"
                         accessibilityLabel={label}
-                        accessibilityState={{ disabled: isDisabledByLoading }}
+                        accessibilityState={{ disabled: isDisabledByLoading && isProtectedItem && item.id !== 'about' }}
                      >
-                         <View style={[styles.iconWrapper, isDisabledByLoading && { opacity: 0.5 }]}>
-                             <FontAwesomeIcon icon={item.icon} size={fonts.body * 1.2} color={theme.primary} />
+                         <View style={[styles.iconWrapper, isDisabledByLoading && isProtectedItem && item.id !== 'about' && { opacity: 0.5 }]}>
+                            {(isCheckingPasscodeForMenu && targetModalId === item.id && isProtectedItem) ? (
+                                <ActivityIndicator size="small" color={theme.primary} />
+                            ) : (
+                                <FontAwesomeIcon icon={item.icon} size={fonts.body * 1.2} color={theme.primary} />
+                            )}
                          </View>
-                         <Text style={[styles.menuText, isDisabledByLoading && { color: theme.disabled }]}>{label}</Text>
-                         <FontAwesomeIcon icon={faChevronRight} size={fonts.label} style={[styles.menuArrow, isDisabledByLoading && { opacity: 0.5 }]} color={theme.border} />
+                         <Text style={[styles.menuText, isDisabledByLoading && isProtectedItem && item.id !== 'about' && { color: theme.disabled }]}>{label}</Text>
+                         <FontAwesomeIcon icon={faChevronRight} size={fonts.label} style={[styles.menuArrow, isDisabledByLoading && isProtectedItem && item.id !== 'about' && { opacity: 0.5 }]} color={theme.border} />
                      </TouchableOpacity>
                  );
              })}
@@ -238,7 +334,7 @@ const Menu: React.FC<MenuProps> = ({
                         <FontAwesomeIcon icon={faTimes} size={fonts.h2} color={theme.textSecondary} />
                     </TouchableOpacity>
                 </View>
-                {isLoadingInitialMenuSettings ? <ActivityIndicator size="large" color={theme.primary} style={{ flex: 1 }} /> : renderMenuContent() }
+                {isLoadingInitialSettings ? <ActivityIndicator size="large" color={theme.primary} style={{ flex: 1 }} /> : renderMenuContent() }
                 <View style={styles.menuFooter} />
             </Animated.View>
 
@@ -252,7 +348,7 @@ const Menu: React.FC<MenuProps> = ({
                 {activeModal === 'voiceover' && <SymbolVoiceOverScreen onClose={handleCloseSubModal} initialSettings={currentTtsSettings} onSave={onTtsSettingsSave} />}
             </Modal>
              <Modal visible={activeModal === 'parental'} animationType="slide" transparent={false} onRequestClose={handleCloseSubModal} >
-                {activeModal === 'parental' && <ParentalControls onClose={handleCloseSubModal} initialSettings={memoizedParentalSettings} onSave={handleParentalSave} />}
+                {activeModal === 'parental' && <ParentalControls onClose={handleCloseSubModal} initialSettings={memoizedParentalSettings} onSaveSuccess={handleParentalSettingsUpdate} />}
             </Modal>
             <Modal visible={activeModal === 'about'} animationType="slide" transparent={false} onRequestClose={handleCloseSubModal} >
                 {activeModal === 'about' && <AboutScreen onClose={handleCloseSubModal} />}
@@ -290,7 +386,7 @@ const createThemedMenuStyles = (theme: ThemeColors, baseFonts: FontSizes, langua
     menuScrollView: { flex: 1, },
     scrollContentContainer: { paddingVertical: 8, },
     menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 15, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border },
-    iconWrapper: { width: 35, alignItems: 'center', marginRight: 15, },
+    iconWrapper: { width: 35, alignItems: 'center', justifyContent: 'center', marginRight: 15, }, // Added justifyContent
     menuText: {
         color: theme.text,
         flex: 1,

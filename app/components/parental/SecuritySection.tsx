@@ -2,8 +2,8 @@
 import React, { useMemo } from 'react';
 import { View, Text, Switch, TouchableOpacity, Alert, ActivityIndicator, StyleSheet, Platform, StyleProp, ViewStyle, TextStyle } from 'react-native';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
-import { faLock, faUserShield, faChevronRight } from '@fortawesome/free-solid-svg-icons';
-import { TFunction } from 'i18next'; // Or remove if using useTranslation directly
+import { faLock, faUserShield, faChevronRight, faKey } from '@fortawesome/free-solid-svg-icons'; // faKey could be an alternative
+import { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
 // --- Import Context ---
@@ -13,16 +13,16 @@ import { useAppearance, ThemeColors, FontSizes } from '../../context/AppearanceC
 import { getLanguageSpecificTextStyle } from '../../styles/typography'; // Adjust path
 
 // --- Import Shared Types from apiService.ts ---
-import { ParentalSettingsData } from '../../services/apiService'; // MODIFIED IMPORT
+import { ParentalSettingsData } from '../../services/apiService';
 
 // --- Component Props ---
 interface SecuritySectionProps {
-    settings: ParentalSettingsData; // Now uses the type from apiService
+    settings: ParentalSettingsData;
     passcodeExists: boolean;
     onSettingChange: <K extends keyof ParentalSettingsData>(key: K, value: ParentalSettingsData[K]) => void;
     onTogglePasscodeSetup: () => void;
     isLoadingPasscodeStatus?: boolean;
-    t: TFunction<"translation", undefined>; // Or remove
+    t: TFunction<"translation", undefined>;
     sectionStyle?: StyleProp<ViewStyle>;
     headerStyle?: StyleProp<ViewStyle>;
     titleStyle?: StyleProp<TextStyle>;
@@ -36,7 +36,7 @@ const SecuritySection: React.FC<SecuritySectionProps> = ({
     onSettingChange,
     onTogglePasscodeSetup,
     isLoadingPasscodeStatus = false,
-    t,
+    t, // t prop is used
     sectionStyle,
     headerStyle,
     titleStyle,
@@ -44,7 +44,6 @@ const SecuritySection: React.FC<SecuritySectionProps> = ({
 }) => {
     // --- Consume Context ---
     const { theme, fonts } = useAppearance();
-    // const { t, i18n } = useTranslation(); // Uncomment if t prop is removed
     const { i18n } = useTranslation(); // Only need i18n if t is passed as prop
     const currentLanguage = i18n.language;
 
@@ -52,50 +51,43 @@ const SecuritySection: React.FC<SecuritySectionProps> = ({
     const styles = useMemo(() => createThemedStyles(theme, fonts, currentLanguage), [theme, fonts, currentLanguage]);
     const switchStyles = useMemo(() => ({
         trackColor: { false: theme.disabled || '#767577', true: theme.secondary || '#81c784' },
-        thumbColor: Platform.OS === 'android' ? (theme.primary || '#007aff') : undefined,
-        ios_backgroundColor: theme.disabled || '#767577',
+        thumbColor: Platform.OS === 'android' ? (theme.primary || '#007aff') : undefined, // Thumb color for Android
+        ios_backgroundColor: theme.disabled || '#767577', // Background for iOS track
     }), [theme]);
 
     // --- Logic ---
-    // User can enable "Require Passcode" only if a passcode already exists.
     const canEnablePasscodeRequirement = passcodeExists;
 
     const handleRequirePasscodeToggle = (value: boolean) => {
         if (value && !canEnablePasscodeRequirement) {
-            // This alert should ideally prompt to set up a passcode or explain why it can't be enabled.
             Alert.alert(
                 t('parentalControls.security.setPasscodeFirstTitle', 'Set Passcode First'),
                 t('parentalControls.security.setPasscodeFirstMessage', 'Please set up a passcode before requiring it for settings changes.')
             );
-            // Optionally, trigger onTogglePasscodeSetup() here if desired.
-            // onTogglePasscodeSetup();
-            return; // Prevent toggling if a passcode isn't set
+            return; 
         }
         onSettingChange('requirePasscode', value);
     };
 
-    // The switch is disabled if still loading passcode status,
-    // OR if trying to enable the requirement but no passcode is set yet.
     const isSwitchDisabled =
         isLoadingPasscodeStatus ||
-        (!settings.requirePasscode && !canEnablePasscodeRequirement); // Disabled if trying to turn ON without passcode
+        (!settings.requirePasscode && !canEnablePasscodeRequirement);
 
     const isConfigureButtonDisabled = isLoadingPasscodeStatus;
 
-    // Determine colors based on disabled state for dynamic styling within render
+    // Determine colors based on disabled state
     const switchRowTextColor = isSwitchDisabled ? (theme.disabled || '#aaa') : (theme.text || '#000');
     const switchRowIconColor = isSwitchDisabled ? (theme.disabled || '#aaa') : (theme.textSecondary || '#555');
-    const configureButtonTextColor = isConfigureButtonDisabled ? (theme.disabled || '#aaa') : (theme.textSecondary || '#555');
+    const configureButtonTextColor = isConfigureButtonDisabled ? (theme.disabled || '#aaa') : (theme.text || '#000'); // Use theme.text for enabled
     const configureButtonIconColor = isConfigureButtonDisabled ? (theme.disabled || '#aaa') : (theme.textSecondary || '#555');
     const chevronColor = isConfigureButtonDisabled ? (theme.disabled || '#aaa') : (theme.textSecondary || '#555');
 
     const setOrChangePasscodeText = passcodeExists
-        ? t('parentalControls.security.changePasscodeLabel')
-        : t('parentalControls.security.setPasscodeLabel');
+        ? t('parentalControls.security.changePasscodeLabel', 'Change Passcode')
+        : t('parentalControls.security.setPasscodeLabel', 'Set Passcode');
 
     return (
         <View style={[styles.defaultSectionCard, sectionStyle]}>
-            {/* Card Header */}
             <View style={[styles.defaultCardHeader, headerStyle]}>
                 <FontAwesomeIcon
                     icon={faLock}
@@ -103,41 +95,41 @@ const SecuritySection: React.FC<SecuritySectionProps> = ({
                     color={theme.primary || '#007aff'}
                     style={[styles.defaultCardIcon, iconStyle]}
                 />
-                <Text style={[styles.defaultSectionTitle, titleStyle]}>{t('parentalControls.security.sectionTitle')}</Text>
+                <Text style={[styles.defaultSectionTitle, titleStyle]}>{t('parentalControls.security.sectionTitle', 'Security & Passcode')}</Text>
                 {isLoadingPasscodeStatus && (
                     <ActivityIndicator size="small" color={theme.primary || '#007aff'} style={styles.headerLoader} />
                 )}
             </View>
 
-            {/* Require Passcode Switch Row */}
-            <View style={[styles.settingRow, isSwitchDisabled && styles.disabledOverlay]}>
+            <View style={[styles.settingRow, isSwitchDisabled && styles.disabledVisual]}>
                 <FontAwesomeIcon icon={faUserShield} size={(fonts.body || 16) * 1.1} color={switchRowIconColor} style={styles.settingIcon} />
                 <Text style={[styles.settingLabel, { color: switchRowTextColor }]}>
-                    {t('parentalControls.security.requirePasscodeLabel')}
+                    {t('parentalControls.security.requirePasscodeLabel', 'Require Passcode for Settings')}
                 </Text>
                 <Switch
                     value={settings.requirePasscode}
                     onValueChange={handleRequirePasscodeToggle}
                     disabled={isSwitchDisabled}
-                    {...switchStyles} // Already has fallbacks
-                    accessibilityLabel={t('parentalControls.security.requirePasscodeAccessibilityLabel')}
+                    trackColor={switchStyles.trackColor}
+                    thumbColor={switchStyles.thumbColor}
+                    ios_backgroundColor={switchStyles.ios_backgroundColor}
+                    accessibilityLabel={t('parentalControls.security.requirePasscodeAccessibilityLabel', 'Toggle passcode requirement for settings')}
                     accessibilityState={{ disabled: isSwitchDisabled, checked: settings.requirePasscode }}
                 />
             </View>
 
-            {/* Set/Change Passcode Link Row */}
-            <View style={[styles.cardFooter, isConfigureButtonDisabled && styles.disabledOverlay]}>
+            <View style={[styles.cardFooter, isConfigureButtonDisabled && styles.disabledVisual]}>
                 <TouchableOpacity
                     style={styles.featureRow}
                     onPress={onTogglePasscodeSetup}
-                    activeOpacity={isConfigureButtonDisabled ? 1 : 0.7}
+                    activeOpacity={isConfigureButtonDisabled ? 1 : 0.7} // No visual feedback if disabled
                     disabled={isConfigureButtonDisabled}
                     accessibilityLabel={setOrChangePasscodeText}
                     accessibilityRole="button"
                     accessibilityState={{ disabled: isConfigureButtonDisabled }}
                 >
                     <FontAwesomeIcon
-                        icon={faUserShield} // Can use faKey or faUserShield
+                        icon={passcodeExists ? faKey : faUserShield} // Different icon based on state
                         size={fonts.body || 16}
                         color={configureButtonIconColor}
                         style={styles.featureIcon}
@@ -159,34 +151,43 @@ const SecuritySection: React.FC<SecuritySectionProps> = ({
 // --- Styles ---
 const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguage: string) => {
     const bodyFontSize = fonts.body || 16;
-    const h2FontSize = fonts.h2 || 20;
+    // const h2FontSize = fonts.h2 || 20; // Not directly used, but good reference
 
     const bodyStyles = getLanguageSpecificTextStyle('body', fonts, currentLanguage);
-    // const h2Styles = getLanguageSpecificTextStyle('h2', fonts, currentLanguage); // If used directly for section title
+    const labelStyles = getLanguageSpecificTextStyle('label', fonts, currentLanguage);
+
 
     return StyleSheet.create({
         defaultSectionCard: {
             backgroundColor: theme.card || '#fff',
             borderRadius: 12,
             marginBottom: 20,
-            borderWidth: StyleSheet.hairlineWidth,
-            borderColor: theme.border || '#ddd',
-            overflow: 'hidden', // Important for borderRadius on children if any
+            // borderWidth: StyleSheet.hairlineWidth, // Kept from original
+            // borderColor: theme.border || '#ddd', // Kept from original
+            // Using shadow from ParentalControls.tsx for consistency if preferred:
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: theme.isDark ? 0.3 : 0.1,
+            shadowRadius: 3,
+            elevation: 2, // Matched elevation from ParentalControls sections
+            borderWidth: theme.isDark ? StyleSheet.hairlineWidth : 0, // Add this from ParentalControls
+            borderColor: theme.border, // Add this from ParentalControls
+            overflow: 'hidden',
         },
         defaultCardHeader: {
             flexDirection: 'row',
             alignItems: 'center',
             paddingHorizontal: 18,
             paddingTop: 15,
-            paddingBottom: 10,
+            paddingBottom: 10, // Reduced slightly for tighter look
             borderBottomWidth: StyleSheet.hairlineWidth,
             borderBottomColor: theme.border || '#ddd',
         },
         defaultCardIcon: {
             marginRight: 12,
         },
-        defaultSectionTitle: { // Style passed from parent, but good to have a fallback
-            fontSize: fonts.label || 16,
+        defaultSectionTitle: { 
+            ...labelStyles, // Use label style as base
             fontWeight: '600',
             color: theme.text || '#000',
             flex: 1,
@@ -197,13 +198,13 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
         settingRow: {
             flexDirection: 'row',
             alignItems: 'center',
-            paddingVertical: 10,
-            minHeight: 44, // Good for tap targets
+            paddingVertical: 12, // Standardized padding
+            minHeight: 50, // Good minimum height
             paddingHorizontal: 18,
         },
         settingIcon: {
-            marginRight: 18,
-            width: bodyFontSize * 1.1, // Relative to body font size
+            marginRight: 15, // Slightly less margin
+            width: (fonts.body || 16) * 1.1, // Relative to body font size
             textAlign: 'center',
         },
         settingLabel: {
@@ -212,20 +213,20 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
             flex: 1,
             marginRight: 10,
         },
-        cardFooter: {
+        cardFooter: { // This View wraps the TouchableOpacity
             borderTopWidth: StyleSheet.hairlineWidth,
             borderTopColor: theme.border || '#ddd',
         },
-        featureRow: {
+        featureRow: { // This is the TouchableOpacity itself
             flexDirection: 'row',
             alignItems: 'center',
-            paddingVertical: 14,
-            minHeight: 44, // Good for tap targets
+            paddingVertical: 15, // More padding for a better tap area
+            minHeight: 50,
             paddingHorizontal: 18,
         },
         featureIcon: {
-            marginRight: 18,
-            width: bodyFontSize, // Relative to body font size
+            marginRight: 15,
+            width: bodyFontSize,
             textAlign: 'center',
         },
         featureLabel: {
@@ -234,8 +235,8 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
             flex: 1,
             marginRight: 10,
         },
-        disabledOverlay: {
-            opacity: 0.6, // Visual cue for disabled state
+        disabledVisual: { // Renamed from disabledOverlay for clarity
+            opacity: 0.6, 
         },
     });
 };

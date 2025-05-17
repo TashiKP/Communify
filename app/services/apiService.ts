@@ -6,7 +6,7 @@ import axios, {
     AxiosResponse,
 } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE_URL, API_BASE_MODEL_URL} from '../config/apiConfig'; 
+import { API_BASE_URL, API_BASE_MODEL_URL} from '../config/apiConfig';
 
 const ACCESS_TOKEN_KEY = 'communify_access_token';
 
@@ -15,7 +15,7 @@ export const storeToken = async (token: string): Promise<void> => {
     try {
         await AsyncStorage.setItem(ACCESS_TOKEN_KEY, token);
     } catch (e) {
-        console.error('[ApiService] Failed to store token:', e);
+        // console.error('[ApiService] Failed to store token:', e); // Keep for dev, remove for prod
     }
 };
 
@@ -23,7 +23,7 @@ export const getToken = async (): Promise<string | null> => {
     try {
         return await AsyncStorage.getItem(ACCESS_TOKEN_KEY);
     } catch (e) {
-        console.error('[ApiService] Failed to retrieve token:', e);
+        // console.error('[ApiService] Failed to retrieve token:', e); // Keep for dev, remove for prod
         return null;
     }
 };
@@ -32,33 +32,28 @@ export const removeToken = async (): Promise<void> => {
     try {
         await AsyncStorage.removeItem(ACCESS_TOKEN_KEY);
     } catch (e) {
-        console.error('[ApiService] Failed to remove token:', e);
+        // console.error('[ApiService] Failed to remove token:', e); // Keep for dev, remove for prod
     }
 };
-// --- End Token Management ---
 
-
-// --- Define Enums (as used by frontend and for mapping to/from API) ---
+// --- Enums ---
 export type Gender = "male" | "female" | "other" | "prefer_not_to_say";
 export type UserType = "parent" | "child" | "admin";
 export type UserStatus = "active" | "inactive" | "pending" | "deactivated";
 export type AsdLevel = "low" | "medium" | "high" | "noAsd" | null;
 export type DayOfWeek = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
-export type GridLayoutType = "simple" | "standard" | "dense"; 
+export type GridLayoutType = "simple" | "standard" | "dense";
 export type TextSizeType = "small" | "medium" | "large";
 export type ContrastModeType = "default" | "high-contrast-light" | "high-contrast-dark";
 export type SelectionModeType = "drag" | "longClick";
 
-
-// --- Define API Data Structures (Types/Interfaces) ---
-
-// Authentication & User
+// --- API Data Structures (Types/Interfaces) ---
 export interface TokenResponse {
     access_token: string;
     token_type: string;
 }
 
-export interface UserRead { // Frontend representation (camelCase)
+export interface UserRead {
     id: string;
     email: string;
     name: string;
@@ -66,19 +61,18 @@ export interface UserRead { // Frontend representation (camelCase)
     gender?: Gender;
     isActive: boolean;
     userType: UserType;
-    createdAt: string; 
-    updatedAt: string; 
+    createdAt: string;
+    updatedAt: string;
 }
 
-// Raw API response for User (snake_case)
 interface UserApiResponse {
-    id: string;
+    _id: string; // Expects "_id" from backend JSON
     email: string;
     name: string;
     age?: number;
     gender?: Gender;
     is_active: boolean;
-    user_type: UserType;
+    user_type: UserType; // Expects enum value as string from backend
     created_at: string;
     updated_at: string;
 }
@@ -89,6 +83,7 @@ export interface UserRegisterPayload {
     password: string;
     age?: number;
     gender?: Gender;
+    // userType?: UserType; // If client can specify type on register
 }
 
 export interface UserUpdatePayload {
@@ -102,7 +97,6 @@ export interface UserPasswordUpdatePayload {
     new_password: string;
 }
 
-// Parental Settings (Frontend CamelCase)
 export interface ParentalSettingsData {
     id?: string;
     asdLevel: AsdLevel;
@@ -118,7 +112,6 @@ export interface ParentalSettingsData {
     requirePasscode: boolean;
 }
 
-// Parental Settings (API Snake_case for GET response and PATCH value items)
 interface ParentalSettingsApiShape {
     id?: string;
     asd_level: AsdLevel;
@@ -140,7 +133,6 @@ export interface ParentalSettingsPatchPayload {
     value: Partial<ParentalSettingsApiShape>;
 }
 
-// Appearance Settings (Frontend CamelCase)
 export interface AppearanceSettingsUpdatePayload {
     brightness?: number;
     contrastMode?: ContrastModeType;
@@ -174,7 +166,6 @@ export interface AppearanceSettingsRead {
     theme?: string;
 }
 
-// Appearance Settings (API Snake_case for GET response and PATCH value items)
 interface AppearanceSettingsApiShape {
     id?: string;
     brightness?: number;
@@ -192,7 +183,6 @@ interface AppearanceSettingsApiShape {
     theme?: string;
 }
 
-// Admin
 export interface AdminUserCreatePayload extends UserRegisterPayload {
     userType: UserType;
     isActive?: boolean;
@@ -213,30 +203,24 @@ export interface ListUsersParams {
     nameSearch?: string | null;
 }
 
-// Error Structures
 export interface ValidationErrorDetail { loc: (string | number)[]; msg: string; type: string; input?: any; ctx?: Record<string, any>; }
 export interface HTTPValidationError { detail: ValidationErrorDetail[] | string; }
 
-// Symbol API Types
 export interface StandardCategorySymbolMap { [categoryName: string]: string[]; }
 export type TimeContextSymbolsResponse = string[];
-
 export interface TextTranslationRequest { text: string; }
 export interface TextTranslationResponse { translated_text: string; }
 export interface BatchTranslationRequest { words: string[]; target_language: string; }
 export interface BatchTranslationResponse { translated_words: string[]; }
 export interface TextToSpeechRequest { text: string; }
-export type TextToSpeechResponse = string;
-export type TranslateAndTTsResponse = string;
+export type TextToSpeechResponse = string; // Assuming base64 audio string or similar
 export interface AACPhraseGenerationRequest { words: string[]; }
 export interface AACPhraseGenerationResponse { phrase: string; }
 export interface AudioDataResponse {
     audioBlob: Blob;
-    translatedText?: string; // To store the text from the x-translated-text header
+    translatedText?: string;
     filename?: string;
 }
-// --- End Types ---
-
 
 // --- Axios Instance Setup ---
 const apiClient: AxiosInstance = axios.create({
@@ -254,17 +238,11 @@ const modelApiClient: AxiosInstance = axios.create({
 apiClient.interceptors.request.use(
     async (config: InternalAxiosRequestConfig): Promise<InternalAxiosRequestConfig> => {
         const noAuthUrls = ['/auth/token', '/auth/register'];
-        // Use config.url directly, assuming it's the path relative to baseURL
         let urlPath = config.url || '';
-
-        // Ensure urlPath is relative (strip baseURL if present)
         if (config.baseURL && urlPath.startsWith(config.baseURL)) {
             urlPath = urlPath.replace(config.baseURL, '');
         }
-        // Normalize leading slash
-        if (!urlPath.startsWith('/')) {
-            urlPath = `/${urlPath}`;
-        }
+        if (!urlPath.startsWith('/')) { urlPath = `/${urlPath}`; }
 
         const requiresAuth = !noAuthUrls.some(noAuthUrl => urlPath.endsWith(noAuthUrl));
         if (requiresAuth) {
@@ -273,24 +251,19 @@ apiClient.interceptors.request.use(
                 config.headers = config.headers ?? {};
                 config.headers.set('Authorization', `Bearer ${token}`);
             } else {
-                console.warn(`[ApiService] No token for authenticated request to: ${urlPath}`);
+                // console.warn(`[ApiService] No token for authenticated request to: ${urlPath}`); // Dev only
             }
         }
 
         config.headers = config.headers ?? {};
         if (urlPath.endsWith('/auth/token') && config.method?.toLowerCase() === 'post') {
             config.headers.set('Content-Type', 'application/x-www-form-urlencoded');
-        } else if (!(config.data instanceof FormData)) {
-            if (!config.headers.has('Content-Type')) {
-                config.headers.set('Content-Type', 'application/json');
-            }
+        } else if (!(config.data instanceof FormData) && !config.headers.has('Content-Type')) {
+            config.headers.set('Content-Type', 'application/json');
         }
         return config;
     },
-    (error: AxiosError) => {
-        console.error('[ApiService Request Interceptor Error]', error);
-        return Promise.reject(error);
-    }
+    (error: AxiosError) => Promise.reject(error)
 );
 
 apiClient.interceptors.response.use(
@@ -298,35 +271,25 @@ apiClient.interceptors.response.use(
     async (error: AxiosError) => {
         const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
         let urlPath = originalRequest?.url || '';
-
-        // Strip baseURL if present
         if (originalRequest?.baseURL && urlPath.startsWith(originalRequest.baseURL)) {
             urlPath = urlPath.replace(originalRequest.baseURL, '');
         }
-        if (!urlPath.startsWith('/')) {
-            urlPath = `/${urlPath}`;
-        }
+        if (!urlPath.startsWith('/')) { urlPath = `/${urlPath}`; }
 
-        if (
-            error.response?.status === 401 &&
-            originalRequest &&
-            !originalRequest._retry &&
-            urlPath &&
-            !urlPath.endsWith('/auth/token')
-        ) {
-            console.warn('[ApiService] 401 Unauthorized. Logging out.');
+        if (error.response?.status === 401 && originalRequest && !originalRequest._retry && urlPath && !urlPath.endsWith('/auth/token')) {
+            // console.warn('[ApiService] 401 Unauthorized. Forcing logout.'); // Dev only
             originalRequest._retry = true;
             await removeToken();
+            // Consider a more robust way to trigger app-wide logout, e.g., event emitter or state management.
             return Promise.reject(new Error('SESSION_EXPIRED'));
         }
         return Promise.reject(error);
     }
 );
-// --- End Axios Interceptors ---
 
 // --- Mapping Functions ---
 const mapApiToFrontendUser = (apiUser: UserApiResponse): UserRead => ({
-    id: apiUser.id,
+    id: apiUser._id, // Map from _id
     email: apiUser.email,
     name: apiUser.name,
     age: apiUser.age,
@@ -389,7 +352,7 @@ const mapFrontendToApiAppearancePayload = (frontendData: Partial<AppearanceSetti
     const apiData: Partial<AppearanceSettingsApiShape> = {};
     if (frontendData.hasOwnProperty('brightness')) apiData.brightness = frontendData.brightness;
     if (frontendData.hasOwnProperty('contrastMode')) apiData.contrast_mode = frontendData.contrastMode;
-    else if (frontendData.hasOwnProperty('theme')) apiData.theme = frontendData.theme;
+    else if (frontendData.hasOwnProperty('theme')) apiData.theme = frontendData.theme; // Note: 'theme' also maps to contrastMode if that's not present
     if (frontendData.hasOwnProperty('darkModeEnabled')) apiData.dark_mode_enabled = frontendData.darkModeEnabled;
     if (frontendData.hasOwnProperty('fontSize')) apiData.font_size = frontendData.fontSize;
     if (frontendData.hasOwnProperty('selectionMode')) apiData.selection_mode = frontendData.selectionMode;
@@ -402,22 +365,17 @@ const mapFrontendToApiAppearancePayload = (frontendData: Partial<AppearanceSetti
     if (frontendData.hasOwnProperty('ttsVolume')) apiData.tts_volume = frontendData.ttsVolume;
     return apiData;
 };
-// --- End Mapping Functions ---
-
 
 // --- API Service Object ---
 const apiService = {
     storeToken, getToken, removeToken,
 
     login: async (email: string, password: string): Promise<TokenResponse> => {
-        if (!email || !password) {
-            throw new Error('Email and password are required.');
-        }
+        if (!email || !password) throw new Error('Email and password are required.');
         const params = new URLSearchParams();
         params.append('grant_type', 'password');
         params.append('username', email);
         params.append('password', password);
-        console.log('[ApiService] Login params:', params.toString());
         const response = await apiClient.post<TokenResponse>('/api/v1/auth/token', params);
         if (response.data.access_token) await storeToken(response.data.access_token);
         else throw new Error('Login successful but no token received.');
@@ -425,16 +383,17 @@ const apiService = {
     },
     register: async (payload: UserRegisterPayload): Promise<UserRead> => {
         const response = await apiClient.post<UserApiResponse>('/api/v1/auth/register', payload);
+        // console.log("<<<<< RAW BACKEND RESPONSE for /register: >>>>>", JSON.stringify(response.data, null, 2)); // Dev only
         return mapApiToFrontendUser(response.data);
     },
     logout: async (): Promise<void> => {
         await removeToken();
-        // Optionally call backend logout: await apiClient.post('/api/v1/auth/logout');
-        console.log('[ApiService] User logged out.');
+        // console.log('[ApiService] User logged out.'); // Dev only
     },
 
     getCurrentUser: async (): Promise<UserRead> => {
         const response = await apiClient.get<UserApiResponse>('/api/v1/users/me');
+        // console.log("<<<<< RAW BACKEND RESPONSE for /users/me: >>>>>", JSON.stringify(response.data, null, 2)); // Dev only
         return mapApiToFrontendUser(response.data);
     },
     updateCurrentUserProfile: async (payload: UserUpdatePayload): Promise<UserRead> => {
@@ -447,13 +406,42 @@ const apiService = {
     deactivateCurrentUserAccount: async (): Promise<void> => {
         await apiClient.post('/api/v1/users/me/deactivate');
     },
+
     verifyParentalPasscode: async (passcode: string): Promise<{ isCorrect: boolean; message?: string }> => {
         try {
             const response = await apiClient.post<{ success: boolean; message?: string }>('/api/v1/auth/verify-parental-passcode', { passcode });
             return { isCorrect: response.data.success, message: response.data.message };
         } catch (error) {
-            const apiError = handleApiError(error);
-            return { isCorrect: false, message: apiError.message || 'Verification failed due to a server error.' };
+            return { isCorrect: false, message: handleApiError(error).message || 'Verification failed due to a server error.' };
+        }
+    },
+    checkBackendHasParentalPasscode: async (): Promise<{ exists: boolean; message?: string }> => {
+        try {
+            const response = await apiClient.get<{ passcode_is_set: boolean }>('/api/v1/auth/has-parental-passcode');
+            return { exists: response.data.passcode_is_set };
+        } catch (error) {
+            // console.error('[ApiService] Failed to check backend for parental passcode:', error); // Dev only
+            return { exists: false, message: 'Could not determine passcode status from server.' };
+        }
+    },
+    setOrUpdateParentalPasscodeOnBackend: async (newPasscode: string, currentPasscode?: string): Promise<{ success: boolean; message?: string }> => {
+        try {
+            const payload: { new_passcode: string; current_passcode?: string } = { new_passcode: newPasscode };
+            if (currentPasscode) payload.current_passcode = currentPasscode;
+            const response = await apiClient.post<{ success: boolean; message?: string }>('/api/v1/auth/set-parental-passcode', payload);
+            return { success: response.data.success, message: response.data.message };
+        } catch (error) {
+            return { success: false, message: handleApiError(error).message || 'Failed to set passcode on server.' };
+        }
+    },
+    removeParentalPasscodeOnBackend: async (currentPasscodeValue: string): Promise<{ success: boolean; message?: string }> => {
+        try {
+            const response = await apiClient.post<{ success: boolean; message?: string }>(
+                '/api/v1/auth/remove-parental-passcode', { current_passcode: currentPasscodeValue }
+            );
+            return { success: response.data.success, message: response.data.message };
+        } catch (error) {
+            return { success: false, message: handleApiError(error).message || 'Failed to remove passcode on server.' };
         }
     },
 
@@ -480,62 +468,36 @@ const apiService = {
     getStandardCategories: async (): Promise<StandardCategorySymbolMap> => apiClient.get<StandardCategorySymbolMap>('/api/v1/symbols/standard-categories').then(res => res.data || {}),
     getCurrentTimeContextSymbols: async (): Promise<TimeContextSymbolsResponse> => apiClient.get<TimeContextSymbolsResponse>('/api/v1/symbols/current-time-context').then(res => res.data || []),
 
-    // --- NEW Multimodal AI Endpoints (using modelApiClient) ---
     translateText: async (text: string): Promise<TextTranslationResponse> => modelApiClient.post<TextTranslationResponse>('/translate', {text}).then(r=>r.data),
     batchTranslateTexts: async (words: string[], targetLanguage: string): Promise<BatchTranslationResponse> => modelApiClient.post<BatchTranslationResponse>('/batch-translate', {words, target_language:targetLanguage}).then(r=>r.data),
     textToSpeech: async (text: string): Promise<TextToSpeechResponse> => modelApiClient.post<TextToSpeechResponse>('/tts', {text}).then(r=>r.data),
-    translateAndTextToSpeech: async (text: string): Promise<AudioDataResponse> => { // Changed return type
-        const response: AxiosResponse<Blob> = await modelApiClient.post( // Expect Blob
-            '/translate-tts',
-            { text },
-            { responseType: 'blob' } // Crucial for binary data
-        );
-
+    translateAndTextToSpeech: async (text: string): Promise<AudioDataResponse> => {
+        const response: AxiosResponse<Blob> = await modelApiClient.post('/translate-tts', { text }, { responseType: 'blob' });
         const contentDisposition = response.headers['content-disposition'];
-        let filename = 'translated_tts_output.wav'; // Default
+        let filename = 'translated_tts_output.wav';
         if (contentDisposition) {
             const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
-            if (filenameMatch && filenameMatch.length > 1) {
-                filename = filenameMatch[1];
-            }
+            if (filenameMatch?.[1]) filename = filenameMatch[1];
         }
-
-        const translatedTextHeader = response.headers['x-translated-text'];
         let translatedText: string | undefined = undefined;
+        const translatedTextHeader = response.headers['x-translated-text'];
         if (translatedTextHeader) {
-            try {
-                translatedText = decodeURIComponent(translatedTextHeader);
-            } catch (e) {
-                console.warn("Failed to decode x-translated-text header", e);
-                translatedText = translatedTextHeader; // Use raw if decode fails
-            }
+            try { translatedText = decodeURIComponent(translatedTextHeader); }
+            catch (e) { translatedText = translatedTextHeader; }
         }
-
-        return {
-            audioBlob: response.data,
-            filename: filename,
-            translatedText: translatedText,
-        };
+        return { audioBlob: response.data, filename, translatedText };
     },
     generateAACPhrase: async (words: string[]): Promise<AACPhraseGenerationResponse> => modelApiClient.post<AACPhraseGenerationResponse>('/generate_aac_phrase', {words}).then(r=>r.data),
 
+    // Placeholder Admin functions - implement fully as needed
     adminCreateUser: async (payload: AdminUserCreatePayload): Promise<UserRead> => {
-        const apiPayload = { ...payload, user_type: payload.userType, is_active: payload.isActive === undefined ? true : payload.isActive }; // Default isActive to true
+        const apiPayload = { ...payload, user_type: payload.userType, is_active: payload.isActive === undefined ? true : payload.isActive };
         delete (apiPayload as any).userType; delete (apiPayload as any).isActive;
         const response = await apiClient.post<UserApiResponse>('/api/v1/admin/users', apiPayload);
         return mapApiToFrontendUser(response.data);
     },
     adminListUsers: async (params?: ListUsersParams): Promise<UserRead[]> => {
-        const apiParams: any = {};
-        if (params) {
-            if (params.skip !== undefined) apiParams.skip = params.skip;
-            if (params.limit !== undefined) apiParams.limit = params.limit;
-            if (params.userType !== undefined && params.userType !== null) apiParams.user_type = params.userType;
-            if (params.status !== undefined && params.status !== null) apiParams.status = params.status;
-            if (params.emailSearch !== undefined && params.emailSearch !== null) apiParams.email_search = params.emailSearch;
-            if (params.nameSearch !== undefined && params.nameSearch !== null) apiParams.name_search = params.nameSearch;
-        }
-        const response = await apiClient.get<UserApiResponse[]>('/api/v1/admin/users', { params: apiParams });
+        const response = await apiClient.get<UserApiResponse[]>('/api/v1/admin/users', { params });
         return response.data.map(mapApiToFrontendUser);
     },
     adminGetUserById: async (userId: string): Promise<UserRead> => {
@@ -556,8 +518,6 @@ const apiService = {
     getApiRoot: async (): Promise<any> => apiClient.get('/').then(res => res.data),
     getHealthCheck: async (): Promise<any> => apiClient.get('/health').then(res => res.data),
 };
-// --- End API Service Object ---
-
 
 // --- Utility for handling API errors ---
 export const handleApiError = (error: unknown): {
@@ -569,51 +529,34 @@ export const handleApiError = (error: unknown): {
     if (axios.isAxiosError(error)) {
         const axiosError = error as AxiosError<HTTPValidationError | { detail: string } | string>;
         const status = axiosError.response?.status;
+        const responseData = axiosError.response?.data;
 
-        if (axiosError.response) {
-            const data = axiosError.response.data;
-            if (status === 422 && data && typeof data === 'object' && 'detail' in data) {
-                const errorDetail = (data as HTTPValidationError).detail;
+        if (responseData) {
+            if (status === 422 && typeof responseData === 'object' && responseData !== null && 'detail' in responseData) {
+                const errorDetail = (responseData as HTTPValidationError).detail;
                 if (Array.isArray(errorDetail)) {
-                    const messages = errorDetail.map(
-                        (err) => `${err.msg} (Field: ${err.loc.join(' -> ')})`
-                    );
-                    return {
-                        message: messages.join('; ') || 'Validation error',
-                        details: errorDetail,
-                        status,
-                        isValidationError: true,
-                    };
+                    const messages = errorDetail.map(err => `${err.msg} (Field: ${err.loc.join('->')})`);
+                    return { message: messages.join('; ') || 'Validation error', details: errorDetail, status, isValidationError: true };
                 } else if (typeof errorDetail === 'string') {
                     return { message: errorDetail, status, isValidationError: true };
                 }
             }
-            if (
-                data &&
-                typeof data === 'object' &&
-                'detail' in data &&
-                typeof (data as { detail: string }).detail === 'string'
-            ) {
-                return { message: (data as { detail: string }).detail, status };
+            if (typeof responseData === 'object' && responseData !== null && 'detail' in responseData && typeof (responseData as {detail: string}).detail === 'string') {
+                return { message: (responseData as {detail: string}).detail, status };
             }
-            if (typeof data === 'string' && data.length > 0) {
-                return { message: data, status };
+            if (typeof responseData === 'string' && responseData.length > 0) {
+                return { message: responseData, status };
             }
-            return {
-                message: `Error ${status || 'API Response'}: ${axiosError.message || 'An API error occurred.'}`,
-                status,
-            };
-        } else if (axiosError.request) {
-            return {
-                message: `Network Error: No response received from server. URL: ${axiosError.config?.url || 'unknown'}`,
-            };
         }
-        return { message: axiosError.message || 'Network or request setup error. Please try again.' };
-    } else if (error instanceof Error) {
+        if (axiosError.request && !axiosError.response) {
+            return { message: 'Network Error: No response from server. Check connectivity.' };
+        }
+        return { message: axiosError.message || `API Error: ${status || 'Unknown status'}`, status };
+    }
+    if (error instanceof Error) {
         return { message: error.message || 'An unexpected application error occurred.' };
     }
-    return { message: 'An unexpected and unknown error occurred. Please try again.' };
+    return { message: 'An unknown error occurred.' };
 };
-
 
 export default apiService;

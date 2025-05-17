@@ -42,6 +42,7 @@
     "editNameAccessibilityLabel": "Edit name",
     "saveNameAccessibilityLabel": "Save name changes",
     "emailLabel": "Email",
+    "removeAvatar": "Remove Avatar",
     "logout": "Logout",
     "selectAvatarTitle": "Select Avatar",
     "selectAvatarAccessibilityLabel": "Select avatar {{id}}",

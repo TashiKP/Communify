@@ -39,6 +39,7 @@ export interface ThemeColors {
   disabled: string;
   white: string;
   black: string;
+  error?: string;
 }
 
 // --- Define Font Size Structure ---

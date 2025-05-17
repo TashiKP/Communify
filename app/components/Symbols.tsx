@@ -1,4 +1,3 @@
-// src/components/SymbolGrid.tsx
 import React, {
   useState,
   useEffect,
@@ -15,7 +14,6 @@ import {
   Text,
   ActivityIndicator,
   Alert,
-  // TouchableOpacity, // No longer needed if internal navbar is removed
   Dimensions,
   Platform,
 } from 'react-native';
@@ -29,9 +27,9 @@ import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceCont
 import { useLanguage } from '../context/LanguageContext';
 
 import apiService, {
-    handleApiError,
-    StandardCategorySymbolMap,
-    TimeContextSymbolsResponse,
+  handleApiError,
+  StandardCategorySymbolMap,
+  TimeContextSymbolsResponse,
 } from '../services/apiService';
 
 import { getLanguageSpecificTextStyle } from '../styles/typography';
@@ -64,7 +62,7 @@ const calculateItemWidth = (layout: GridLayoutType, numCols: number): number => 
 
 export interface CategoryInfo {
   id: string;
-  name: string; // Original, non-translated name (used as key, e.g., "food", "contextual")
+  name: string;
   isStandard?: boolean;
 }
 
@@ -72,7 +70,6 @@ const APP_CATEGORIES_BASE: CategoryInfo[] = [
   { id: 'cat_contextual', name: 'contextual', isStandard: false },
   { id: 'cat_custom', name: 'custom', isStandard: false },
   { id: 'cat_food', name: 'food', isStandard: true },
-  // Add more "expected" standard category structures here if needed for ordering or initial display
 ];
 
 interface CustomSymbolItem {
@@ -95,7 +92,7 @@ export interface SymbolGridProps {
 
 export interface SymbolGridRef {
   addSymbolToLocalCustomCategory: (keywordToAdd: string, imageUri?: string) => Promise<void>;
-  selectedCategoryName: string | null; // This is the category key, not display name
+  selectedCategoryName: string | null;
 }
 
 const MemoizedSquareComponent = React.memo(SquareComponent);
@@ -117,12 +114,11 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
     categoryFlatList: { flex: 1 },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, minHeight: 200 },
-    gridContentContainer: { padding: 5, alignItems: 'flex-start' }, // Keep alignItems if symbols are not full width
+    gridContentContainer: { padding: 5, alignItems: 'flex-start' },
     categoryListContainer: { paddingVertical: 5 },
     emptyListText: { ...bodyStyles, fontWeight: '400', textAlign: 'center' },
   });
 };
-
 
 const SymbolGrid = forwardRef<SymbolGridRef, SymbolGridProps>(
   ({ onSymbolPress, onCategoryNameChange }, ref) => {
@@ -144,8 +140,8 @@ const SymbolGrid = forwardRef<SymbolGridRef, SymbolGridProps>(
     const [loadingApiTimeContext, setLoadingApiTimeContext] = useState<boolean>(true);
     const [loadingLocalCustom, setLoadingLocalCustom] = useState<boolean>(true);
     const [loadingDisplayedSymbols, setLoadingDisplayedSymbols] = useState<boolean>(true);
-    
-    const [selectedCategoryKey, setSelectedCategoryKey] = useState<string | null>(null); // null for contextual initially
+
+    const [selectedCategoryKey, setSelectedCategoryKey] = useState<string | null>(null);
 
     const flatListRefLeft = useRef<FlatList<DisplayedSymbolData>>(null);
     const isMountedRef = useRef(true);
@@ -157,7 +153,10 @@ const SymbolGrid = forwardRef<SymbolGridRef, SymbolGridProps>(
 
     useEffect(() => {
       isMountedRef.current = true;
-      return () => { isMountedRef.current = false; };
+      return () => {
+        isMountedRef.current = false;
+        console.log('[SymbolGrid] Unmounted');
+      };
     }, []);
 
     const isLoadingInitialData = isLoadingAppearance || isLoadingGridLayout || loadingApiStandardCategories || loadingLocalCustom || loadingApiTimeContext;
@@ -210,18 +209,18 @@ const SymbolGrid = forwardRef<SymbolGridRef, SymbolGridProps>(
         return {
           id: `cat_${key.toLowerCase()}`,
           name: baseCat ? baseCat.name : key.charAt(0).toUpperCase() + key.slice(1).toLowerCase(),
-          isStandard: true
+          isStandard: true,
         };
       });
       const sortedStandardFromApi = standardFromApi.sort((a, b) => a.name.localeCompare(b.name));
       if (isMountedRef.current) {
-          setAllDisplayCategories([...currentNonStandard, ...sortedStandardFromApi].sort((a, b) => {
-              if (a.name.toLowerCase() === 'contextual') return -1;
-              if (b.name.toLowerCase() === 'contextual') return 1;
-              if (a.name.toLowerCase() === 'custom') return -1;
-              if (b.name.toLowerCase() === 'custom') return 1;
-              return a.name.localeCompare(b.name);
-          }));
+        setAllDisplayCategories([...currentNonStandard, ...sortedStandardFromApi].sort((a, b) => {
+          if (a.name.toLowerCase() === 'contextual') return -1;
+          if (b.name.toLowerCase() === 'contextual') return 1;
+          if (a.name.toLowerCase() === 'custom') return -1;
+          if (b.name.toLowerCase() === 'custom') return 1;
+          return a.name.localeCompare(b.name);
+        }));
       }
     }, [apiStandardCategories, loadingApiStandardCategories]);
 
@@ -245,8 +244,8 @@ const SymbolGrid = forwardRef<SymbolGridRef, SymbolGridProps>(
     }, []);
 
     useEffect(() => {
-      if (loadingLocalCustom) return; // Don't save while loading or if it's the initial empty array
-      if (localCustomSymbols.length === 0 && !AsyncStorage.getItem(CUSTOM_SYMBOLS_STORAGE_KEY)) return; // Avoid saving empty array on first load if nothing was there
+      if (loadingLocalCustom) return;
+      if (localCustomSymbols.length === 0 && !AsyncStorage.getItem(CUSTOM_SYMBOLS_STORAGE_KEY)) return;
 
       const saveCustomSymbols = async () => {
         try {
@@ -255,94 +254,87 @@ const SymbolGrid = forwardRef<SymbolGridRef, SymbolGridProps>(
           console.error('SymbolGrid: Failed to save custom symbols to AsyncStorage.', e);
         }
       };
-      const timerId = setTimeout(saveCustomSymbols, 1000); // Debounce saving
+      const timerId = setTimeout(saveCustomSymbols, 1000);
       return () => clearTimeout(timerId);
     }, [localCustomSymbols, loadingLocalCustom]);
 
     const loadAndTranslateSymbols = useCallback(
       async (categoryKeyToLoad: string | null = null) => {
-        if (isLoadingInitialData) { // Combined loading state
+        if (isLoadingInitialData) {
           setLoadingDisplayedSymbols(true);
           return;
         }
         setLoadingDisplayedSymbols(true);
         flatListRefLeft.current?.scrollToOffset({ offset: 0, animated: false });
 
-        // Use requestAnimationFrame to defer heavy work slightly, improving perceived responsiveness
-        requestAnimationFrame(async () => {
-          if (!isMountedRef.current) return;
-          try {
-            let originalKeywords: string[] = [];
-            let imageUrisMap: Map<string, string | undefined> = new Map();
-            let isCustomCategory = false;
-            let symbolIdsPrefix = '';
-            let currentCategoryDisplayName = '';
+        try {
+          let originalKeywords: string[] = [];
+          let imageUrisMap: Map<string, string | undefined> = new Map();
+          let isCustomCategory = false;
+          let symbolIdsPrefix = '';
+          let currentCategoryDisplayName = '';
 
-            const effectiveCategoryKey = categoryKeyToLoad ?? 'contextual';
+          const effectiveCategoryKey = categoryKeyToLoad ?? 'contextual';
 
-            if (effectiveCategoryKey === 'custom') {
-              symbolIdsPrefix = 'custom';
-              isCustomCategory = true;
-              // localCustomSymbols is already sorted
-              originalKeywords = localCustomSymbols.map((cs) => {
-                imageUrisMap.set(cs.name, cs.imageUri);
-                return cs.name;
-              });
-              currentCategoryDisplayName = t('home.customCategory', 'Custom');
-            } else if (effectiveCategoryKey === 'contextual') {
-              symbolIdsPrefix = `ctx_api`;
-              originalKeywords = [...apiTimeContextSymbols].sort((a, b) => a.localeCompare(b)); // Sort a copy
-              currentCategoryDisplayName = t('home.contextualCategory', 'Contextual');
-            } else {
-              symbolIdsPrefix = `cat_${effectiveCategoryKey}`;
-              originalKeywords = [...(apiStandardCategories[effectiveCategoryKey] || [])].sort((a,b) => a.localeCompare(b)); // Sort a copy
-              const catInfo = allDisplayCategories.find(c => c.name.toLowerCase() === effectiveCategoryKey);
-              currentCategoryDisplayName = t(`categories.${catInfo ? catInfo.name : effectiveCategoryKey}`, {
-                defaultValue: catInfo ? catInfo.name : effectiveCategoryKey.charAt(0).toUpperCase() + effectiveCategoryKey.slice(1).toLowerCase()
-              });
-            }
-            // originalKeywords are now sorted
-
-            let translatedKeywords = originalKeywords;
-            if (currentLanguage === 'dzo' && originalKeywords.length > 0) {
-              const results = await translateSymbolBatch(originalKeywords, 'dzo');
-              if (isMountedRef.current && results && results.length === originalKeywords.length) {
-                translatedKeywords = results;
-              }
-            }
-
-            if (!isMountedRef.current) return;
-
-            const symbolsData: DisplayedSymbolData[] = originalKeywords.map((originalKw, idx) => ({
-              id: `${symbolIdsPrefix}_${idx}_${originalKw.replace(/\s+/g, '_')}`,
-              keyword: originalKw,
-              displayText: translatedKeywords[idx] || originalKw,
-              imageUri: imageUrisMap.get(originalKw),
-              isCustom: isCustomCategory,
-            }));
-
-            setDisplayedSymbols(symbolsData);
-            if (onCategoryNameChange) {
-              onCategoryNameChange(currentCategoryDisplayName);
-            }
-
-          } catch (err) {
-            console.error('SymbolGrid: Error processing or translating symbols:', err);
-            if (isMountedRef.current) {
-              setDisplayedSymbols([]);
-              Alert.alert(t('common.error', 'Error'), t('home.errors.loadSymbolsFail', 'Failed to load symbols.'));
-            }
-          } finally {
-            if (isMountedRef.current) setLoadingDisplayedSymbols(false);
+          if (effectiveCategoryKey === 'custom') {
+            symbolIdsPrefix = 'custom';
+            isCustomCategory = true;
+            originalKeywords = localCustomSymbols.map((cs) => {
+              imageUrisMap.set(cs.name, cs.imageUri);
+              return cs.name;
+            });
+            currentCategoryDisplayName = t('home.customCategory', 'Custom');
+          } else if (effectiveCategoryKey === 'contextual') {
+            symbolIdsPrefix = `ctx_api`;
+            originalKeywords = [...apiTimeContextSymbols].sort((a, b) => a.localeCompare(b));
+            currentCategoryDisplayName = t('home.contextualCategory', 'Contextual');
+          } else {
+            symbolIdsPrefix = `cat_${effectiveCategoryKey}`;
+            originalKeywords = [...(apiStandardCategories[effectiveCategoryKey] || [])].sort((a, b) => a.localeCompare(b));
+            const catInfo = allDisplayCategories.find(c => c.name.toLowerCase() === effectiveCategoryKey);
+            currentCategoryDisplayName = t(`categories.${catInfo ? catInfo.name : effectiveCategoryKey}`, {
+              defaultValue: catInfo ? catInfo.name : effectiveCategoryKey.charAt(0).toUpperCase() + effectiveCategoryKey.slice(1).toLowerCase(),
+            });
           }
-        });
+
+          let translatedKeywords = originalKeywords;
+          if (currentLanguage === 'dzo' && originalKeywords.length > 0) {
+            const results = await translateSymbolBatch(originalKeywords, 'dzo');
+            if (isMountedRef.current && results && results.length === originalKeywords.length) {
+              translatedKeywords = results;
+            }
+          }
+
+          if (!isMountedRef.current) return;
+
+          const symbolsData: DisplayedSymbolData[] = originalKeywords.map((originalKw, idx) => ({
+            id: `${symbolIdsPrefix}_${idx}_${originalKw.replace(/\s+/g, '_')}`,
+            keyword: originalKw,
+            displayText: translatedKeywords[idx] || originalKw,
+            imageUri: imageUrisMap.get(originalKw),
+            isCustom: isCustomCategory,
+          }));
+
+          setDisplayedSymbols(symbolsData);
+          if (onCategoryNameChange) {
+            onCategoryNameChange(currentCategoryDisplayName);
+          }
+        } catch (err) {
+          console.error('SymbolGrid: Error processing or translating symbols:', err);
+          if (isMountedRef.current) {
+            setDisplayedSymbols([]);
+            Alert.alert(t('common.error', 'Error'), t('home.errors.loadSymbolsFail', 'Failed to load symbols.'));
+          }
+        } finally {
+          if (isMountedRef.current) setLoadingDisplayedSymbols(false);
+        }
       },
       [
         localCustomSymbols,
         apiStandardCategories,
         apiTimeContextSymbols,
         allDisplayCategories,
-        isLoadingInitialData, // Use combined loading state
+        isLoadingInitialData,
         currentLanguage,
         translateSymbolBatch,
         t,
@@ -351,23 +343,23 @@ const SymbolGrid = forwardRef<SymbolGridRef, SymbolGridProps>(
     );
 
     useEffect(() => {
-      // This effect triggers when selectedCategoryKey changes OR when any initial data loading finishes
       if (!isLoadingInitialData) {
         loadAndTranslateSymbols(selectedCategoryKey);
-      } else if (onCategoryNameChange && selectedCategoryKey === null) { // Ensure initial category name is set for "Contextual"
+      } else if (onCategoryNameChange && selectedCategoryKey === null) {
         onCategoryNameChange(t('home.contextualCategory', 'Contextual'));
       }
     }, [isLoadingInitialData, selectedCategoryKey, loadAndTranslateSymbols, currentLanguage, onCategoryNameChange, t]);
 
-    const handleCategoryPress = useCallback((categoryInfo: CategoryInfo) => {
+    const handleCategoryPress = useCallback(
+      (categoryInfo: CategoryInfo) => {
         const newKey = categoryInfo.name.toLowerCase();
-        const currentKey = selectedCategoryKey ?? 'contextual'; // Default to 'contextual' if null
+        const currentKey = selectedCategoryKey ?? 'contextual';
 
-        if (newKey === currentKey) return; // Do nothing if already selected
-        
+        if (newKey === currentKey) return;
+
         setSelectedCategoryKey(newKey === 'contextual' ? null : newKey);
-        // loadAndTranslateSymbols will be called by the useEffect watching selectedCategoryKey
-      }, [selectedCategoryKey] // No other dependencies needed here
+      },
+      [selectedCategoryKey]
     );
 
     const renderLeftItem = useCallback(
@@ -390,17 +382,15 @@ const SymbolGrid = forwardRef<SymbolGridRef, SymbolGridProps>(
         const categoryKey = categoryInfo.name.toLowerCase();
         const isSelected = (selectedCategoryKey ?? 'contextual') === categoryKey;
 
-        let displayedName = categoryInfo.name; // Default to original name
+        let displayedName = categoryInfo.name;
         if (categoryKey === 'contextual') {
           displayedName = t('home.contextualCategory', 'Contextual');
         } else if (categoryKey === 'custom') {
           displayedName = t('home.customCategory', 'Custom');
         } else {
-          // For standard categories, try to translate using a generic pattern
-          // or use the name from allDisplayCategories which should be properly cased.
           const foundCatInfo = allDisplayCategories.find(c => c.name.toLowerCase() === categoryKey);
-          displayedName = t(`categories.${foundCatInfo ? foundCatInfo.name : categoryKey}`, { 
-              defaultValue: foundCatInfo ? foundCatInfo.name : categoryKey.charAt(0).toUpperCase() + categoryKey.slice(1).toLowerCase()
+          displayedName = t(`categories.${foundCatInfo ? foundCatInfo.name : categoryKey}`, {
+            defaultValue: foundCatInfo ? foundCatInfo.name : categoryKey.charAt(0).toUpperCase() + categoryKey.slice(1).toLowerCase(),
           });
         }
         return (
@@ -446,7 +436,7 @@ const SymbolGrid = forwardRef<SymbolGridRef, SymbolGridProps>(
     }), [addSymbolToLocalCustomCategory, selectedCategoryKey]);
 
     const showGridLoading = isLoadingInitialData || loadingDisplayedSymbols || isTranslatingSymbols;
-    const showCategoryListLoading = loadingApiStandardCategories; // Only for the category list itself
+    const showCategoryListLoading = loadingApiStandardCategories;
 
     return (
       <View style={styles.container}>
@@ -470,13 +460,15 @@ const SymbolGrid = forwardRef<SymbolGridRef, SymbolGridProps>(
                     <Text style={[styles.emptyListText, { color: theme.textSecondary }]}>{t('home.noSymbols', 'No symbols to display.')}</Text>
                   </View>
                 }
-                initialNumToRender={numGridColumns * 5} // Adjust based on numColumns
-                maxToRenderPerBatch={numGridColumns * 4} // Adjust based on numColumns
+                initialNumToRender={numGridColumns * 5}
+                maxToRenderPerBatch={numGridColumns * 4}
                 windowSize={Platform.OS === 'ios' ? 21 : 11}
-                removeClippedSubviews={Platform.OS === 'android'}
-                getItemLayout={(_, index) => (
-                  {length: itemWidth + 8, offset: (itemWidth + 8) * index, index}
-                )}
+                removeClippedSubviews={false} // Disable to prevent View hierarchy issues
+                getItemLayout={(_, index) => ({
+                  length: itemWidth + 8,
+                  offset: (itemWidth + 8) * index,
+                  index,
+                })}
                 extraData={`${itemWidth}-${numGridColumns}-${currentLanguage}-${displayedSymbols.length}`}
               />
             )}
@@ -494,6 +486,8 @@ const SymbolGrid = forwardRef<SymbolGridRef, SymbolGridProps>(
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={styles.categoryListContainer}
                 extraData={`${selectedCategoryKey}-${currentLanguage}-${allDisplayCategories.length}`}
+                removeClippedSubviews={false} // Disable to prevent View hierarchy issues
+                initialNumToRender={allDisplayCategories.length} // Render all categories upfront
               />
             )}
           </View>

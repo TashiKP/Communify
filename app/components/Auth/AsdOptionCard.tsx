@@ -1,16 +1,16 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
-import { faCheckCircle, IconDefinition } from '@fortawesome/free-solid-svg-icons';
+import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import {FontAwesomeIcon} from '@fortawesome/react-native-fontawesome';
+import {faCheckCircle, IconDefinition} from '@fortawesome/free-solid-svg-icons';
 
 import * as appColors from '../../../app/constants/colors'; // Adjust path
 import * as appDimensions from '../../../app/constants/dimensions'; // Adjust path
 
 export interface AsdOptionCardData {
-    type: string; // Or a more specific enum/type like AsdLevelOptionType
-    label: string;
-    description: string;
-    icon: IconDefinition;
+  type: string; // Or a more specific enum/type like AsdLevelOptionType
+  label: string;
+  description: string;
+  icon: IconDefinition;
 }
 
 interface AsdOptionCardProps {
@@ -20,21 +20,54 @@ interface AsdOptionCardProps {
   disabled?: boolean;
 }
 
-const AsdOptionCard: React.FC<AsdOptionCardProps> = ({ option, isSelected, onPress, disabled }) => {
+const AsdOptionCard: React.FC<AsdOptionCardProps> = ({
+  option,
+  isSelected,
+  onPress,
+  disabled,
+}) => {
   return (
     <TouchableOpacity
       style={[styles.optionCard, isSelected && styles.optionCardSelected]}
       onPress={onPress}
       activeOpacity={0.8}
-      disabled={disabled}
-    >
-      <FontAwesomeIcon icon={option.icon} size={appDimensions.ICON_SIZE_OPTION_CARD || 20} color={isSelected ? appColors.PRIMARY_COLOR : appColors.TEXT_COLOR_SECONDARY} style={styles.optionIcon} />
+      disabled={disabled}>
+      <FontAwesomeIcon
+        icon={option.icon}
+        size={appDimensions.ICON_SIZE_OPTION_CARD || 20}
+        color={
+          isSelected ? appColors.PRIMARY_COLOR : appColors.TEXT_COLOR_SECONDARY
+        }
+        style={styles.optionIcon}
+      />
       <View style={styles.optionTextWrapper}>
-        <Text style={[styles.optionLabel, isSelected && styles.optionLabelSelected]}>{option.label}</Text>
-        <Text style={[styles.optionDescription, isSelected && styles.optionDescriptionSelected]}>{option.description}</Text>
+        <Text
+          style={[
+            styles.optionLabel,
+            isSelected && styles.optionLabelSelected,
+          ]}>
+          {option.label}
+        </Text>
+        <Text
+          style={[
+            styles.optionDescription,
+            isSelected && styles.optionDescriptionSelected,
+          ]}>
+          {option.description}
+        </Text>
       </View>
-      <View style={[styles.checkIndicatorBase, isSelected && styles.checkIndicatorSelected]}>
-        {isSelected && <FontAwesomeIcon icon={faCheckCircle} size={appDimensions.ICON_SIZE_MEDIUM || 20} color={appColors.WHITE_COLOR} />}
+      <View
+        style={[
+          styles.checkIndicatorBase,
+          isSelected && styles.checkIndicatorSelected,
+        ]}>
+        {isSelected && (
+          <FontAwesomeIcon
+            icon={faCheckCircle}
+            size={appDimensions.ICON_SIZE_MEDIUM || 20}
+            color={appColors.WHITE_COLOR}
+          />
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -79,7 +112,8 @@ const styles = StyleSheet.create({
     color: appColors.TEXT_COLOR_SECONDARY,
     lineHeight: appDimensions.LINE_HEIGHT_DESCRIPTION || 18,
   },
-  optionDescriptionSelected: { // Description color might not need to change, or could be subtle
+  optionDescriptionSelected: {
+    // Description color might not need to change, or could be subtle
     color: appColors.TEXT_COLOR_SECONDARY, // Or appColors.PRIMARY_COLOR_LIGHT or similar
   },
   checkIndicatorBase: {

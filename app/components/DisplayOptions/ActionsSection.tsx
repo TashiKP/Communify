@@ -1,11 +1,10 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
-import { faUndo } from '@fortawesome/free-solid-svg-icons';
-import { useTranslation } from 'react-i18next';
-import { FontSizes, ThemeColors } from '../../context/AppearanceContext';
-import { getLanguageSpecificTextStyle } from '../../styles/typography';
-
+import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import {FontAwesomeIcon} from '@fortawesome/react-native-fontawesome';
+import {faUndo} from '@fortawesome/free-solid-svg-icons';
+import {useTranslation} from 'react-i18next';
+import {FontSizes, ThemeColors} from '../../context/AppearanceContext';
+import {getLanguageSpecificTextStyle} from '../../styles/typography';
 
 interface ActionsSectionProps {
   onReset: () => void;
@@ -22,7 +21,7 @@ const ActionsSection: React.FC<ActionsSectionProps> = ({
   fonts,
   currentLanguage,
 }) => {
-  const { t } = useTranslation();
+  const {t} = useTranslation();
   const styles = createStyles(theme, fonts, currentLanguage);
 
   return (
@@ -33,8 +32,7 @@ const ActionsSection: React.FC<ActionsSectionProps> = ({
         disabled={isResetDisabled}
         accessibilityRole="button"
         accessibilityLabel={t('common.resetChanges')}
-        accessibilityState={{ disabled: isResetDisabled }}
-      >
+        accessibilityState={{disabled: isResetDisabled}}>
         <FontAwesomeIcon
           icon={faUndo}
           size={fonts.body * 1.1}
@@ -44,10 +42,9 @@ const ActionsSection: React.FC<ActionsSectionProps> = ({
         <Text
           style={[
             styles.resetButtonText,
-            { color: isResetDisabled ? theme.disabled : theme.textSecondary },
+            {color: isResetDisabled ? theme.disabled : theme.textSecondary},
             isResetDisabled && styles.textDisabled,
-          ]}
-        >
+          ]}>
           {t('common.resetChanges')}
         </Text>
       </TouchableOpacity>
@@ -55,7 +52,11 @@ const ActionsSection: React.FC<ActionsSectionProps> = ({
   );
 };
 
-const createStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguage: string) =>
+const createStyles = (
+  theme: ThemeColors,
+  fonts: FontSizes,
+  currentLanguage: string,
+) =>
   StyleSheet.create({
     actionsContainer: {
       marginTop: 25,

@@ -2,7 +2,7 @@ import React from 'react';
 import CateComponent from './CateComponent';
 
 interface CategoryListItemProps {
-  categoryInfo: { id: string; name: string; isStandard?: boolean };
+  categoryInfo: {id: string; name: string; isStandard?: boolean};
   displayedName: string;
   onPressCategory: () => void;
   isSelected: boolean;

@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import AsdOptionCard, { AsdOptionCardData } from './AsdOptionCard'; // Import the data type if defined separately
+import {View, Text, StyleSheet} from 'react-native';
+import AsdOptionCard, {AsdOptionCardData} from './AsdOptionCard'; // Import the data type if defined separately
 
 import * as appColors from '../../../app/constants/colors'; // Adjust path
 import * as appDimensions from '../../../app/constants/dimensions'; // Adjust path
@@ -18,13 +18,13 @@ const AsdLevelSelector: React.FC<AsdLevelSelectorProps> = ({
   selectedValue,
   onSelect,
   isLoading,
-  title = "ASD Support Level:"
+  title = 'ASD Support Level:',
 }) => {
   return (
     <View style={styles.formSection}>
       <Text style={styles.label}>{title}</Text>
       <View style={styles.optionsList}>
-        {options.map((option) => (
+        {options.map(option => (
           <AsdOptionCard
             key={option.type}
             option={option}
@@ -48,8 +48,7 @@ const styles = StyleSheet.create({
     color: appColors.TEXT_COLOR_SECONDARY,
     marginBottom: appDimensions.MARGIN_SMALL || 8,
   },
-  optionsList: {
-  },
+  optionsList: {},
 });
 
 export default AsdLevelSelector;

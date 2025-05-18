@@ -1,13 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { View, ActivityIndicator, Text, StyleSheet, Alert } from 'react-native';
-import { useAuth } from '../context/AuthContext';
-import { useAppearance } from '../context/AppearanceContext';
-import { useTranslation } from 'react-i18next';
+import React, {useEffect, useState} from 'react';
+import {View, ActivityIndicator, Text, StyleSheet, Alert} from 'react-native';
+import {useAuth} from '../context/AuthContext';
+import {useAppearance} from '../context/AppearanceContext';
+import {useTranslation} from 'react-i18next';
 
 const LoggingOutScreen: React.FC = () => {
-  const { signOut } = useAuth();
-  const { theme, fonts } = useAppearance();
-  const { t } = useTranslation();
+  const {signOut} = useAuth();
+  const {theme, fonts} = useAppearance();
+  const {t} = useTranslation();
   const [isLoggingOut, setIsLoggingOut] = useState(true);
 
   useEffect(() => {
@@ -28,7 +28,10 @@ const LoggingOutScreen: React.FC = () => {
         if (isMounted) {
           Alert.alert(
             t('profile.logoutErrorTitle', 'Logout Failed'),
-            t('profile.logoutErrorMessage', 'Could not log out. Please try again.')
+            t(
+              'profile.logoutErrorMessage',
+              'Could not log out. Please try again.',
+            ),
           );
           setIsLoggingOut(false);
         }
@@ -44,11 +47,12 @@ const LoggingOutScreen: React.FC = () => {
   }, [signOut, t]);
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={[styles.container, {backgroundColor: theme.background}]}>
       {isLoggingOut ? (
         <>
           <ActivityIndicator size="large" color={theme.primary} />
-          <Text style={[styles.text, { color: theme.text, fontSize: fonts.body }]}>
+          <Text
+            style={[styles.text, {color: theme.text, fontSize: fonts.body}]}>
             {t('loggingOut', 'Logging out...')}
           </Text>
         </>

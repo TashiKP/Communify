@@ -1,5 +1,5 @@
 import 'react-native-url-polyfill/auto';
-import React, { useEffect, useState, useMemo } from 'react';
+import React, {useEffect, useState, useMemo} from 'react';
 import 'react-native-get-random-values';
 import {
   SafeAreaView,
@@ -9,8 +9,12 @@ import {
   ActivityIndicator,
   Text,
 } from 'react-native';
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
+import {
+  NavigationContainer,
+  DefaultTheme,
+  DarkTheme,
+} from '@react-navigation/native';
+import {createStackNavigator} from '@react-navigation/stack';
 import Orientation from 'react-native-orientation-locker';
 import * as Sentry from '@sentry/react-native';
 
@@ -22,13 +26,13 @@ import {
   ERROR_FALLBACK_MESSAGE_COLOR,
   ERROR_DETAILS_COLOR,
 } from './constants/colors';
-import { TestIDs } from './constants/testIDs';
+import {TestIDs} from './constants/testIDs';
 
 // Contexts
-import { GridProvider } from './context/GridContext';
-import { AppearanceProvider, useAppearance } from './context/AppearanceContext';
-import { LanguageProvider } from './context/LanguageContext';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import {GridProvider} from './context/GridContext';
+import {AppearanceProvider, useAppearance} from './context/AppearanceContext';
+import {LanguageProvider} from './context/LanguageContext';
+import {AuthProvider, useAuth} from './context/AuthContext';
 
 // Navigators
 import AuthNavigator from './navigation/AuthNavigator';
@@ -45,14 +49,17 @@ interface ErrorBoundaryState {
   error?: Error;
 }
 
-class AppErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+class AppErrorBoundary extends React.Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { hasError: false };
+    this.state = {hasError: false};
   }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { hasError: true, error };
+    return {hasError: true, error};
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
@@ -71,7 +78,9 @@ class AppErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundary
       }
       return (
         <View style={styles.errorFallbackContainer}>
-          <Text style={styles.errorFallbackText}>Oops! Something went wrong.</Text>
+          <Text style={styles.errorFallbackText}>
+            Oops! Something went wrong.
+          </Text>
           <Text style={styles.errorFallbackMessage}>
             Please try restarting the application.
           </Text>
@@ -89,8 +98,8 @@ class AppErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundary
 
 // --- Transition Screen ---
 const TransitionScreen: React.FC = () => {
-  const { signOut, isLoading: isAuthLoading } = useAuth();
-  const { theme } = useAppearance();
+  const {signOut, isLoading: isAuthLoading} = useAuth();
+  const {theme} = useAppearance();
   const [isTransitioning, setIsTransitioning] = useState(true);
 
   useEffect(() => {
@@ -119,22 +128,23 @@ const TransitionScreen: React.FC = () => {
 
   if (isTransitioning || isAuthLoading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+      <View
+        style={[styles.loadingContainer, {backgroundColor: theme.background}]}>
         <ActivityIndicator size="large" color={LOADER_COLOR} />
-        <Text style={[styles.text, { color: theme.text }]}>Logging out...</Text>
+        <Text style={[styles.text, {color: theme.text}]}>Logging out...</Text>
       </View>
     );
   }
 
-  return null; // Transition complete, navigator will switch
+  return null;
 };
 
 // --- Themed Content ---
 const ThemedAppContent: React.FC = () => {
-  const { theme, brightnessOverlayOpacity, statusBarStyle } = useAppearance();
+  const {theme, brightnessOverlayOpacity, statusBarStyle} = useAppearance();
 
   return (
-    <View style={[styles.appContainer, { backgroundColor: theme.background }]}>
+    <View style={[styles.appContainer, {backgroundColor: theme.background}]}>
       <StatusBar
         barStyle={statusBarStyle}
         backgroundColor={theme.primary}
@@ -145,7 +155,7 @@ const ThemedAppContent: React.FC = () => {
         <View
           style={[
             styles.brightnessOverlay,
-            { backgroundColor: `rgba(0, 0, 0, ${brightnessOverlayOpacity})` },
+            {backgroundColor: `rgba(0, 0, 0, ${brightnessOverlayOpacity})`},
           ]}
           pointerEvents="none"
         />
@@ -158,8 +168,8 @@ const ThemedAppContent: React.FC = () => {
 const RootStack = createStackNavigator();
 
 const AppNavigator: React.FC = () => {
-  const { userToken, isLoading: isAuthLoading } = useAuth();
-  const { theme, isLoadingAppearance } = useAppearance();
+  const {userToken, isLoading: isAuthLoading} = useAuth();
+  const {theme, isLoadingAppearance} = useAppearance();
 
   const navigationTheme = useMemo(() => {
     return theme.isDark ? DarkTheme : DefaultTheme;
@@ -167,7 +177,9 @@ const AppNavigator: React.FC = () => {
 
   if (isAuthLoading || isLoadingAppearance) {
     return (
-      <View style={styles.loadingContainer} testID={TestIDs.APP_LOADING_INDICATOR}>
+      <View
+        style={styles.loadingContainer}
+        testID={TestIDs.APP_LOADING_INDICATOR}>
         <ActivityIndicator size="large" color={LOADER_COLOR} />
       </View>
     );
@@ -175,7 +187,7 @@ const AppNavigator: React.FC = () => {
 
   return (
     <NavigationContainer theme={navigationTheme}>
-      <RootStack.Navigator screenOptions={{ headerShown: false }}>
+      <RootStack.Navigator screenOptions={{headerShown: false}}>
         {userToken ? (
           <RootStack.Screen name="MainApp" component={ThemedAppContent} />
         ) : userToken === null ? ( // Check for null instead of false

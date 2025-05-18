@@ -1,8 +1,12 @@
 // src/hooks/useParentalSettings.ts
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Alert } from 'react-native';
-import apiService, { handleApiError, ParentalSettingsData, DayOfWeek } from '../services/apiService'; // Adjust path
-import { TFunction } from 'i18next';
+import {useState, useEffect, useCallback, useMemo, useRef} from 'react';
+import {Alert} from 'react-native';
+import apiService, {
+  handleApiError,
+  ParentalSettingsData,
+  DayOfWeek,
+} from '../services/apiService'; // Adjust path
+import {TFunction} from 'i18next';
 
 const defaultSettings: ParentalSettingsData = {
   asdLevel: null,
@@ -35,14 +39,17 @@ export const useParentalSettings = ({
   isPasscodeSet,
   onPromptPasscodeSetup,
 }: UseParentalSettingsProps) => {
-  const [localSettings, setLocalSettings] = useState<ParentalSettingsData>(() => ({
-    ...defaultSettings,
-    ...(propInitialSettings || {}), // Prioritize prop initial settings if provided
-  }));
-  const [originalSettings, setOriginalSettings] = useState<ParentalSettingsData>(() => ({
-    ...defaultSettings,
-    ...(propInitialSettings || {}),
-  }));
+  const [localSettings, setLocalSettings] = useState<ParentalSettingsData>(
+    () => ({
+      ...defaultSettings,
+      ...(propInitialSettings || {}), // Prioritize prop initial settings if provided
+    }),
+  );
+  const [originalSettings, setOriginalSettings] =
+    useState<ParentalSettingsData>(() => ({
+      ...defaultSettings,
+      ...(propInitialSettings || {}),
+    }));
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingApiSettings, setIsLoadingApiSettings] = useState(true); // True initially
   const isMountedRef = useRef(true);
@@ -56,22 +63,22 @@ export const useParentalSettings = ({
 
   const fetchSettings = useCallback(async () => {
     if (!isMountedRef.current) return;
-    console.log("useParentalSettings: Fetching API settings...");
+    console.log('useParentalSettings: Fetching API settings...');
     setIsLoadingApiSettings(true);
     try {
       const fetchedSettings = await apiService.fetchParentalSettings();
       if (isMountedRef.current) {
-        const merged = { ...defaultSettings, ...fetchedSettings };
+        const merged = {...defaultSettings, ...fetchedSettings};
         setLocalSettings(merged);
         setOriginalSettings(merged);
-        console.log("useParentalSettings: API settings fetched successfully.");
+        console.log('useParentalSettings: API settings fetched successfully.');
       }
     } catch (error) {
       console.error('useParentalSettings: Failed to fetch settings:', error);
       if (isMountedRef.current) {
         Alert.alert(t('common.error'), t('parentalControls.errors.fetchFail'));
         // Fallback to prop initial settings or defaults if API fails
-        const fallback = { ...defaultSettings, ...(propInitialSettings || {}) };
+        const fallback = {...defaultSettings, ...(propInitialSettings || {})};
         setLocalSettings(fallback);
         setOriginalSettings(fallback);
       }
@@ -84,22 +91,25 @@ export const useParentalSettings = ({
 
   const hasUnsavedChanges = useMemo(
     () => JSON.stringify(localSettings) !== JSON.stringify(originalSettings),
-    [localSettings, originalSettings]
+    [localSettings, originalSettings],
   );
 
   const handleSettingChange = useCallback(
-    <K extends keyof ParentalSettingsData>(key: K, value: ParentalSettingsData[K]) => {
+    <K extends keyof ParentalSettingsData>(
+      key: K,
+      value: ParentalSettingsData[K],
+    ) => {
       if (key === 'requirePasscode' && value === true && !isPasscodeSet) {
         Alert.alert(
           t('parentalControls.passcodeRequiredTitle'),
           t('parentalControls.passcodeRequiredMessageToEnable'),
-          [{ text: t('common.ok'), onPress: onPromptPasscodeSetup }]
+          [{text: t('common.ok'), onPress: onPromptPasscodeSetup}],
         );
         // Do not update localSettings.requirePasscode here, let the passcode setup flow handle it
         // or if it's just a toggle, ensure passcode setup is forced.
         return;
       }
-      setLocalSettings((prev) => {
+      setLocalSettings(prev => {
         if (key === 'dailyLimitHours') {
           const numericValue = String(value);
           const filteredValue = numericValue.replace(/[^0-9.]/g, ''); // Allow dot for decimal
@@ -124,58 +134,78 @@ export const useParentalSettings = ({
           } else {
             finalValue = prev.dailyLimitHours;
           }
-          return { ...prev, dailyLimitHours: finalValue };
+          return {...prev, dailyLimitHours: finalValue};
         }
-        return { ...prev, [key]: value };
+        return {...prev, [key]: value};
       });
     },
-    [isPasscodeSet, onPromptPasscodeSetup, t] // These dependencies should be stable or handled by the parent.
+    [isPasscodeSet, onPromptPasscodeSetup, t], // These dependencies should be stable or handled by the parent.
   );
 
   const handleDowntimeDayToggle = useCallback((day: DayOfWeek) => {
-    setLocalSettings((prev) => ({
+    setLocalSettings(prev => ({
       ...prev,
       downtimeDays: prev.downtimeDays.includes(day)
-        ? prev.downtimeDays.filter((d) => d !== day)
+        ? prev.downtimeDays.filter(d => d !== day)
         : [...prev.downtimeDays, day],
     }));
   }, []); // No external dependencies, stable.
 
   const saveSettings = useCallback(async () => {
     if (!hasUnsavedChanges || isSaving) {
-        console.log("useParentalSettings: Save skipped.", { hasUnsavedChanges, isSaving });
-        return false;
+      console.log('useParentalSettings: Save skipped.', {
+        hasUnsavedChanges,
+        isSaving,
+      });
+      return false;
     }
 
     if (localSettings.requirePasscode && !isPasscodeSet) {
-      Alert.alert(t('parentalControls.errors.saveFailTitle'), t('parentalControls.errors.passcodeNotSet'));
+      Alert.alert(
+        t('parentalControls.errors.saveFailTitle'),
+        t('parentalControls.errors.passcodeNotSet'),
+      );
       onPromptPasscodeSetup(); // Ensure this callback is stable from the parent
       return false;
     }
-    if (localSettings.downtimeEnabled && localSettings.downtimeDays.length === 0) {
-      Alert.alert(t('parentalControls.errors.incompleteDowntimeTitle'), t('parentalControls.errors.incompleteDowntimeMessage'));
+    if (
+      localSettings.downtimeEnabled &&
+      localSettings.downtimeDays.length === 0
+    ) {
+      Alert.alert(
+        t('parentalControls.errors.incompleteDowntimeTitle'),
+        t('parentalControls.errors.incompleteDowntimeMessage'),
+      );
       return false;
     }
 
-    console.log("useParentalSettings: Attempting to save settings...");
+    console.log('useParentalSettings: Attempting to save settings...');
     setIsSaving(true);
     try {
       const savedFromApi = await apiService.saveParentalSettings(localSettings);
       if (isMountedRef.current) {
-        const merged = { ...defaultSettings, ...savedFromApi };
+        const merged = {...defaultSettings, ...savedFromApi};
         setOriginalSettings(merged);
         setLocalSettings(merged);
         onSaveSuccess?.(merged);
-        Alert.alert(t('parentalControls.saveSuccessTitle'), t('parentalControls.saveSuccessMessage'));
+        Alert.alert(
+          t('parentalControls.saveSuccessTitle'),
+          t('parentalControls.saveSuccessMessage'),
+        );
         onCloseAfterSave?.();
-        console.log("useParentalSettings: Settings saved successfully.");
+        console.log('useParentalSettings: Settings saved successfully.');
         return true;
       }
     } catch (error) {
       console.error('useParentalSettings: Error saving settings:', error);
       if (isMountedRef.current) {
         const extracted = handleApiError(error);
-        Alert.alert(t('common.error'), t('parentalControls.errors.saveApiFailWithMessage', { message: extracted.message }));
+        Alert.alert(
+          t('common.error'),
+          t('parentalControls.errors.saveApiFailWithMessage', {
+            message: extracted.message,
+          }),
+        );
       }
     } finally {
       if (isMountedRef.current) {
@@ -195,7 +225,7 @@ export const useParentalSettings = ({
   ]);
 
   const resetSettings = useCallback(() => {
-    console.log("useParentalSettings: Resetting settings to original.");
+    console.log('useParentalSettings: Resetting settings to original.');
     setLocalSettings(originalSettings);
   }, [originalSettings]); // `originalSettings` changes only after a successful fetch/save.
 

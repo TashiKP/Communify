@@ -1,5 +1,4 @@
-import { ContrastModeType, TextSizeType } from "../../context/AppearanceContext";
-
+import {ContrastModeType, TextSizeType} from '../../context/AppearanceContext';
 
 export interface DisplayScreenSettings {
   brightness: number;

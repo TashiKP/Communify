@@ -1,8 +1,8 @@
 // src/hooks/useTimePicker.ts
-import { useState, useCallback } from 'react';
-import { Platform } from 'react-native';
-import { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import { ParentalSettingsData } from '../services/apiService'; // Adjust path
+import {useState, useCallback} from 'react';
+import {Platform} from 'react-native';
+import {DateTimePickerEvent} from '@react-native-community/datetimepicker';
+import {ParentalSettingsData} from '../services/apiService'; // Adjust path
 
 const formatTime = (date: Date): string => {
   const h = date.getHours().toString().padStart(2, '0');
@@ -22,21 +22,33 @@ const parseTime = (timeString: string): Date => {
 
 interface UseTimePickerProps {
   getStartTime: () => string; // To get current downtimeStart from localSettings
-  getEndTime: () => string;   // To get current downtimeEnd from localSettings
-  onTimeSelected: (target: 'downtimeStart' | 'downtimeEnd', time: string) => void;
+  getEndTime: () => string; // To get current downtimeEnd from localSettings
+  onTimeSelected: (
+    target: 'downtimeStart' | 'downtimeEnd',
+    time: string,
+  ) => void;
 }
 
-export const useTimePicker = ({ getStartTime, getEndTime, onTimeSelected }: UseTimePickerProps) => {
+export const useTimePicker = ({
+  getStartTime,
+  getEndTime,
+  onTimeSelected,
+}: UseTimePickerProps) => {
   const [showTimePicker, setShowTimePicker] = useState(false);
-  const [timePickerTarget, setTimePickerTarget] = useState<'start' | 'end' | null>(null);
+  const [timePickerTarget, setTimePickerTarget] = useState<
+    'start' | 'end' | null
+  >(null);
   const [timePickerValue, setTimePickerValue] = useState<Date>(new Date());
 
-  const showTimePickerModal = useCallback((target: 'start' | 'end') => {
-    setTimePickerTarget(target);
-    const initialTime = target === 'start' ? getStartTime() : getEndTime();
-    setTimePickerValue(parseTime(initialTime));
-    setShowTimePicker(true);
-  }, [getStartTime, getEndTime]);
+  const showTimePickerModal = useCallback(
+    (target: 'start' | 'end') => {
+      setTimePickerTarget(target);
+      const initialTime = target === 'start' ? getStartTime() : getEndTime();
+      setTimePickerValue(parseTime(initialTime));
+      setShowTimePicker(true);
+    },
+    [getStartTime, getEndTime],
+  );
 
   const onTimeChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
     const currentDate = selectedDate || timePickerValue;
@@ -45,10 +57,16 @@ export const useTimePicker = ({ getStartTime, getEndTime, onTimeSelected }: UseT
     }
     if (event.type === 'set' && timePickerTarget) {
       const formattedTime = formatTime(currentDate);
-      onTimeSelected(timePickerTarget === 'start' ? 'downtimeStart' : 'downtimeEnd', formattedTime);
+      onTimeSelected(
+        timePickerTarget === 'start' ? 'downtimeStart' : 'downtimeEnd',
+        formattedTime,
+      );
       if (Platform.OS === 'ios') setShowTimePicker(false); // Hide on iOS only on 'set'
       setTimePickerTarget(null);
-    } else if (event.type === 'dismissed' || event.type === 'neutralButtonPressed') {
+    } else if (
+      event.type === 'dismissed' ||
+      event.type === 'neutralButtonPressed'
+    ) {
       setShowTimePicker(false);
       setTimePickerTarget(null);
     }

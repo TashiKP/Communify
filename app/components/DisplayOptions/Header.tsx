@@ -1,11 +1,17 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Platform } from 'react-native';
-import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
-import { faArrowLeft, faSave } from '@fortawesome/free-solid-svg-icons';
-import { useTranslation } from 'react-i18next';
-import { FontSizes, ThemeColors } from '../../context/AppearanceContext';
-import { getLanguageSpecificTextStyle } from '../../styles/typography';
-
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  Platform,
+} from 'react-native';
+import {FontAwesomeIcon} from '@fortawesome/react-native-fontawesome';
+import {faArrowLeft, faSave} from '@fortawesome/free-solid-svg-icons';
+import {useTranslation} from 'react-i18next';
+import {FontSizes, ThemeColors} from '../../context/AppearanceContext';
+import {getLanguageSpecificTextStyle} from '../../styles/typography';
 
 interface HeaderProps {
   onClose: () => void;
@@ -17,7 +23,7 @@ interface HeaderProps {
   currentLanguage: string;
 }
 
-const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
+const hitSlop = {top: 10, bottom: 10, left: 10, right: 10};
 
 const Header: React.FC<HeaderProps> = ({
   onClose,
@@ -28,7 +34,7 @@ const Header: React.FC<HeaderProps> = ({
   fonts,
   currentLanguage,
 }) => {
-  const { t } = useTranslation();
+  const {t} = useTranslation();
   const styles = createStyles(theme, fonts, currentLanguage);
 
   return (
@@ -38,12 +44,17 @@ const Header: React.FC<HeaderProps> = ({
         onPress={onClose}
         hitSlop={hitSlop}
         accessibilityLabel={t('common.goBack')}
-        accessibilityRole="button"
-      >
-        <FontAwesomeIcon icon={faArrowLeft} size={fonts.h2 * 0.7} color={theme.white} />
+        accessibilityRole="button">
+        <FontAwesomeIcon
+          icon={faArrowLeft}
+          size={fonts.h2 * 0.7}
+          color={theme.white}
+        />
       </TouchableOpacity>
       <View style={styles.titleContainer}>
-        <Text style={[styles.title, { color: theme.white }]}>{t('displayOptions.title')}</Text>
+        <Text style={[styles.title, {color: theme.white}]}>
+          {t('displayOptions.title')}
+        </Text>
       </View>
       <TouchableOpacity
         style={[styles.headerButton, isSaveDisabled && styles.buttonDisabled]}
@@ -52,8 +63,7 @@ const Header: React.FC<HeaderProps> = ({
         hitSlop={hitSlop}
         accessibilityLabel={t('common.saveSettings')}
         accessibilityRole="button"
-        accessibilityState={{ disabled: isSaveDisabled }}
-      >
+        accessibilityState={{disabled: isSaveDisabled}}>
         {isSaving ? (
           <ActivityIndicator size="small" color={theme.white} />
         ) : (
@@ -68,7 +78,11 @@ const Header: React.FC<HeaderProps> = ({
   );
 };
 
-const createStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguage: string) =>
+const createStyles = (
+  theme: ThemeColors,
+  fonts: FontSizes,
+  currentLanguage: string,
+) =>
   StyleSheet.create({
     header: {
       backgroundColor: theme.primary,
@@ -79,7 +93,9 @@ const createStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguage: str
       justifyContent: 'space-between',
       alignItems: 'center',
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+      borderBottomColor: theme.isDark
+        ? 'rgba(255,255,255,0.1)'
+        : 'rgba(0,0,0,0.1)',
     },
     titleContainer: {
       flex: 1,

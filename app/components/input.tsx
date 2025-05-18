@@ -1,9 +1,26 @@
-import React, { useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform, ScrollView, Animated, Easing } from 'react-native';
-import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
-import { faVolumeUp, faBackspace, faTrash } from '@fortawesome/free-solid-svg-icons';
-import { useTranslation } from 'react-i18next';
-import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext';
+import React, {useMemo} from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Platform,
+  ScrollView,
+  Animated,
+  Easing,
+} from 'react-native';
+import {FontAwesomeIcon} from '@fortawesome/react-native-fontawesome';
+import {
+  faVolumeUp,
+  faBackspace,
+  faTrash,
+} from '@fortawesome/free-solid-svg-icons';
+import {useTranslation} from 'react-i18next';
+import {
+  useAppearance,
+  ThemeColors,
+  FontSizes,
+} from '../context/AppearanceContext';
 
 // --- Props ---
 interface IconInputComponentProps {
@@ -17,7 +34,7 @@ interface IconInputComponentProps {
 }
 
 // --- Shared Constants ---
-const hitSlop = { top: 12, bottom: 12, left: 12, right: 12 };
+const hitSlop = {top: 12, bottom: 12, left: 12, right: 12};
 
 // --- Component ---
 const IconInputComponent: React.FC<IconInputComponentProps> = ({
@@ -30,8 +47,8 @@ const IconInputComponent: React.FC<IconInputComponentProps> = ({
   isClearDisabled = false,
 }) => {
   // --- Hooks ---
-  const { theme, fonts } = useAppearance();
-  const { t } = useTranslation();
+  const {theme, fonts} = useAppearance();
+  const {t} = useTranslation();
 
   // --- Animation States ---
   const speakScale = React.useRef(new Animated.Value(1)).current;
@@ -39,14 +56,19 @@ const IconInputComponent: React.FC<IconInputComponentProps> = ({
   const clearScale = React.useRef(new Animated.Value(1)).current;
 
   // --- Dynamic Styles ---
-  const styles = useMemo(() => createThemedStyles(theme, fonts), [theme, fonts]);
+  const styles = useMemo(
+    () => createThemedStyles(theme, fonts),
+    [theme, fonts],
+  );
 
   // --- Determine Icon Colors Based on Theme and Disabled State ---
   const iconColorActive = theme.white;
   const iconColorInactive = theme.disabled;
 
   const speakIconColor = isSpeakDisabled ? iconColorInactive : iconColorActive;
-  const backspaceIconColor = isBackspaceDisabled ? iconColorInactive : iconColorActive;
+  const backspaceIconColor = isBackspaceDisabled
+    ? iconColorInactive
+    : iconColorActive;
   const clearIconColor = isClearDisabled ? iconColorInactive : iconColorActive;
 
   const iconSize = fonts.h2 * 1.2;
@@ -73,7 +95,9 @@ const IconInputComponent: React.FC<IconInputComponentProps> = ({
   // --- Render Children Safely ---
   const renderInputContent = () => {
     if (!children) {
-      return <Text style={styles.placeholderText}>{t('iconInput.placeholder')}</Text>;
+      return (
+        <Text style={styles.placeholderText}>{t('iconInput.placeholder')}</Text>
+      );
     }
     if (typeof children === 'string') {
       return <Text style={styles.inputText}>{children}</Text>;
@@ -91,12 +115,15 @@ const IconInputComponent: React.FC<IconInputComponentProps> = ({
           disabled={isSpeakDisabled}
           accessibilityLabel={t('iconInput.speakAccessibilityLabel')}
           accessibilityHint={t('iconInput.speakAccessibilityHint')}
-          accessibilityState={{ disabled: isSpeakDisabled }}
+          accessibilityState={{disabled: isSpeakDisabled}}
           hitSlop={hitSlop}
-          activeOpacity={0.7}
-        >
-          <Animated.View style={{ transform: [{ scale: speakScale }] }}>
-            <FontAwesomeIcon icon={faVolumeUp} size={iconSize} color={speakIconColor} />
+          activeOpacity={0.7}>
+          <Animated.View style={{transform: [{scale: speakScale}]}}>
+            <FontAwesomeIcon
+              icon={faVolumeUp}
+              size={iconSize}
+              color={speakIconColor}
+            />
           </Animated.View>
         </TouchableOpacity>
       </View>
@@ -107,8 +134,7 @@ const IconInputComponent: React.FC<IconInputComponentProps> = ({
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.inputContentContainer}
-          keyboardShouldPersistTaps="handled"
-        >
+          keyboardShouldPersistTaps="handled">
           {renderInputContent()}
         </ScrollView>
       </View>
@@ -121,12 +147,15 @@ const IconInputComponent: React.FC<IconInputComponentProps> = ({
           disabled={isBackspaceDisabled}
           accessibilityLabel={t('iconInput.backspaceAccessibilityLabel')}
           accessibilityHint={t('iconInput.backspaceAccessibilityHint')}
-          accessibilityState={{ disabled: isBackspaceDisabled }}
+          accessibilityState={{disabled: isBackspaceDisabled}}
           hitSlop={hitSlop}
-          activeOpacity={0.7}
-        >
-          <Animated.View style={{ transform: [{ scale: backspaceScale }] }}>
-            <FontAwesomeIcon icon={faBackspace} size={iconSize} color={backspaceIconColor} />
+          activeOpacity={0.7}>
+          <Animated.View style={{transform: [{scale: backspaceScale}]}}>
+            <FontAwesomeIcon
+              icon={faBackspace}
+              size={iconSize}
+              color={backspaceIconColor}
+            />
           </Animated.View>
         </TouchableOpacity>
         <View style={styles.buttonSpacer} />
@@ -136,12 +165,15 @@ const IconInputComponent: React.FC<IconInputComponentProps> = ({
           disabled={isClearDisabled}
           accessibilityLabel={t('iconInput.clearAccessibilityLabel')}
           accessibilityHint={t('iconInput.clearAccessibilityHint')}
-          accessibilityState={{ disabled: isClearDisabled }}
+          accessibilityState={{disabled: isClearDisabled}}
           hitSlop={hitSlop}
-          activeOpacity={0.7}
-        >
-          <Animated.View style={{ transform: [{ scale: clearScale }] }}>
-            <FontAwesomeIcon icon={faTrash} size={smallIconSize} color={clearIconColor} />
+          activeOpacity={0.7}>
+          <Animated.View style={{transform: [{scale: clearScale}]}}>
+            <FontAwesomeIcon
+              icon={faTrash}
+              size={smallIconSize}
+              color={clearIconColor}
+            />
           </Animated.View>
         </TouchableOpacity>
       </View>
@@ -157,9 +189,11 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes) =>
       alignItems: 'center',
       width: '100%',
       backgroundColor: theme.primary,
-      minHeight: Platform.select({ ios: 72, default: 68 }),
+      minHeight: Platform.select({ios: 72, default: 68}),
       borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.15)',
+      borderTopColor: theme.isDark
+        ? 'rgba(255, 255, 255, 0.15)'
+        : 'rgba(0, 0, 0, 0.15)',
       paddingVertical: 8,
     },
     actionSection: {
@@ -183,7 +217,7 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes) =>
       borderColor: theme.border,
       elevation: 3,
       shadowColor: theme.isDark ? '#000' : '#333',
-      shadowOffset: { width: 0, height: 2 },
+      shadowOffset: {width: 0, height: 2},
       shadowOpacity: 0.1,
       shadowRadius: 4,
     },

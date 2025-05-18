@@ -1,15 +1,15 @@
 import React from 'react';
-import { Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
-import { IconDefinition } from '@fortawesome/fontawesome-svg-core';
+import {Text, TouchableOpacity, StyleSheet} from 'react-native';
+import {FontAwesomeIcon} from '@fortawesome/react-native-fontawesome';
+import {IconDefinition} from '@fortawesome/fontawesome-svg-core';
 
 import * as appColors from '../../../app/constants/colors'; // Adjust path
 import * as appDimensions from '../../../app/constants/dimensions'; // Adjust path
 
 export interface GridLayoutButtonData {
-    type: string; // Or LocalGridLayoutType
-    label: string;
-    icon: IconDefinition;
+  type: string; // Or LocalGridLayoutType
+  label: string;
+  icon: IconDefinition;
 }
 
 interface GridLayoutButtonProps {
@@ -19,21 +19,34 @@ interface GridLayoutButtonProps {
   disabled?: boolean;
 }
 
-const GridLayoutButton: React.FC<GridLayoutButtonProps> = ({ option, isSelected, onPress, disabled }) => {
+const GridLayoutButton: React.FC<GridLayoutButtonProps> = ({
+  option,
+  isSelected,
+  onPress,
+  disabled,
+}) => {
   return (
     <TouchableOpacity
-      style={[styles.selectButton, styles.gridButton, isSelected && styles.selectButtonSelected]}
+      style={[
+        styles.selectButton,
+        styles.gridButton,
+        isSelected && styles.selectButtonSelected,
+      ]}
       onPress={onPress}
       activeOpacity={0.7}
-      disabled={disabled}
-    >
+      disabled={disabled}>
       <FontAwesomeIcon
         icon={option.icon}
         size={appDimensions.ICON_SIZE_MEDIUM || 20}
         style={styles.buttonIcon}
         color={isSelected ? appColors.WHITE_COLOR : appColors.PRIMARY_COLOR}
       />
-      <Text style={[styles.selectButtonText, styles.gridButtonText, isSelected && styles.selectButtonTextSelected]}>
+      <Text
+        style={[
+          styles.selectButtonText,
+          styles.gridButtonText,
+          isSelected && styles.selectButtonTextSelected,
+        ]}>
         {option.label}
       </Text>
     </TouchableOpacity>
@@ -54,7 +67,8 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: appDimensions.BUTTON_MIN_HEIGHT_PROFILE || 48,
   },
-  gridButton: { // Can be merged with selectButton if no distinct styles
+  gridButton: {
+    // Can be merged with selectButton if no distinct styles
     // Add specific grid button styles if any
   },
   selectButtonSelected: {
@@ -70,7 +84,8 @@ const styles = StyleSheet.create({
     color: appColors.PRIMARY_COLOR,
     textAlign: 'center',
   },
-  gridButtonText: { // Can be merged with selectButtonText
+  gridButtonText: {
+    // Can be merged with selectButtonText
     // Add specific grid button text styles if any
   },
   selectButtonTextSelected: {

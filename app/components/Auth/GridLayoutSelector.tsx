@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import GridLayoutButton, { GridLayoutButtonData } from './GridLayoutButton'; // Import data type
+import {View, Text, StyleSheet} from 'react-native';
+import GridLayoutButton, {GridLayoutButtonData} from './GridLayoutButton'; // Import data type
 
 import * as appColors from '../../../app/constants/colors'; // Adjust path
 import * as appDimensions from '../../../app/constants/dimensions'; // Adjust path
@@ -18,7 +18,7 @@ const GridLayoutSelector: React.FC<GridLayoutSelectorProps> = ({
   selectedValue,
   onSelect,
   isLoading,
-  title = "Preferred Symbol Grid Layout:"
+  title = 'Preferred Symbol Grid Layout:',
 }) => {
   return (
     <View style={styles.formSection}>

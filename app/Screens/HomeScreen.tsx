@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import React, {useState, useCallback, useRef, useEffect, useMemo} from 'react';
 import {
   View,
   StyleSheet,
@@ -6,48 +6,37 @@ import {
   TouchableWithoutFeedback,
   Easing,
   Platform,
-  Text, // Text might still be needed for other parts or can be removed if not.
   Alert,
   ActivityIndicator,
-  // Image, // No longer directly used by HomeScreen for selected items
   Modal,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Tts, { Voice } from 'react-native-tts';
-import { useTranslation } from 'react-i18next';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import Tts, {Voice} from 'react-native-tts';
+import {useTranslation} from 'react-i18next';
 import Sound from 'react-native-sound';
 import RNFS from 'react-native-fs';
 
-// --- Service Imports ---
 import apiService, {
-  AudioDataResponse, // AACPhraseGenerationResponse is not directly used by HomeScreen now
+  AudioDataResponse,
   handleApiError,
 } from '../services/apiService';
 
-// --- Component Imports ---
 import IconInputComponent from '../components/input';
 import Navbar from '../components/navbar';
 import SymbolGrid from '../components/SymbolGrid';
 import BottomBar from '../components/bottomnav';
-import Menu, { menuWidth } from '../components/menu';
+import Menu, {menuWidth} from '../components/menu';
 import SearchScreen from '../components/SearchScreen';
 import CustomPageComponent from '../components/CustomPageComponent';
 import KeyboardInputComponent from '../components/KeyboardInputComponent';
-// --- New Child Component Imports ---
 import SelectedItemsDisplay from '../components/SelectedItemsDisplay';
 import CategoryTitle from '../components/CategoryTitle';
-
-
-// --- Context Imports ---
-import { GridLayoutType, useGrid } from '../context/GridContext';
-import { VoiceSettingData } from '../components/SymbolVoiceOver/types';
-import { useAppearance } from '../context/AppearanceContext';
-import { SymbolGridRef } from '../components/SymbolDisplay/types';
-
-// --- Type Definitions ---
-type SearchSymbolInfo = { keyword: string; pictogramUrl: string };
-// Export SelectedSymbol for use in other components like SelectedItemsDisplay
-export type SelectedSymbol = { id: string; keyword: string; imageUri?: string };
+import {GridLayoutType, useGrid} from '../context/GridContext';
+import {VoiceSettingData} from '../components/SymbolVoiceOver/types';
+import {useAppearance} from '../context/AppearanceContext';
+import {SymbolGridRef} from '../components/SymbolDisplay/types';
+type SearchSymbolInfo = {keyword: string; pictogramUrl: string};
+export type SelectedSymbol = {id: string; keyword: string; imageUri?: string};
 
 // --- Constants ---
 const defaultTtsSettings: VoiceSettingData = {
@@ -70,25 +59,27 @@ const BOTTOM_BAR_HEIGHT = 70;
 Sound.setCategory('Playback');
 
 const HomeScreen: React.FC = () => {
-  const { t, i18n } = useTranslation();
-  const { theme, fonts } = useAppearance(); // fonts might not be needed for styles here anymore
-  const { setGridLayout } = useGrid();
+  const {t, i18n} = useTranslation();
+  const {theme, fonts} = useAppearance();
+  const {setGridLayout} = useGrid();
 
   // --- State Declarations ---
   const [isBarVisible, setIsBarVisible] = useState(true);
   const [currentUiLang, setCurrentUiLang] = useState(i18n.language);
   const [selectedItems, setSelectedItems] = useState<SelectedSymbol[]>([]);
-  const [ttsSettings, setTtsSettings] = useState<VoiceSettingData>(defaultTtsSettings);
+  const [ttsSettings, setTtsSettings] =
+    useState<VoiceSettingData>(defaultTtsSettings);
   const [isTtsSpeaking, setIsTtsSpeaking] = useState(false);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [isTtsInitialized, setIsTtsInitialized] = useState(false);
   const [isProcessingAudio, setIsProcessingAudio] = useState(false);
   const [isMenuVisible, setMenuVisible] = useState(false);
   const [isSearchScreenVisible, setIsSearchScreenVisible] = useState(false);
-  const [isCustomPageModalVisible, setIsCustomPageModalVisible] = useState(false);
+  const [isCustomPageModalVisible, setIsCustomPageModalVisible] =
+    useState(false);
   const [isKeyboardInputVisible, setIsKeyboardInputVisible] = useState(false);
   const [currentCategoryName, setCurrentCategoryName] = useState<string>(
-    t('categories.default', 'Contextual')
+    t('categories.default', 'Contextual'),
   );
 
   // --- Refs ---
@@ -114,8 +105,26 @@ const HomeScreen: React.FC = () => {
     }
   }, [t, currentUiLang]);
 
-  const slideUp = useCallback(() => Animated.timing(bottomBarPosition, { toValue: 0, duration: ANIMATION_DURATION_IN, easing: Easing.out(Easing.ease), useNativeDriver: true }).start(), [bottomBarPosition]);
-  const slideDown = useCallback(() => Animated.timing(bottomBarPosition, { toValue: BOTTOM_BAR_HEIGHT + (Platform.OS === 'ios' ? 30 : 10), duration: ANIMATION_DURATION_OUT, easing: Easing.in(Easing.ease), useNativeDriver: true }).start(), [bottomBarPosition]);
+  const slideUp = useCallback(
+    () =>
+      Animated.timing(bottomBarPosition, {
+        toValue: 0,
+        duration: ANIMATION_DURATION_IN,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }).start(),
+    [bottomBarPosition],
+  );
+  const slideDown = useCallback(
+    () =>
+      Animated.timing(bottomBarPosition, {
+        toValue: BOTTOM_BAR_HEIGHT + (Platform.OS === 'ios' ? 30 : 10),
+        duration: ANIMATION_DURATION_OUT,
+        easing: Easing.in(Easing.ease),
+        useNativeDriver: true,
+      }).start(),
+    [bottomBarPosition],
+  );
 
   const showAndResetTimer = useCallback(() => {
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
@@ -132,7 +141,9 @@ const HomeScreen: React.FC = () => {
 
   useEffect(() => {
     showAndResetTimer();
-    return () => { if (hideTimerRef.current) clearTimeout(hideTimerRef.current); };
+    return () => {
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    };
   }, [showAndResetTimer]);
 
   useEffect(() => {
@@ -145,38 +156,58 @@ const HomeScreen: React.FC = () => {
         await Tts.setDefaultLanguage(currentUiLang);
         await Tts.getInitStatus();
 
-        ttsStartListener = Tts.addEventListener('tts-start', () => { if (isEffectMounted && isMountedRef.current) setIsTtsSpeaking(true); });
-        ttsFinishListener = Tts.addEventListener('tts-finish', () => { if (isEffectMounted && isMountedRef.current) setIsTtsSpeaking(false); });
-        ttsCancelListener = Tts.addEventListener('tts-cancel', () => { if (isEffectMounted && isMountedRef.current) setIsTtsSpeaking(false); });
+        ttsStartListener = Tts.addEventListener('tts-start', () => {
+          if (isEffectMounted && isMountedRef.current) setIsTtsSpeaking(true);
+        });
+        ttsFinishListener = Tts.addEventListener('tts-finish', () => {
+          if (isEffectMounted && isMountedRef.current) setIsTtsSpeaking(false);
+        });
+        ttsCancelListener = Tts.addEventListener('tts-cancel', () => {
+          if (isEffectMounted && isMountedRef.current) setIsTtsSpeaking(false);
+        });
 
         if (!isEffectMounted || !isMountedRef.current) return;
 
         const voices = await Tts.voices();
-        const usableVoices = voices.filter(v => !(Platform.OS === 'android' && v.networkConnectionRequired && v.notInstalled));
-        
+        const usableVoices = voices.filter(
+          v =>
+            !(
+              Platform.OS === 'android' &&
+              v.networkConnectionRequired &&
+              v.notInstalled
+            ),
+        );
+
         let voiceToUse: Voice | undefined = undefined;
-        
+
         if (usableVoices.length > 0) {
           voiceToUse = usableVoices.find(v => v.language === currentUiLang);
           if (!voiceToUse) {
             const baseLang = currentUiLang.split('-')[0];
-            voiceToUse = usableVoices.find(v => v.language.startsWith(baseLang));
+            voiceToUse = usableVoices.find(v =>
+              v.language.startsWith(baseLang),
+            );
           }
           if (!voiceToUse) {
             voiceToUse = usableVoices[0];
-            console.warn(`[TTS Effect] No specific voice for ${currentUiLang} or base language. Falling back to ${voiceToUse.language} (${voiceToUse.name}).`);
+            console.warn(
+              `[TTS Effect] No specific voice for ${currentUiLang} or base language. Falling back to ${voiceToUse.language} (${voiceToUse.name}).`,
+            );
           }
         }
 
         if (voiceToUse) {
-          console.log(`[TTS Effect] Selected voice for ${currentUiLang}: ${voiceToUse.id} (${voiceToUse.name}, Lang: ${voiceToUse.language})`);
-          setTtsSettings(prev => ({ ...prev, selectedVoiceId: voiceToUse!.id }));
+          console.log(
+            `[TTS Effect] Selected voice for ${currentUiLang}: ${voiceToUse.id} (${voiceToUse.name}, Lang: ${voiceToUse.language})`,
+          );
+          setTtsSettings(prev => ({...prev, selectedVoiceId: voiceToUse!.id}));
         } else {
-          console.warn(`[TTS Effect] No usable voices found at all. TTS might not work for ${currentUiLang}.`);
-          setTtsSettings(prev => ({ ...prev, selectedVoiceId: null }));
+          console.warn(
+            `[TTS Effect] No usable voices found at all. TTS might not work for ${currentUiLang}.`,
+          );
+          setTtsSettings(prev => ({...prev, selectedVoiceId: null}));
         }
         setIsTtsInitialized(true);
-
       } catch (error) {
         console.error('TTS Initialization failed:', error);
         if (isEffectMounted && isMountedRef.current) setIsTtsInitialized(false);
@@ -198,7 +229,8 @@ const HomeScreen: React.FC = () => {
     const applySettings = async () => {
       if (!isTtsInitialized) return;
       try {
-        if (ttsSettings.selectedVoiceId) await Tts.setDefaultVoice(ttsSettings.selectedVoiceId);
+        if (ttsSettings.selectedVoiceId)
+          await Tts.setDefaultVoice(ttsSettings.selectedVoiceId);
         await Tts.setDefaultPitch(ttsSettings.pitch);
         await Tts.setDefaultRate(ttsSettings.speed);
       } catch (error) {
@@ -219,7 +251,9 @@ const HomeScreen: React.FC = () => {
     if (isMountedRef.current && i18n.language !== currentUiLang) {
       setCurrentUiLang(i18n.language);
     }
-    return () => { i18n.off('languageChanged', handleLanguageChanged); };
+    return () => {
+      i18n.off('languageChanged', handleLanguageChanged);
+    };
   }, [i18n, currentUiLang]);
 
   useEffect(() => {
@@ -232,10 +266,16 @@ const HomeScreen: React.FC = () => {
   }, []);
 
   // --- Event Handlers ---
-  const handleSymbolPress = useCallback((keyword: string, imageUri?: string) => {
-    setSelectedItems(prev => [...prev, { keyword, imageUri, id: `${Date.now()}-${keyword}-${prev.length}` }]);
-    showAndResetTimer();
-  }, [showAndResetTimer]);
+  const handleSymbolPress = useCallback(
+    (keyword: string, imageUri?: string) => {
+      setSelectedItems(prev => [
+        ...prev,
+        {keyword, imageUri, id: `${Date.now()}-${keyword}-${prev.length}`},
+      ]);
+      showAndResetTimer();
+    },
+    [showAndResetTimer],
+  );
 
   const handleBackspacePress = useCallback(() => {
     setSelectedItems(prev => prev.slice(0, -1));
@@ -245,73 +285,130 @@ const HomeScreen: React.FC = () => {
   const handleClearPress = useCallback(() => {
     setSelectedItems([]);
     if (isTtsSpeaking) Tts.stop();
-    if (currentSoundInstanceRef.current) currentSoundInstanceRef.current.stop(); 
+    if (currentSoundInstanceRef.current) currentSoundInstanceRef.current.stop();
     showAndResetTimer();
   }, [isTtsSpeaking, showAndResetTimer]);
 
-  const playAudioBlob = useCallback(async (audioBlob: Blob, filename: string = 'translated_audio.wav') => {
-    return new Promise<void>((resolve, reject) => {
+  const playAudioBlob = useCallback(
+    async (audioBlob: Blob, filename: string = 'translated_audio.wav') => {
+      return new Promise<void>((resolve, reject) => {
         if (currentSoundInstanceRef.current) {
-            currentSoundInstanceRef.current.release();
+          currentSoundInstanceRef.current.release();
         }
 
         const reader = new FileReader();
-        reader.readAsDataURL(audioBlob); 
+        reader.readAsDataURL(audioBlob);
         reader.onloadend = async () => {
-            const base64DataUrl = reader.result as string;
-            let pureBase64Data = base64DataUrl;
-            const commaIndex = base64DataUrl.indexOf(',');
-            if (commaIndex !== -1) {
-                pureBase64Data = base64DataUrl.substring(commaIndex + 1);
-            } else {
-                console.warn('[AudioPlayer] Could not find comma in Data URI for file saving.');
-            }
-            const tempFilePath = `${RNFS.TemporaryDirectoryPath}/${Date.now()}_${filename}`;
-            console.log(`[AudioPlayer] Attempting to save audio to temporary file: ${tempFilePath}`);
+          const base64DataUrl = reader.result as string;
+          let pureBase64Data = base64DataUrl;
+          const commaIndex = base64DataUrl.indexOf(',');
+          if (commaIndex !== -1) {
+            pureBase64Data = base64DataUrl.substring(commaIndex + 1);
+          } else {
+            console.warn(
+              '[AudioPlayer] Could not find comma in Data URI for file saving.',
+            );
+          }
+          const tempFilePath = `${
+            RNFS.TemporaryDirectoryPath
+          }/${Date.now()}_${filename}`;
+          console.log(
+            `[AudioPlayer] Attempting to save audio to temporary file: ${tempFilePath}`,
+          );
 
-            try {
-                await RNFS.writeFile(tempFilePath, pureBase64Data, 'base64');
-                console.log(`[AudioPlayer] Audio saved to: ${tempFilePath}`);
+          try {
+            await RNFS.writeFile(tempFilePath, pureBase64Data, 'base64');
+            console.log(`[AudioPlayer] Audio saved to: ${tempFilePath}`);
 
-                const sound = new Sound(tempFilePath, '', async (error) => {
-                    if (error) {
-                        console.error('Failed to load the sound from file. Error:', JSON.stringify(error));
-                        try { await RNFS.unlink(tempFilePath); } catch (e) { console.warn("Failed to delete temp audio file after load error", e); }
-                        reject(new Error(t('home.errors.audioLoadFail', 'Failed to load audio.')));
-                        return;
-                    }
-                    
-                    if (isMountedRef.current) setIsAudioPlaying(true);
-                    console.log(`[AudioPlayer] Sound loaded from file. Playing: ${filename}`);
-                    sound.play(async (success) => {
-                        if (isMountedRef.current) setIsAudioPlaying(false);
-                        sound.release();
-                        currentSoundInstanceRef.current = null;
-                        try { await RNFS.unlink(tempFilePath); console.log("[AudioPlayer] Temp audio file deleted."); } catch (e) { console.warn("Failed to delete temp audio file after playback", e); }
+            const sound = new Sound(tempFilePath, '', async error => {
+              if (error) {
+                console.error(
+                  'Failed to load the sound from file. Error:',
+                  JSON.stringify(error),
+                );
+                try {
+                  await RNFS.unlink(tempFilePath);
+                } catch (e) {
+                  console.warn(
+                    'Failed to delete temp audio file after load error',
+                    e,
+                  );
+                }
+                reject(
+                  new Error(
+                    t('home.errors.audioLoadFail', 'Failed to load audio.'),
+                  ),
+                );
+                return;
+              }
 
-                        if (success) {
-                            console.log(`[AudioPlayer] Successfully finished playing: ${filename}`);
-                            resolve();
-                        } else {
-                            console.error(`[AudioPlayer] Playback failed: ${filename}. May be decoding error.`);
-                            reject(new Error(t('home.errors.audioPlayFail', 'Audio playback failed.')));
-                        }
-                    });
-                });
-                currentSoundInstanceRef.current = sound;
+              if (isMountedRef.current) setIsAudioPlaying(true);
+              console.log(
+                `[AudioPlayer] Sound loaded from file. Playing: ${filename}`,
+              );
+              sound.play(async success => {
+                if (isMountedRef.current) setIsAudioPlaying(false);
+                sound.release();
+                currentSoundInstanceRef.current = null;
+                try {
+                  await RNFS.unlink(tempFilePath);
+                  console.log('[AudioPlayer] Temp audio file deleted.');
+                } catch (e) {
+                  console.warn(
+                    'Failed to delete temp audio file after playback',
+                    e,
+                  );
+                }
 
-            } catch (fsError) {
-                console.error('[AudioPlayer] RNFS writeFile error:', JSON.stringify(fsError));
-                reject(new Error(t('home.errors.audioSaveFail', 'Failed to save audio for playback.')));
-            }
+                if (success) {
+                  console.log(
+                    `[AudioPlayer] Successfully finished playing: ${filename}`,
+                  );
+                  resolve();
+                } else {
+                  console.error(
+                    `[AudioPlayer] Playback failed: ${filename}. May be decoding error.`,
+                  );
+                  reject(
+                    new Error(
+                      t('home.errors.audioPlayFail', 'Audio playback failed.'),
+                    ),
+                  );
+                }
+              });
+            });
+            currentSoundInstanceRef.current = sound;
+          } catch (fsError) {
+            console.error(
+              '[AudioPlayer] RNFS writeFile error:',
+              JSON.stringify(fsError),
+            );
+            reject(
+              new Error(
+                t(
+                  'home.errors.audioSaveFail',
+                  'Failed to save audio for playback.',
+                ),
+              ),
+            );
+          }
         };
 
-        reader.onerror = (error) => {
-            console.error("FileReader error for audio blob:", error);
-            reject(new Error(t('home.errors.audioProcessFail', 'Failed to process audio data.')));
+        reader.onerror = error => {
+          console.error('FileReader error for audio blob:', error);
+          reject(
+            new Error(
+              t(
+                'home.errors.audioProcessFail',
+                'Failed to process audio data.',
+              ),
+            ),
+          );
         };
-    });
-  }, [t]);
+      });
+    },
+    [t],
+  );
 
   const handleSpeakPress = useCallback(async () => {
     showAndResetTimer();
@@ -322,58 +419,84 @@ const HomeScreen: React.FC = () => {
         if (isMountedRef.current) setIsAudioPlaying(false);
       });
     }
-    
+
     if (isProcessingAudio) return;
     if (selectedItems.length === 0) return;
 
-    if(isMountedRef.current) setIsProcessingAudio(true);
+    if (isMountedRef.current) setIsProcessingAudio(true);
 
     let englishPhrase = selectedItems.map(item => item.keyword).join(' ');
 
     try {
       if (selectedItems.length > 1) {
-        const response = await apiService.generateAACPhrase(selectedItems.map(item => item.keyword));
+        const response = await apiService.generateAACPhrase(
+          selectedItems.map(item => item.keyword),
+        );
         if (response?.phrase) {
-          const generated = String(response.phrase).trim().replace(/<\|im_end\|>$/, '').trim();
+          const generated = String(response.phrase)
+            .trim()
+            .replace(/<\|im_end\|>$/, '')
+            .trim();
           if (generated) englishPhrase = generated;
         }
       }
 
       if (!englishPhrase) {
-        if(isMountedRef.current) setIsProcessingAudio(false);
+        if (isMountedRef.current) setIsProcessingAudio(false);
         return;
       }
 
       const targetLangCode = currentUiLang.split('-')[0];
 
       if (targetLangCode !== 'en') {
-        console.log(`[SpeakPress] Requesting translate-tts for: "${englishPhrase}" to ${targetLangCode}`);
-        const audioResponse: AudioDataResponse = await apiService.translateAndTextToSpeech(englishPhrase);
-        console.log(`[SpeakPress] Received audio. Filename: ${audioResponse.filename}, Translated (header): ${audioResponse.translatedText}`);
+        console.log(
+          `[SpeakPress] Requesting translate-tts for: "${englishPhrase}" to ${targetLangCode}`,
+        );
+        const audioResponse: AudioDataResponse =
+          await apiService.translateAndTextToSpeech(englishPhrase);
+        console.log(
+          `[SpeakPress] Received audio. Filename: ${audioResponse.filename}, Translated (header): ${audioResponse.translatedText}`,
+        );
         await playAudioBlob(audioResponse.audioBlob, audioResponse.filename);
-
       } else {
         if (!isTtsInitialized) {
-          Alert.alert(t('common.error', 'Error'), t('home.errors.ttsNotReady', 'TTS is not ready for English.'));
-          if(isMountedRef.current) setIsProcessingAudio(false);
+          Alert.alert(
+            t('common.error', 'Error'),
+            t('home.errors.ttsNotReady', 'TTS is not ready for English.'),
+          );
+          if (isMountedRef.current) setIsProcessingAudio(false);
           return;
         }
-        console.log(`[SpeakPress] Speaking (EN) via react-native-tts: "${englishPhrase}"`);
+        console.log(
+          `[SpeakPress] Speaking (EN) via react-native-tts: "${englishPhrase}"`,
+        );
         await Tts.setDefaultLanguage(currentUiLang);
-        if (ttsSettings.selectedVoiceId) await Tts.setDefaultVoice(ttsSettings.selectedVoiceId);
-        
+        if (ttsSettings.selectedVoiceId)
+          await Tts.setDefaultVoice(ttsSettings.selectedVoiceId);
+
         Tts.speak(englishPhrase);
       }
     } catch (error) {
       const processedError = handleApiError(error);
-      console.error('[SpeakPress] Error during speak process:', processedError.message, processedError.details);
-      Alert.alert(t('common.error', 'Error'), processedError.message || t('home.errors.speakFailGeneral', 'Could not complete speech request.'));
-      if(isMountedRef.current) {
+      console.error(
+        '[SpeakPress] Error during speak process:',
+        processedError.message,
+        processedError.details,
+      );
+      Alert.alert(
+        t('common.error', 'Error'),
+        processedError.message ||
+          t(
+            'home.errors.speakFailGeneral',
+            'Could not complete speech request.',
+          ),
+      );
+      if (isMountedRef.current) {
         setIsTtsSpeaking(false);
         setIsAudioPlaying(false);
       }
     } finally {
-      if(isMountedRef.current) setIsProcessingAudio(false);
+      if (isMountedRef.current) setIsProcessingAudio(false);
     }
   }, [
     selectedItems,
@@ -385,117 +508,174 @@ const HomeScreen: React.FC = () => {
     t,
     currentUiLang,
     ttsSettings.selectedVoiceId,
-    playAudioBlob
+    playAudioBlob,
   ]);
 
-  const handleTtsSettingsSave = useCallback((newSettings: VoiceSettingData) => {
-    setTtsSettings(newSettings);
-    Alert.alert(
-      t('settings.voiceSettings.title', 'Voice Settings'),
-      t('settings.voiceSettings.saveConfirmation', 'Settings saved.')
-    );
-    showAndResetTimer();
-  }, [showAndResetTimer, t]);
+  const handleTtsSettingsSave = useCallback(
+    (newSettings: VoiceSettingData) => {
+      setTtsSettings(newSettings);
+      Alert.alert(
+        t('settings.voiceSettings.title', 'Voice Settings'),
+        t('settings.voiceSettings.saveConfirmation', 'Settings saved.'),
+      );
+      showAndResetTimer();
+    },
+    [showAndResetTimer, t],
+  );
 
   const handleHomePress = useCallback(() => {
     setSelectedItems([]);
     showAndResetTimer();
   }, [showAndResetTimer]);
-  
-  const handleLayoutSave = useCallback((newLayout: GridLayoutType) => {
-    if (setGridLayout) setGridLayout(newLayout);
-    showAndResetTimer();
-  }, [showAndResetTimer, setGridLayout]);
+
+  const handleLayoutSave = useCallback(
+    (newLayout: GridLayoutType) => {
+      if (setGridLayout) setGridLayout(newLayout);
+      showAndResetTimer();
+    },
+    [showAndResetTimer, setGridLayout],
+  );
 
   const handleCustomSymbolsUpdate = useCallback(() => {
     showAndResetTimer();
   }, [showAndResetTimer]);
 
-  const handleTextInputSubmit = useCallback((text: string) => {
-    setSelectedItems(prev => [...prev, { keyword: text, id: `${Date.now()}-${text}-${prev.length}` }]);
-    showAndResetTimer();
-  }, [showAndResetTimer]);
-  
-  const handleSearchSymbolSelect = useCallback((symbol: SearchSymbolInfo) => {
-    setSelectedItems(prev => [
-      ...prev,
-      { keyword: symbol.keyword, imageUri: symbol.pictogramUrl, id: `${Date.now()}-${symbol.keyword}-${prev.length}` },
-    ]);
-    showAndResetTimer();
-  }, [showAndResetTimer]);
+  const handleTextInputSubmit = useCallback(
+    (text: string) => {
+      setSelectedItems(prev => [
+        ...prev,
+        {keyword: text, id: `${Date.now()}-${text}-${prev.length}`},
+      ]);
+      showAndResetTimer();
+    },
+    [showAndResetTimer],
+  );
+
+  const handleSearchSymbolSelect = useCallback(
+    (symbol: SearchSymbolInfo) => {
+      setSelectedItems(prev => [
+        ...prev,
+        {
+          keyword: symbol.keyword,
+          imageUri: symbol.pictogramUrl,
+          id: `${Date.now()}-${symbol.keyword}-${prev.length}`,
+        },
+      ]);
+      showAndResetTimer();
+    },
+    [showAndResetTimer],
+  );
 
   const handleCategoryNameChange = useCallback((newCategoryName: string) => {
     if (isMountedRef.current) setCurrentCategoryName(newCategoryName);
   }, []);
 
   // --- UI Toggling Functions ---
-  const toggleMenu = useCallback((visible: boolean) => {
-    if (visible) {
-        if(isMountedRef.current) setMenuVisible(true);
+  const toggleMenu = useCallback(
+    (visible: boolean) => {
+      if (visible) {
+        if (isMountedRef.current) setMenuVisible(true);
         Animated.parallel([
-            Animated.spring(menuSlideAnim, { toValue: 0, useNativeDriver: true, bounciness: 4, speed: 10 }),
-            Animated.timing(menuOverlayAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
+          Animated.spring(menuSlideAnim, {
+            toValue: 0,
+            useNativeDriver: true,
+            bounciness: 4,
+            speed: 10,
+          }),
+          Animated.timing(menuOverlayAnim, {
+            toValue: 1,
+            duration: 250,
+            useNativeDriver: true,
+          }),
         ]).start();
-    } else {
+      } else {
         Animated.parallel([
-            Animated.spring(menuSlideAnim, { toValue: -menuWidth, useNativeDriver: true, bounciness: 4, speed: 10 }),
-            Animated.timing(menuOverlayAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
-        ]).start(() => { if(isMountedRef.current) setMenuVisible(false); });
-    }
-    showAndResetTimer();
-  }, [menuSlideAnim, menuOverlayAnim, showAndResetTimer]);
+          Animated.spring(menuSlideAnim, {
+            toValue: -menuWidth,
+            useNativeDriver: true,
+            bounciness: 4,
+            speed: 10,
+          }),
+          Animated.timing(menuOverlayAnim, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          if (isMountedRef.current) setMenuVisible(false);
+        });
+      }
+      showAndResetTimer();
+    },
+    [menuSlideAnim, menuOverlayAnim, showAndResetTimer],
+  );
 
   const openMenu = useCallback(() => toggleMenu(true), [toggleMenu]);
   const closeMenu = useCallback(() => toggleMenu(false), [toggleMenu]);
 
-  const openSearchScreen = useCallback(() => { if(isMountedRef.current) setIsSearchScreenVisible(true); showAndResetTimer(); }, [showAndResetTimer]);
-  const closeSearchScreen = useCallback(() => { if(isMountedRef.current) setIsSearchScreenVisible(false); showAndResetTimer(); }, [showAndResetTimer]);
-  
-  const openCustomPageModal = useCallback(() => { if(isMountedRef.current) setIsCustomPageModalVisible(true); showAndResetTimer(); }, [showAndResetTimer]);
-  const closeCustomPageModal = useCallback(() => { if(isMountedRef.current) setIsCustomPageModalVisible(false); showAndResetTimer(); }, [showAndResetTimer]);
+  const openSearchScreen = useCallback(() => {
+    if (isMountedRef.current) setIsSearchScreenVisible(true);
+    showAndResetTimer();
+  }, [showAndResetTimer]);
+  const closeSearchScreen = useCallback(() => {
+    if (isMountedRef.current) setIsSearchScreenVisible(false);
+    showAndResetTimer();
+  }, [showAndResetTimer]);
 
-  const openKeyboardInput = useCallback(() => { if(isMountedRef.current) setIsKeyboardInputVisible(true); showAndResetTimer(); }, [showAndResetTimer]);
-  const closeKeyboardInput = useCallback(() => { if(isMountedRef.current) setIsKeyboardInputVisible(false); showAndResetTimer(); }, [showAndResetTimer]);
+  const openCustomPageModal = useCallback(() => {
+    if (isMountedRef.current) setIsCustomPageModalVisible(true);
+    showAndResetTimer();
+  }, [showAndResetTimer]);
+  const closeCustomPageModal = useCallback(() => {
+    if (isMountedRef.current) setIsCustomPageModalVisible(false);
+    showAndResetTimer();
+  }, [showAndResetTimer]);
+
+  const openKeyboardInput = useCallback(() => {
+    if (isMountedRef.current) setIsKeyboardInputVisible(true);
+    showAndResetTimer();
+  }, [showAndResetTimer]);
+  const closeKeyboardInput = useCallback(() => {
+    if (isMountedRef.current) setIsKeyboardInputVisible(false);
+    showAndResetTimer();
+  }, [showAndResetTimer]);
 
   // --- Render Methods ---
   // renderInputItems is removed as it's handled by SelectedItemsDisplay component
-
 
   // --- Styles ---
   const styles = useMemo(() => {
     // const categoryTitleFontSize = 18; // Moved to CategoryTitle component
     return StyleSheet.create({
-      safeArea: { 
-        flex: 1, 
+      safeArea: {
+        flex: 1,
         backgroundColor: theme.primaryDark || '#003d5c',
       },
-      container: { 
-        flex: 1, 
+      container: {
+        flex: 1,
         backgroundColor: theme.background || '#f5faff',
       },
-      mainContent: { 
+      mainContent: {
         flex: 1,
         paddingHorizontal: 12,
         paddingBottom: BOTTOM_BAR_HEIGHT + 10,
       },
-      bottomBarContainer: { 
-        position: 'absolute', 
-        bottom: 0, 
-        left: 0, 
-        right: 0, 
-        height: BOTTOM_BAR_HEIGHT, 
+      bottomBarContainer: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: BOTTOM_BAR_HEIGHT,
         zIndex: 100,
         backgroundColor: theme.card || '#ffffff',
         borderTopWidth: 1,
         borderTopColor: theme.border || '#e0e6ed',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: -2 },
+        shadowOffset: {width: 0, height: -2},
         shadowOpacity: 0.1,
         shadowRadius: 4,
         elevation: 5,
       },
-      // Styles for inputItemChip, chipImage, inputItemText are moved to SelectedItemsDisplay.tsx
-      // Styles for categoryTitleContainer, categoryTitleText are moved to CategoryTitle.tsx
     });
   }, [theme]); // fonts removed from dependency if not used by remaining styles
 
@@ -516,21 +696,35 @@ const HomeScreen: React.FC = () => {
               isProcessingAudio ||
               (currentUiLang.split('-')[0] === 'en' && !isTtsInitialized)
             }
-            isBackspaceDisabled={selectedItems.length === 0 || isProcessingAudio || isTtsSpeaking || isAudioPlaying}
-            isClearDisabled={selectedItems.length === 0 || isProcessingAudio || isTtsSpeaking || isAudioPlaying}
-          >
+            isBackspaceDisabled={
+              selectedItems.length === 0 ||
+              isProcessingAudio ||
+              isTtsSpeaking ||
+              isAudioPlaying
+            }
+            isClearDisabled={
+              selectedItems.length === 0 ||
+              isProcessingAudio ||
+              isTtsSpeaking ||
+              isAudioPlaying
+            }>
             {isProcessingAudio && (
-              <ActivityIndicator 
-                size="small" 
+              <ActivityIndicator
+                size="small"
                 color={theme.text || '#1a3c34'} // Use theme color directly
-                style={{ marginHorizontal: 8 }} 
+                style={{marginHorizontal: 8}}
               />
             )}
             <SelectedItemsDisplay items={selectedItems} />
           </IconInputComponent>
-          
+
           <View style={styles.mainContent}>
-            <CategoryTitle text={`${t('home.symbolsTitlePrefix', 'Symbols')}: ${currentCategoryName}`} />
+            <CategoryTitle
+              text={`${t(
+                'home.symbolsTitlePrefix',
+                'Symbols',
+              )}: ${currentCategoryName}`}
+            />
             <SymbolGrid
               ref={symbolGridRef}
               onSymbolPress={handleSymbolPress}
@@ -540,7 +734,12 @@ const HomeScreen: React.FC = () => {
         </View>
       </TouchableWithoutFeedback>
 
-      <Animated.View style={[styles.bottomBarContainer, { transform: [{ translateY: bottomBarPosition }] }]} pointerEvents={isBarVisible ? 'auto' : 'none'}>
+      <Animated.View
+        style={[
+          styles.bottomBarContainer,
+          {transform: [{translateY: bottomBarPosition}]},
+        ]}
+        pointerEvents={isBarVisible ? 'auto' : 'none'}>
         <BottomBar
           handleHomePress={handleHomePress}
           onSymbolSelected={handleSearchSymbolSelect}
@@ -556,7 +755,11 @@ const HomeScreen: React.FC = () => {
         />
       </Animated.View>
 
-      <Modal visible={isMenuVisible} transparent={true} animationType="none" onRequestClose={closeMenu}>
+      <Modal
+        visible={isMenuVisible}
+        transparent={true}
+        animationType="none"
+        onRequestClose={closeMenu}>
         <Menu
           slideAnim={menuSlideAnim}
           overlayAnim={menuOverlayAnim}
@@ -575,7 +778,10 @@ const HomeScreen: React.FC = () => {
       )}
 
       {isCustomPageModalVisible && (
-        <Modal visible={isCustomPageModalVisible} animationType="slide" onRequestClose={closeCustomPageModal}>
+        <Modal
+          visible={isCustomPageModalVisible}
+          animationType="slide"
+          onRequestClose={closeCustomPageModal}>
           <CustomPageComponent
             onBackPress={closeCustomPageModal}
             onSymbolsUpdate={handleCustomSymbolsUpdate}

@@ -1,25 +1,45 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, {useState, useEffect, useMemo, useCallback, useRef} from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, Modal, SafeAreaView,
-  TextInput, Dimensions, ActivityIndicator, Keyboard, TouchableWithoutFeedback,
-  Platform, ScrollView, Alert, Animated
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Modal,
+  SafeAreaView,
+  TextInput,
+  Dimensions,
+  ActivityIndicator,
+  Keyboard,
+  TouchableWithoutFeedback,
+  Platform,
+  ScrollView,
+  Alert,
+  Animated,
 } from 'react-native';
-import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
+import {FontAwesomeIcon} from '@fortawesome/react-native-fontawesome';
 import {
-  faTimes, faSignOutAlt, faPen, faCheck, faTrash
+  faTimes,
+  faSignOutAlt,
+  faPen,
+  faCheck,
+  faTrash,
 } from '@fortawesome/free-solid-svg-icons';
-import { useTranslation } from 'react-i18next';
+import {useTranslation} from 'react-i18next';
 
 // --- App Imports ---
-import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext';
-import { useAuth } from '../context/AuthContext';
-import { getLanguageSpecificTextStyle } from '../styles/typography';
+import {
+  useAppearance,
+  ThemeColors,
+  FontSizes,
+} from '../context/AppearanceContext';
+import {useAuth} from '../context/AuthContext';
+import {getLanguageSpecificTextStyle} from '../styles/typography';
 import AvatarPicker from './AvatarPicker';
 
 // --- Constants ---
 const screenWidth = Dimensions.get('window').width;
 const modalWidth = Math.min(screenWidth * 0.9, 400);
-const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
+const hitSlop = {top: 10, bottom: 10, left: 10, right: 10};
 const errorColor = '#dc3545';
 const successColor = '#198754';
 const fadeAnim = new Animated.Value(0); // For animation
@@ -30,7 +50,7 @@ interface ProfileModalProps {
   onLogout?: () => void;
   onSave?: (
     name: string,
-    newLocalAvatarUriToSave?: string | null
+    newLocalAvatarUriToSave?: string | null,
   ) => Promise<void> | void;
 }
 
@@ -40,16 +60,23 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
   onLogout,
   onSave,
 }) => {
-  const { theme, fonts } = useAppearance();
-  const { t, i18n } = useTranslation();
+  const {theme, fonts} = useAppearance();
+  const {t, i18n} = useTranslation();
   const currentLanguage = i18n.language;
-  const { user: authUser } = useAuth();
+  const {user: authUser} = useAuth();
 
-  const styles = useMemo(() => createThemedStyles(theme, fonts, currentLanguage), [theme, fonts, currentLanguage]);
+  const styles = useMemo(
+    () => createThemedStyles(theme, fonts, currentLanguage),
+    [theme, fonts, currentLanguage],
+  );
   const defaultUserName = t('profile.defaultUserName', 'User');
 
-  const [currentName, setCurrentName] = useState(authUser?.name || defaultUserName);
-  const [avatarChangeAction, setAvatarChangeAction] = useState<'keep' | { newUri: string } | 'remove'>('keep');
+  const [currentName, setCurrentName] = useState(
+    authUser?.name || defaultUserName,
+  );
+  const [avatarChangeAction, setAvatarChangeAction] = useState<
+    'keep' | {newUri: string} | 'remove'
+  >('keep');
   const [isEditingName, setIsEditingName] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -63,7 +90,9 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
       duration: 300,
       useNativeDriver: true,
     }).start();
-    return () => { isMountedRef.current = false; };
+    return () => {
+      isMountedRef.current = false;
+    };
   }, [visible]);
 
   useEffect(() => {
@@ -80,11 +109,15 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
   const handleSave = async () => {
     const trimmedName = currentName.trim();
     if (trimmedName === '') {
-      if (isMountedRef.current) setSaveError(t('profile.errors.nameEmpty', 'Name cannot be empty.'));
+      if (isMountedRef.current)
+        setSaveError(t('profile.errors.nameEmpty', 'Name cannot be empty.'));
       return;
     }
     if (!authUser) {
-      if (isMountedRef.current) setSaveError(t('profile.errors.userNotAuthenticated', 'User not authenticated.'));
+      if (isMountedRef.current)
+        setSaveError(
+          t('profile.errors.userNotAuthenticated', 'User not authenticated.'),
+        );
       return;
     }
 
@@ -112,9 +145,15 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
         // Parent should call onClose if needed; otherwise, it can be called here after a delay
       }
     } catch (error) {
-      console.error("ProfileModal: Error during onSave callback:", error);
+      console.error('ProfileModal: Error during onSave callback:', error);
       if (isMountedRef.current) {
-        setSaveError((error as Error)?.message || t('profile.errors.saveFail', 'Failed to save profile. Please try again.'));
+        setSaveError(
+          (error as Error)?.message ||
+            t(
+              'profile.errors.saveFail',
+              'Failed to save profile. Please try again.',
+            ),
+        );
       }
     } finally {
       if (isMountedRef.current) {
@@ -135,7 +174,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
   const handleAvatarPickerChange = (newLocalUri: string | undefined) => {
     if (isMountedRef.current) {
       if (newLocalUri) {
-        setAvatarChangeAction({ newUri: newLocalUri });
+        setAvatarChangeAction({newUri: newLocalUri});
       } else {
         if (avatarChangeAction !== 'remove') {
           setAvatarChangeAction('keep');
@@ -152,32 +191,51 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
     }
   };
 
-  const nameChanged = currentName.trim() !== (authUser?.name || defaultUserName).trim();
+  const nameChanged =
+    currentName.trim() !== (authUser?.name || defaultUserName).trim();
   const avatarChangedByUserInModal = avatarChangeAction !== 'keep';
-  const canSaveChanges = (nameChanged || avatarChangedByUserInModal) && currentName.trim() !== '';
+  const canSaveChanges =
+    (nameChanged || avatarChangedByUserInModal) && currentName.trim() !== '';
 
   const avatarUriForPickerDisplay = useMemo(() => {
     if (avatarChangeAction === 'remove') return undefined;
-    if (avatarChangeAction !== 'keep' && avatarChangeAction.newUri) return avatarChangeAction.newUri;
+    if (avatarChangeAction !== 'keep' && avatarChangeAction.newUri)
+      return avatarChangeAction.newUri;
     return authUser?.localAvatarPath || undefined;
   }, [avatarChangeAction, authUser?.localAvatarPath]);
 
   return (
-    <Modal visible={visible} animationType="none" transparent={true} onRequestClose={onClose}>
-      <TouchableWithoutFeedback onPress={dismissKeyboardAndResetName} accessible={false}>
+    <Modal
+      visible={visible}
+      animationType="none"
+      transparent={true}
+      onRequestClose={onClose}>
+      <TouchableWithoutFeedback
+        onPress={dismissKeyboardAndResetName}
+        accessible={false}>
         <SafeAreaView style={styles.modalBackground}>
-          <Animated.View style={[styles.modalContainer, { opacity: fadeAnim }]}>
+          <Animated.View style={[styles.modalContainer, {opacity: fadeAnim}]}>
             <TouchableWithoutFeedback accessible={false}>
               <View>
                 <View style={styles.header}>
                   <View style={styles.headerButtonPlaceholder} />
                   <Text style={styles.title}>{t('profile.title')}</Text>
-                  <TouchableOpacity style={styles.headerButton} onPress={onClose} hitSlop={hitSlop} accessibilityLabel={t('profile.closeAccessibilityLabel')}>
-                    <FontAwesomeIcon icon={faTimes} size={(fonts.h2 || 20) * 0.9} color={theme.white} />
+                  <TouchableOpacity
+                    style={styles.headerButton}
+                    onPress={onClose}
+                    hitSlop={hitSlop}
+                    accessibilityLabel={t('profile.closeAccessibilityLabel')}>
+                    <FontAwesomeIcon
+                      icon={faTimes}
+                      size={(fonts.h2 || 20) * 0.9}
+                      color={theme.white}
+                    />
                   </TouchableOpacity>
                 </View>
 
-                <ScrollView contentContainerStyle={styles.contentContainer} keyboardShouldPersistTaps="handled">
+                <ScrollView
+                  contentContainerStyle={styles.contentContainer}
+                  keyboardShouldPersistTaps="handled">
                   <View style={styles.avatarSection}>
                     <AvatarPicker
                       initialUri={avatarUriForPickerDisplay}
@@ -186,25 +244,39 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                       disabled={isSaving}
                       style={styles.avatarPicker}
                     />
-                    {avatarUriForPickerDisplay && avatarChangeAction !== 'remove' && (
-                      <TouchableOpacity
-                        style={styles.removeAvatarButton}
-                        onPress={handleExplicitRemoveAvatar}
-                        disabled={isSaving}
-                      >
-                        <FontAwesomeIcon icon={faTrash} size={(fonts.body || 16) * 0.9} color={theme.textSecondary} />
-                        <Text style={styles.removeAvatarText}>{t('profile.removeAvatar')}</Text>
-                      </TouchableOpacity>
-                    )}
+                    {avatarUriForPickerDisplay &&
+                      avatarChangeAction !== 'remove' && (
+                        <TouchableOpacity
+                          style={styles.removeAvatarButton}
+                          onPress={handleExplicitRemoveAvatar}
+                          disabled={isSaving}>
+                          <FontAwesomeIcon
+                            icon={faTrash}
+                            size={(fonts.body || 16) * 0.9}
+                            color={theme.textSecondary}
+                          />
+                          <Text style={styles.removeAvatarText}>
+                            {t('profile.removeAvatar')}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
                   </View>
 
                   <View style={styles.fieldContainer}>
-                    <Text style={styles.fieldLabel}>{t('profile.nameLabel')}</Text>
+                    <Text style={styles.fieldLabel}>
+                      {t('profile.nameLabel')}
+                    </Text>
                     <View style={styles.nameInputContainer}>
                       <TextInput
-                        style={[styles.textInput, isEditingName && styles.textInputEditing]}
+                        style={[
+                          styles.textInput,
+                          isEditingName && styles.textInputEditing,
+                        ]}
                         value={currentName}
-                        onChangeText={(text) => { setCurrentName(text); if (saveError) setSaveError(null); }}
+                        onChangeText={text => {
+                          setCurrentName(text);
+                          if (saveError) setSaveError(null);
+                        }}
                         placeholder={t('profile.namePlaceholder')}
                         placeholderTextColor={theme.disabled}
                         maxLength={40}
@@ -220,12 +292,24 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                           style={styles.inlineEditButton}
                           onPress={handleSave}
                           disabled={!canSaveChanges || isSaving}
-                          accessibilityLabel={t('profile.saveNameAccessibilityLabel')}
-                        >
-                          {isSaving && (!avatarChangedByUserInModal && nameChanged) ? (
-                            <ActivityIndicator size="small" color={theme.primary} />
+                          accessibilityLabel={t(
+                            'profile.saveNameAccessibilityLabel',
+                          )}>
+                          {isSaving &&
+                          !avatarChangedByUserInModal &&
+                          nameChanged ? (
+                            <ActivityIndicator
+                              size="small"
+                              color={theme.primary}
+                            />
                           ) : (
-                            <FontAwesomeIcon icon={faCheck} size={(fonts.body || 16) * 1.1} color={canSaveChanges ? successColor : theme.disabled} />
+                            <FontAwesomeIcon
+                              icon={faCheck}
+                              size={(fonts.body || 16) * 1.1}
+                              color={
+                                canSaveChanges ? successColor : theme.disabled
+                              }
+                            />
                           )}
                         </TouchableOpacity>
                       ) : (
@@ -233,41 +317,75 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                           style={styles.inlineEditButton}
                           onPress={() => setIsEditingName(true)}
                           disabled={isSaving}
-                          accessibilityLabel={t('profile.editNameAccessibilityLabel')}
-                        >
-                          <FontAwesomeIcon icon={faPen} size={(fonts.body || 16) * 0.9} color={theme.primary} />
+                          accessibilityLabel={t(
+                            'profile.editNameAccessibilityLabel',
+                          )}>
+                          <FontAwesomeIcon
+                            icon={faPen}
+                            size={(fonts.body || 16) * 0.9}
+                            color={theme.primary}
+                          />
                         </TouchableOpacity>
                       )}
                     </View>
                   </View>
 
                   <View style={styles.fieldContainer}>
-                    <Text style={styles.fieldLabel}>{t('profile.emailLabel')}</Text>
-                    <Text style={styles.emailText}>{authUser?.email || t('profile.defaultEmail', 'user@example.com')}</Text>
+                    <Text style={styles.fieldLabel}>
+                      {t('profile.emailLabel')}
+                    </Text>
+                    <Text style={styles.emailText}>
+                      {authUser?.email ||
+                        t('profile.defaultEmail', 'user@example.com')}
+                    </Text>
                   </View>
 
-                  {saveError && <Text style={styles.errorText}>{saveError}</Text>}
-                  {saveSuccess && <Text style={styles.successText}>{t('profile.saveSuccess', 'Profile saved successfully!')}</Text>}
+                  {saveError && (
+                    <Text style={styles.errorText}>{saveError}</Text>
+                  )}
+                  {saveSuccess && (
+                    <Text style={styles.successText}>
+                      {t('profile.saveSuccess', 'Profile saved successfully!')}
+                    </Text>
+                  )}
 
                   {canSaveChanges && !isEditingName && (
                     <TouchableOpacity
-                      style={[styles.actionButton, styles.saveButton, isSaving && styles.buttonDisabled]}
+                      style={[
+                        styles.actionButton,
+                        styles.saveButton,
+                        isSaving && styles.buttonDisabled,
+                      ]}
                       onPress={handleSave}
                       disabled={isSaving}
-                      activeOpacity={0.7}
-                    >
-                      {isSaving ? <ActivityIndicator color={theme.white} /> : <Text style={styles.buttonText}>{t('profile.saveChanges')}</Text>}
+                      activeOpacity={0.7}>
+                      {isSaving ? (
+                        <ActivityIndicator color={theme.white} />
+                      ) : (
+                        <Text style={styles.buttonText}>
+                          {t('profile.saveChanges')}
+                        </Text>
+                      )}
                     </TouchableOpacity>
                   )}
 
                   <View style={styles.divider} />
                   <TouchableOpacity
-                    style={[styles.actionButton, styles.logoutButton, isSaving && styles.buttonDisabled]}
-                    onPress={() => { if (onLogout) onLogout(); }}
+                    style={[
+                      styles.actionButton,
+                      styles.logoutButton,
+                      isSaving && styles.buttonDisabled,
+                    ]}
+                    onPress={() => {
+                      if (onLogout) onLogout();
+                    }}
                     disabled={isSaving}
-                    activeOpacity={0.7}
-                  >
-                    <FontAwesomeIcon icon={faSignOutAlt} size={fonts.button || 16} color={errorColor} />
+                    activeOpacity={0.7}>
+                    <FontAwesomeIcon
+                      icon={faSignOutAlt}
+                      size={fonts.button || 16}
+                      color={errorColor}
+                    />
                     <Text style={styles.buttonText}>{t('profile.logout')}</Text>
                   </TouchableOpacity>
                 </ScrollView>
@@ -283,12 +401,28 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
 const createThemedStyles = (
   theme: ThemeColors,
   fonts: FontSizes,
-  currentLanguage: string
+  currentLanguage: string,
 ) => {
-  const titleStyles = getLanguageSpecificTextStyle('h2', fonts, currentLanguage);
-  const bodyStyles = getLanguageSpecificTextStyle('body', fonts, currentLanguage);
-  const captionStyles = getLanguageSpecificTextStyle('caption', fonts, currentLanguage);
-  const buttonStyles = getLanguageSpecificTextStyle('button', fonts, currentLanguage);
+  const titleStyles = getLanguageSpecificTextStyle(
+    'h2',
+    fonts,
+    currentLanguage,
+  );
+  const bodyStyles = getLanguageSpecificTextStyle(
+    'body',
+    fonts,
+    currentLanguage,
+  );
+  const captionStyles = getLanguageSpecificTextStyle(
+    'caption',
+    fonts,
+    currentLanguage,
+  );
+  const buttonStyles = getLanguageSpecificTextStyle(
+    'button',
+    fonts,
+    currentLanguage,
+  );
   const bodyFontSize = fonts.body || 16;
 
   return StyleSheet.create({
@@ -306,7 +440,7 @@ const createThemedStyles = (
       overflow: 'hidden',
       maxHeight: '90%',
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 6 },
+      shadowOffset: {width: 0, height: 6},
       shadowOpacity: 0.4,
       shadowRadius: 18,
       elevation: 15,
@@ -335,7 +469,9 @@ const createThemedStyles = (
       justifyContent: 'center',
       alignItems: 'center',
       borderRadius: 20,
-      backgroundColor: theme.isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+      backgroundColor: theme.isDark
+        ? 'rgba(255,255,255,0.1)'
+        : 'rgba(0,0,0,0.1)',
     },
     headerButtonPlaceholder: {
       width: 40, // Match headerButton size for symmetry
@@ -352,7 +488,7 @@ const createThemedStyles = (
       borderRadius: 12,
       elevation: 4,
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
+      shadowOffset: {width: 0, height: 2},
       shadowOpacity: 0.1,
       shadowRadius: 4,
     },
@@ -395,7 +531,7 @@ const createThemedStyles = (
       borderColor: theme.border,
       elevation: 2,
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
+      shadowOffset: {width: 0, height: 1},
       shadowOpacity: 0.05,
       shadowRadius: 2,
     },
@@ -453,7 +589,9 @@ const createThemedStyles = (
     },
     buttonDisabled: {
       opacity: 0.6,
-      backgroundColor: theme.isDark ? 'rgba(25, 135, 84, 0.6)' : 'rgba(25, 135, 84, 0.6)',
+      backgroundColor: theme.isDark
+        ? 'rgba(25, 135, 84, 0.6)'
+        : 'rgba(25, 135, 84, 0.6)',
     },
     divider: {
       height: StyleSheet.hairlineWidth * 2,
@@ -469,7 +607,7 @@ const createThemedStyles = (
       alignItems: 'center',
       elevation: 3,
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
+      shadowOffset: {width: 0, height: 2},
       shadowOpacity: 0.1,
       shadowRadius: 3,
       marginBottom: 15,

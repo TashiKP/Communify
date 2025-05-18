@@ -57,19 +57,26 @@
     "logoutErrorMessage": "Could not log out. Please try again."
   },
   "categories": {
-    "Food": "Food",
-    "Drinks": "Drinks",
-    "People": "People",
-    "Places": "Places",
-    "Actions": "Actions",
-    "Feelings": "Feelings",
-    "Animals": "Animals",
-    "Toys": "Toys",
-    "Clothing": "Clothing",
-    "Body Parts": "Body Parts",
-    "School": "School",
-    "Colors": "Colors",
-    "Numbers": "Numbers"
+    "core words": "Core Words",
+    "social": "Social",
+    "food": "Food",
+    "drinks": "Drinks",
+    "people": "People",
+    "feelings": "Feelings",
+    "actions": "Actions",
+    "places": "Places",
+    "toys & play": "Toys & Play",
+    "clothing": "Clothing",
+    "body parts": "Body Parts",
+    "school items": "School Items",
+    "colors": "Colors",
+    "numbers & quantity": "Numbers & Quantity",
+    "nature & outside": "Nature & Outside",
+    "time & schedule": "Time & Schedule",
+    "household items": "Household Items",
+    "questions": "Questions",
+    "descriptors & concepts": "Descriptors & Concepts",
+    "animals": "Animals"
   },
   "common": {
     "save": "Save",
@@ -102,6 +109,7 @@
     "voiceSectionTitle": "Voice",
     "voiceSelectAccessibilityLabel": "Select a voice",
     "voiceSelectPrompt": "Select Voice",
+    "voiceNote": "Note: Voice availability and quality depend on your device and operating system.",
     "parametersSectionTitle": "Speech Parameters",
     "pitchLabel": "Pitch",
     "lockPitch": "Lock pitch",
@@ -125,9 +133,11 @@
     "punctuationLabel": "Speak Punctuation",
     "punctuationAccessibilityLabel": "Speak punctuation switch",
     "behaviorNote": "Note: Highlighting and punctuation require custom app logic.",
+    "previewSectionTitle": "Preview",
     "preview": "Preview Voice",
     "stopPreview": "Stop Preview",
     "previewSampleText": "Hello, this is a preview of the selected voice settings.",
+    "previewNote": "Note: Preview uses the current pitch, speed, and volume settings.",
     "resetConfirmTitle": "Reset Changes?",
     "resetConfirmMessage": "Discard changes and revert to last saved settings?",
     "saveSuccessTitle": "Settings Saved",
@@ -495,8 +505,8 @@
     "passwordTooShort": "Password must be at least 6 characters long.",
     "passwordUpdated": "Password updated successfully.",
     "errors": {
-        "nameEmpty": "Name cannot be empty."
+      "nameEmpty": "Name cannot be empty."
     },
     "saved": "Profile saved successfully."
-}
+  }
 }

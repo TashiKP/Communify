@@ -1,17 +1,17 @@
-import React, { useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
-import { faTextHeight, faFont } from '@fortawesome/free-solid-svg-icons';
-import { useTranslation } from 'react-i18next';
-import { DisplayScreenSettings } from '../DisplayOptionsScreen';
-import { FontSizes, ThemeColors } from '../../context/AppearanceContext';
-import { getLanguageSpecificTextStyle } from '../../styles/typography';
+import React, {useMemo} from 'react';
+import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import {FontAwesomeIcon} from '@fortawesome/react-native-fontawesome';
+import {faTextHeight, faFont} from '@fortawesome/free-solid-svg-icons';
+import {useTranslation} from 'react-i18next';
+import {DisplayScreenSettings} from '../DisplayOptionsScreen';
+import {FontSizes, ThemeColors} from '../../context/AppearanceContext';
+import {getLanguageSpecificTextStyle} from '../../styles/typography';
 
 interface TextSizeSectionProps {
   localSettings: DisplayScreenSettings;
   onSettingChange: <K extends keyof DisplayScreenSettings>(
     key: K,
-    value: DisplayScreenSettings[K]
+    value: DisplayScreenSettings[K],
   ) => void;
   theme: ThemeColors;
   fonts: FontSizes;
@@ -25,16 +25,16 @@ const TextSizeSection: React.FC<TextSizeSectionProps> = ({
   fonts,
   currentLanguage,
 }) => {
-  const { t } = useTranslation();
+  const {t} = useTranslation();
   const styles = createStyles(theme, fonts, currentLanguage);
 
   const textSizeOptions = useMemo(
     () => [
-      { type: 'small' as const, labelKey: 'displayOptions.textSize.small' },
-      { type: 'medium' as const, labelKey: 'displayOptions.textSize.medium' },
-      { type: 'large' as const, labelKey: 'displayOptions.textSize.large' },
+      {type: 'small' as const, labelKey: 'displayOptions.textSize.small'},
+      {type: 'medium' as const, labelKey: 'displayOptions.textSize.medium'},
+      {type: 'large' as const, labelKey: 'displayOptions.textSize.large'},
     ],
-    []
+    [],
   );
 
   return (
@@ -46,12 +46,12 @@ const TextSizeSection: React.FC<TextSizeSectionProps> = ({
           color={theme.primary}
           style={styles.sectionIcon}
         />
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+        <Text style={[styles.sectionTitle, {color: theme.text}]}>
           {t('displayOptions.textSize.sectionTitle')}
         </Text>
       </View>
       <View style={styles.textSizeOptionsContainer}>
-        {textSizeOptions.map((option) => {
+        {textSizeOptions.map(option => {
           const isSelected = localSettings.textSize === option.type;
           const label = t(option.labelKey);
           return (
@@ -64,9 +64,11 @@ const TextSizeSection: React.FC<TextSizeSectionProps> = ({
               onPress={() => onSettingChange('textSize', option.type)}
               activeOpacity={0.7}
               accessibilityRole="radio"
-              accessibilityState={{ checked: isSelected }}
-              accessibilityLabel={t('displayOptions.textSize.accessibilityLabel', { size: label })}
-            >
+              accessibilityState={{checked: isSelected}}
+              accessibilityLabel={t(
+                'displayOptions.textSize.accessibilityLabel',
+                {size: label},
+              )}>
               <FontAwesomeIcon
                 icon={faFont}
                 size={fonts.body * 1.1}
@@ -76,14 +78,18 @@ const TextSizeSection: React.FC<TextSizeSectionProps> = ({
           );
         })}
       </View>
-      <Text style={[styles.infoTextSmall, { color: theme.textSecondary }]}>
+      <Text style={[styles.infoTextSmall, {color: theme.textSecondary}]}>
         {t('displayOptions.textSize.infoText')}
       </Text>
     </View>
   );
 };
 
-const createStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguage: string) =>
+const createStyles = (
+  theme: ThemeColors,
+  fonts: FontSizes,
+  currentLanguage: string,
+) =>
   StyleSheet.create({
     sectionCard: {
       backgroundColor: theme.card,
@@ -93,7 +99,7 @@ const createStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguage: str
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.border,
       shadowColor: theme.text,
-      shadowOffset: { width: 0, height: 1 },
+      shadowOffset: {width: 0, height: 1},
       shadowOpacity: theme.isDark ? 0.2 : 0.08,
       shadowRadius: 2,
       elevation: 1,

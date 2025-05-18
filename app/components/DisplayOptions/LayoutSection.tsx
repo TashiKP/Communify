@@ -1,6 +1,12 @@
-import React, { useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
-import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
+import React, {useMemo} from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+} from 'react-native';
+import {FontAwesomeIcon} from '@fortawesome/react-native-fontawesome';
 import {
   faColumns,
   faGripVertical,
@@ -8,11 +14,10 @@ import {
   faThLarge,
   faCheckCircle,
 } from '@fortawesome/free-solid-svg-icons';
-import { useTranslation } from 'react-i18next';
-import { GridLayoutType } from '../../context/GridContext';
-import { FontSizes, ThemeColors } from '../../context/AppearanceContext';
-import { getLanguageSpecificTextStyle } from '../../styles/typography';
-
+import {useTranslation} from 'react-i18next';
+import {GridLayoutType} from '../../context/GridContext';
+import {FontSizes, ThemeColors} from '../../context/AppearanceContext';
+import {getLanguageSpecificTextStyle} from '../../styles/typography';
 
 interface LayoutSectionProps {
   gridLayout: GridLayoutType;
@@ -33,16 +38,28 @@ const LayoutSection: React.FC<LayoutSectionProps> = ({
   fonts,
   currentLanguage,
 }) => {
-  const { t } = useTranslation();
+  const {t} = useTranslation();
   const styles = createStyles(theme, fonts, currentLanguage);
 
   const layoutOptions = useMemo(
     () => [
-      { type: 'simple' as GridLayoutType, labelKey: 'displayOptions.layout.simple', icon: faGripVertical },
-      { type: 'standard' as GridLayoutType, labelKey: 'displayOptions.layout.standard', icon: faTh },
-      { type: 'dense' as GridLayoutType, labelKey: 'displayOptions.layout.dense', icon: faThLarge },
+      {
+        type: 'simple' as GridLayoutType,
+        labelKey: 'displayOptions.layout.simple',
+        icon: faGripVertical,
+      },
+      {
+        type: 'standard' as GridLayoutType,
+        labelKey: 'displayOptions.layout.standard',
+        icon: faTh,
+      },
+      {
+        type: 'dense' as GridLayoutType,
+        labelKey: 'displayOptions.layout.dense',
+        icon: faThLarge,
+      },
     ],
-    []
+    [],
   );
 
   return (
@@ -54,15 +71,19 @@ const LayoutSection: React.FC<LayoutSectionProps> = ({
           color={theme.primary}
           style={styles.sectionIcon}
         />
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+        <Text style={[styles.sectionTitle, {color: theme.text}]}>
           {t('displayOptions.layout.sectionTitle')}
         </Text>
         {(isLoadingLayout || isSaving) && (
-          <ActivityIndicator size="small" color={theme.primary} style={{ marginLeft: 10 }} />
+          <ActivityIndicator
+            size="small"
+            color={theme.primary}
+            style={{marginLeft: 10}}
+          />
         )}
       </View>
       <View style={styles.layoutOptionsContainer}>
-        {layoutOptions.map((option) => {
+        {layoutOptions.map(option => {
           const isSelected = gridLayout === option.type;
           const isDisabled = isLoadingLayout || isSaving;
           const label = t(option.labelKey);
@@ -77,10 +98,12 @@ const LayoutSection: React.FC<LayoutSectionProps> = ({
               onPress={() => onLayoutSelect(option.type)}
               activeOpacity={0.7}
               disabled={isDisabled}
-              accessibilityLabel={t('displayOptions.layout.accessibilityLabel', { layout: label })}
+              accessibilityLabel={t(
+                'displayOptions.layout.accessibilityLabel',
+                {layout: label},
+              )}
               accessibilityRole="radio"
-              accessibilityState={{ selected: isSelected, disabled: isDisabled }}
-            >
+              accessibilityState={{selected: isSelected, disabled: isDisabled}}>
               <FontAwesomeIcon
                 icon={option.icon}
                 size={fonts.body * 1.1}
@@ -92,9 +115,8 @@ const LayoutSection: React.FC<LayoutSectionProps> = ({
                   style={[
                     styles.layoutOptionLabel,
                     isSelected && styles.layoutOptionLabelActive,
-                    { color: isSelected ? theme.white : theme.text },
-                  ]}
-                >
+                    {color: isSelected ? theme.white : theme.text},
+                  ]}>
                   {label}
                 </Text>
               </View>
@@ -110,14 +132,18 @@ const LayoutSection: React.FC<LayoutSectionProps> = ({
           );
         })}
       </View>
-      <Text style={[styles.infoTextSmall, { color: theme.textSecondary }]}>
+      <Text style={[styles.infoTextSmall, {color: theme.textSecondary}]}>
         {t('displayOptions.layout.infoText')}
       </Text>
     </View>
   );
 };
 
-const createStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguage: string) =>
+const createStyles = (
+  theme: ThemeColors,
+  fonts: FontSizes,
+  currentLanguage: string,
+) =>
   StyleSheet.create({
     sectionCard: {
       backgroundColor: theme.card,
@@ -127,7 +153,7 @@ const createStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguage: str
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.border,
       shadowColor: theme.text,
-      shadowOffset: { width: 0, height: 1 },
+      shadowOffset: {width: 0, height: 1},
       shadowOpacity: theme.isDark ? 0.2 : 0.08,
       shadowRadius: 2,
       elevation: 1,

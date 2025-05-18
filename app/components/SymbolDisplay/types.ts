@@ -1,5 +1,5 @@
 // src/components/SymbolDisplay/types.ts
-import { GridLayoutType } from '../../context/GridContext';
+import {GridLayoutType} from '../../context/GridContext';
 
 export interface CategoryInfo {
   id: string;
@@ -27,6 +27,9 @@ export interface SymbolGridProps {
 }
 
 export interface SymbolGridRef {
-  addSymbolToLocalCustomCategory: (keywordToAdd: string, imageUri?: string) => Promise<void>;
+  addSymbolToLocalCustomCategory: (
+    keywordToAdd: string,
+    imageUri?: string,
+  ) => Promise<void>;
   selectedCategoryName: string | null;
 }

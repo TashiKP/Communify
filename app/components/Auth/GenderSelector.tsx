@@ -1,12 +1,15 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Keyboard } from 'react-native';
+import {View, Text, TouchableOpacity, StyleSheet, Keyboard} from 'react-native';
 
 import * as Colors from '../../constants/colors'; // Adjust path
 import * as Dimens from '../../constants/dimensions'; // Adjust path
 import * as Strings from '../../constants/strings'; // Adjust path
 
 // Define GenderOption type here or import if defined globally
-export type GenderOption = typeof Strings.GENDER_MALE | typeof Strings.GENDER_FEMALE | typeof Strings.GENDER_OTHER;
+export type GenderOption =
+  | typeof Strings.GENDER_MALE
+  | typeof Strings.GENDER_FEMALE
+  | typeof Strings.GENDER_OTHER;
 
 interface GenderSelectorProps {
   label: string;
@@ -35,7 +38,7 @@ const GenderSelector: React.FC<GenderSelectorProps> = ({
             style={[
               styles.genderSegment,
               selectedValue === option && styles.genderSegmentSelected,
-              index === options.length - 1 && { borderRightWidth: 0 }, // Remove right border for last item
+              index === options.length - 1 && {borderRightWidth: 0}, // Remove right border for last item
             ]}
             onPress={() => {
               onSelect(option);
@@ -45,14 +48,12 @@ const GenderSelector: React.FC<GenderSelectorProps> = ({
               }
             }}
             activeOpacity={0.8}
-            disabled={disabled}
-          >
+            disabled={disabled}>
             <Text
               style={[
                 styles.genderSegmentText,
                 selectedValue === option && styles.genderSegmentTextSelected,
-              ]}
-            >
+              ]}>
               {option}
             </Text>
           </TouchableOpacity>

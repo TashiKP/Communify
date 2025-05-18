@@ -1,5 +1,5 @@
 // src/components/Navbar.tsx
-import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import React, {useState, useRef, useEffect, useMemo, useCallback} from 'react';
 import {
   View,
   Text,
@@ -12,44 +12,55 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
-import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
-import { faUserCircle } from '@fortawesome/free-solid-svg-icons';
-import { useTranslation } from 'react-i18next';
+import {FontAwesomeIcon} from '@fortawesome/react-native-fontawesome';
+import {faUserCircle} from '@fortawesome/free-solid-svg-icons';
+import {useTranslation} from 'react-i18next';
 import RNFS from 'react-native-fs'; // Keep for profile save logic
 
 // --- React Navigation Imports ---
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { MainAppStackParamList } from '../navigation/MainAppNavigator'; // Adjust path if necessary
+import {useNavigation} from '@react-navigation/native';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {MainAppStackParamList} from '../navigation/MainAppNavigator'; // Adjust path if necessary
 
 // --- App Imports ---
 import ProfileModal from './ProfileModal'; // Adjust path if necessary
-import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext'; // Adjust path if necessary
-import { useLanguage, LanguageCode } from '../context/LanguageContext'; // Adjust path if necessary
-import { useAuth } from '../context/AuthContext'; // Adjust path if necessary
-import { getLanguageSpecificTextStyle } from '../styles/typography'; // Adjust path if necessary
-import apiService, { handleApiError, UserRead } from '../services/apiService'; // Adjust path if necessary
+import {
+  useAppearance,
+  ThemeColors,
+  FontSizes,
+} from '../context/AppearanceContext'; // Adjust path if necessary
+import {useLanguage, LanguageCode} from '../context/LanguageContext'; // Adjust path if necessary
+import {useAuth} from '../context/AuthContext'; // Adjust path if necessary
+import {getLanguageSpecificTextStyle} from '../styles/typography'; // Adjust path if necessary
+import apiService, {handleApiError, UserRead} from '../services/apiService'; // Adjust path if necessary
 // import { ASYNC_STORAGE_KEYS } from '../constants/storageKeys'; // Uncomment if ASYNC_STORAGE_KEYS is used
 
-const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
+const hitSlop = {top: 10, bottom: 10, left: 10, right: 10};
+
 
 type NavbarNavigationProp = NativeStackNavigationProp<MainAppStackParamList>;
 
 const Navbar: React.FC = () => {
-  const { theme, fonts } = useAppearance();
-  const { currentLanguage, changeLanguage } = useLanguage();
-  const { user: authUser, setUser: setAuthContextUser, updateUserAvatarInContextAndStorage } = useAuth();
-  const { t } = useTranslation();
+  const {theme, fonts} = useAppearance();
+  const {currentLanguage, changeLanguage} = useLanguage();
+  const {
+    user: authUser,
+    setUser: setAuthContextUser,
+    updateUserAvatarInContextAndStorage,
+  } = useAuth();
+  const {t} = useTranslation();
   const navigation = useNavigation<NavbarNavigationProp>();
 
   const [profileModalVisible, setProfileModalVisible] = useState(false);
-  const toggleAnim = useRef(new Animated.Value(currentLanguage === 'en' ? 0 : 1)).current;
+  const toggleAnim = useRef(
+    new Animated.Value(currentLanguage === 'en' ? 0 : 1),
+  ).current;
   const isMountedRef = useRef(true); // To prevent state updates on unmounted component
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   const styles = useMemo(
     () => createThemedStyles(theme, fonts, currentLanguage),
-    [theme, fonts, currentLanguage]
+    [theme, fonts, currentLanguage],
   );
 
   // Effect for managing the mounted state of the component
@@ -103,70 +114,112 @@ const Navbar: React.FC = () => {
     navigation.navigate('LoggingOut');
   }, [profileModalVisible, closeProfileModal, navigation]);
 
-  const handleSaveProfile = useCallback(async (
-    newName: string,
-    avatarUpdateInstruction?: string | null // Can be a new path, null to remove, or undefined if no change
-  ) => {
-    if (!authUser || !setAuthContextUser || !updateUserAvatarInContextAndStorage) {
-      Alert.alert(t('common.error', 'Authentication Error'), "User not authenticated. Cannot save profile.");
-      return;
-    }
-
-    if (isMountedRef.current) setIsSavingProfile(true);
-
-    try {
-      let updatedUserFromApi: UserRead | null = null;
-      const trimmedNewName = newName.trim();
-
-      // Update name if changed
-      if (trimmedNewName !== authUser.name) {
-        updatedUserFromApi = await apiService.updateCurrentUserProfile({ name: trimmedNewName });
+  const handleSaveProfile = useCallback(
+    async (
+      newName: string,
+      avatarUpdateInstruction?: string | null, // Can be a new path, null to remove, or undefined if no change
+    ) => {
+      if (
+        !authUser ||
+        !setAuthContextUser ||
+        !updateUserAvatarInContextAndStorage
+      ) {
+        Alert.alert(
+          t('common.error', 'Authentication Error'),
+          'User not authenticated. Cannot save profile.',
+        );
+        return;
       }
 
-      let finalLocalAvatarPathForContext = authUser.localAvatarPath;
+      if (isMountedRef.current) setIsSavingProfile(true);
 
-      // Handle avatar update if instruction is provided (not undefined)
-      if (avatarUpdateInstruction !== undefined) { // An avatar update IS requested
-        const oldLocalAvatarPathFromContext = authUser.localAvatarPath;
-        await updateUserAvatarInContextAndStorage(authUser.id, avatarUpdateInstruction);
-        finalLocalAvatarPathForContext = avatarUpdateInstruction;
-        if (oldLocalAvatarPathFromContext && oldLocalAvatarPathFromContext !== finalLocalAvatarPathForContext) {
-            const pathToDelete = oldLocalAvatarPathFromContext.replace('file://', '');
+      try {
+        let updatedUserFromApi: UserRead | null = null;
+        const trimmedNewName = newName.trim();
+
+        // Update name if changed
+        if (trimmedNewName !== authUser.name) {
+          updatedUserFromApi = await apiService.updateCurrentUserProfile({
+            name: trimmedNewName,
+          });
+        }
+
+        let finalLocalAvatarPathForContext = authUser.localAvatarPath;
+
+        // Handle avatar update if instruction is provided (not undefined)
+        if (avatarUpdateInstruction !== undefined) {
+          // An avatar update IS requested
+          const oldLocalAvatarPathFromContext = authUser.localAvatarPath;
+          await updateUserAvatarInContextAndStorage(
+            authUser.id,
+            avatarUpdateInstruction,
+          );
+          finalLocalAvatarPathForContext = avatarUpdateInstruction;
+          if (
+            oldLocalAvatarPathFromContext &&
+            oldLocalAvatarPathFromContext !== finalLocalAvatarPathForContext
+          ) {
+            const pathToDelete = oldLocalAvatarPathFromContext.replace(
+              'file://',
+              '',
+            );
             try {
               if (await RNFS.exists(pathToDelete)) {
-                  await RNFS.unlink(pathToDelete);
-                  console.log('[Navbar] Successfully deleted old avatar file:', pathToDelete);
+                await RNFS.unlink(pathToDelete);
+                console.log(
+                  '[Navbar] Successfully deleted old avatar file:',
+                  pathToDelete,
+                );
               }
             } catch (deleteError) {
-              console.error("[Navbar] Error deleting old avatar file:", deleteError);
+              console.error(
+                '[Navbar] Error deleting old avatar file:',
+                deleteError,
+              );
             }
+          }
         }
-      }
 
-      // Update AuthContext
-      setAuthContextUser(prevUser => {
-        if (!prevUser) return null;
-        return {
-          ...prevUser,
-          name: updatedUserFromApi?.name || trimmedNewName, // Use API name if available, else trimmed input
-          ...(updatedUserFromApi ? { age: updatedUserFromApi.age, gender: updatedUserFromApi.gender } : {}), // Spread other details if API call was made
-          localAvatarPath: finalLocalAvatarPathForContext,
-        };
-      });
+        // Update AuthContext
+        setAuthContextUser(prevUser => {
+          if (!prevUser) return null;
+          return {
+            ...prevUser,
+            name: updatedUserFromApi?.name || trimmedNewName, // Use API name if available, else trimmed input
+            ...(updatedUserFromApi
+              ? {age: updatedUserFromApi.age, gender: updatedUserFromApi.gender}
+              : {}), // Spread other details if API call was made
+            localAvatarPath: finalLocalAvatarPathForContext,
+          };
+        });
 
-      if (isMountedRef.current) {
-        Alert.alert(t('profile.saveSuccessTitle', 'Profile Updated'), t('profile.saveSuccessMessage', 'Your profile has been updated.'));
-        closeProfileModal();
+        if (isMountedRef.current) {
+          Alert.alert(
+            t('profile.saveSuccessTitle', 'Profile Updated'),
+            t('profile.saveSuccessMessage', 'Your profile has been updated.'),
+          );
+          closeProfileModal();
+        }
+      } catch (error) {
+        const apiError = handleApiError(error);
+        if (isMountedRef.current) {
+          Alert.alert(
+            t('profile.errors.saveFailTitle', 'Update Failed'),
+            apiError.message,
+          );
+        }
+      } finally {
+        if (isMountedRef.current) setIsSavingProfile(false);
       }
-    } catch (error) {
-      const apiError = handleApiError(error);
-      if (isMountedRef.current) {
-        Alert.alert(t('profile.errors.saveFailTitle', 'Update Failed'), apiError.message);
-      }
-    } finally {
-      if (isMountedRef.current) setIsSavingProfile(false);
-    }
-  }, [authUser, setAuthContextUser, updateUserAvatarInContextAndStorage, t, closeProfileModal]);
+    },
+    [
+      authUser,
+      setAuthContextUser,
+      updateUserAvatarInContextAndStorage,
+      t,
+      closeProfileModal,
+    ],
+  );
 
   return (
     <>
@@ -179,13 +232,17 @@ const Navbar: React.FC = () => {
             hitSlop={hitSlop}
             accessibilityRole="switch"
             accessibilityLabel={t('navbar.toggleLanguage')}
-            accessibilityState={{ checked: currentLanguage === 'dzo' }}
-          >
+            accessibilityState={{checked: currentLanguage === 'dzo'}}>
             <View style={styles.toggleTextContainer}>
-              <Text style={[styles.toggleText, styles.toggleTextInactive]}>EN</Text>
-              <Text style={[styles.toggleText, styles.toggleTextInactive]}>DZ</Text>
+              <Text style={[styles.toggleText, styles.toggleTextInactive]}>
+                EN
+              </Text>
+              <Text style={[styles.toggleText, styles.toggleTextInactive]}>
+                DZ
+              </Text>
             </View>
-            <Animated.View style={[styles.toggleSlider, { left: sliderPosition }]}>
+            <Animated.View
+              style={[styles.toggleSlider, {left: sliderPosition}]}>
               <Text style={styles.toggleTextActive}>
                 {currentLanguage === 'en' ? 'EN' : 'DZ'}
               </Text>
@@ -206,31 +263,42 @@ const Navbar: React.FC = () => {
             disabled={!authUser || isSavingProfile} // Disable if no user or currently saving
           >
             {isSavingProfile && authUser ? (
-                <ActivityIndicator size={fonts.h1 * 0.8} color={theme.white} />
+              <ActivityIndicator size={fonts.h1 * 0.8} color={theme.white} />
             ) : authUser?.localAvatarPath ? (
-              <Image source={{ uri: authUser.localAvatarPath }} style={styles.navbarAvatar} />
+              <Image
+                source={{uri: authUser.localAvatarPath}}
+                style={styles.navbarAvatar}
+              />
             ) : (
-              <FontAwesomeIcon icon={faUserCircle} size={fonts.h1 * 1.0} color={theme.white} />
+              <FontAwesomeIcon
+                icon={faUserCircle}
+                size={fonts.h1 * 1.0}
+                color={theme.white}
+              />
             )}
           </TouchableOpacity>
         </View>
       </View>
 
       {profileModalVisible && authUser && (
-          <ProfileModal
-            visible={profileModalVisible}
-            onClose={closeProfileModal}
-            onLogout={handleLogoutNavigation}
-            onSave={handleSaveProfile}
-            // Ensure ProfileModal receives necessary props like authUser for initial values
-            // currentUser={authUser} // Example: if ProfileModal needs the user object
-          />
+        <ProfileModal
+          visible={profileModalVisible}
+          onClose={closeProfileModal}
+          onLogout={handleLogoutNavigation}
+          onSave={handleSaveProfile}
+          // Ensure ProfileModal receives necessary props like authUser for initial values
+          // currentUser={authUser} // Example: if ProfileModal needs the user object
+        />
       )}
     </>
   );
 };
 
-const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguage: string) =>
+const createThemedStyles = (
+  theme: ThemeColors,
+  fonts: FontSizes,
+  currentLanguage: string,
+) =>
   StyleSheet.create({
     navbar: {
       flexDirection: 'row',
@@ -240,7 +308,7 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
       paddingBottom: 10,
       paddingHorizontal: 15,
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
+      shadowOffset: {width: 0, height: 2},
       shadowOpacity: theme.isDark ? 0.4 : 0.1,
       shadowRadius: 3,
       elevation: 5,
@@ -265,7 +333,9 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
       width: 65,
       height: 30,
       borderRadius: 15,
-      backgroundColor: theme.isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)',
+      backgroundColor: theme.isDark
+        ? 'rgba(255,255,255,0.15)'
+        : 'rgba(0,0,0,0.1)',
       justifyContent: 'center',
       position: 'relative', // For absolute positioning of the slider
     },
@@ -288,7 +358,7 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
       alignItems: 'center',
       elevation: 1, // Android shadow
       shadowColor: '#000', // iOS shadow
-      shadowOffset: { width: 0, height: 1 },
+      shadowOffset: {width: 0, height: 1},
       shadowOpacity: 0.1,
       shadowRadius: 1,
     },

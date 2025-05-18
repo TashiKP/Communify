@@ -1,18 +1,27 @@
 // src/Screens/LoginScreen.tsx
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { AuthStackParamList } from '../navigation/AuthNavigator';
-import apiService, { handleApiError, UserRead } from '../services/apiService';
-import { useAuth, AuthUser } from '../context/AuthContext'; // Assuming AuthUser is exported from context
+import React, {useState, useEffect, useRef} from 'react';
+import {useNavigation} from '@react-navigation/native';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {AuthStackParamList} from '../navigation/AuthNavigator';
+import apiService, {handleApiError, UserRead} from '../services/apiService';
+import {useAuth, AuthUser} from '../context/AuthContext'; // Assuming AuthUser is exported from context
 
 import {
-    View, Text, TextInput, TouchableOpacity, StyleSheet,
-    SafeAreaView, KeyboardAvoidingView, Platform, StatusBar,
-    TouchableWithoutFeedback, Keyboard, ActivityIndicator
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  SafeAreaView,
+  KeyboardAvoidingView,
+  Platform,
+  StatusBar,
+  TouchableWithoutFeedback,
+  Keyboard,
+  ActivityIndicator,
 } from 'react-native';
-import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
-import { faEnvelope, faLock } from '@fortawesome/free-solid-svg-icons';
+import {FontAwesomeIcon} from '@fortawesome/react-native-fontawesome';
+import {faEnvelope, faLock} from '@fortawesome/free-solid-svg-icons';
 import LinearGradient from 'react-native-linear-gradient';
 
 // Import Constants
@@ -20,7 +29,10 @@ import * as Colors from '../constants/colors';
 import * as Dimens from '../constants/dimensions';
 import * as Strings from '../constants/strings';
 
-type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
+type LoginScreenNavigationProp = NativeStackNavigationProp<
+  AuthStackParamList,
+  'Login'
+>;
 
 interface TokenResponse {
   access_token: string;
@@ -28,7 +40,7 @@ interface TokenResponse {
 }
 
 const LoginScreen: React.FC = () => {
-  const { signIn, isLoading: isAuthLoading } = useAuth();
+  const {signIn, isLoading: isAuthLoading} = useAuth();
   const navigation = useNavigation<LoginScreenNavigationProp>();
 
   const [email, setEmail] = useState('');
@@ -36,7 +48,6 @@ const LoginScreen: React.FC = () => {
   const [localIsLoading, setLocalIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const passwordInputRef = useRef<TextInput>(null);
-
 
   const handleLogin = async () => {
     Keyboard.dismiss();
@@ -54,40 +65,51 @@ const LoginScreen: React.FC = () => {
         await signIn(tokenData.access_token, currentUserData);
       } else {
         setError(Strings.LOGIN_ERROR_INVALID_CREDENTIALS_FALLBACK);
-        console.error('[LoginScreen] Login Error: No access_token in response despite no error throw.');
+        console.error(
+          '[LoginScreen] Login Error: No access_token in response despite no error throw.',
+        );
       }
     } catch (apiError: any) {
       const errorInfo = handleApiError(apiError);
       setError(errorInfo.message);
-      console.error(`[LoginScreen] Login/Fetch User Error: ${errorInfo.message}`, apiError);
+      console.error(
+        `[LoginScreen] Login/Fetch User Error: ${errorInfo.message}`,
+        apiError,
+      );
     } finally {
       setLocalIsLoading(false);
     }
   };
-    const navigateToSignup = () => {
+  const navigateToSignup = () => {
     if (!combinedIsLoading) {
       navigation.navigate('Signup');
     }
   };
   const combinedIsLoading = localIsLoading || isAuthLoading;
   return (
-        <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.STATUS_BAR_BACKGROUND_DARK} />
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor={Colors.STATUS_BAR_BACKGROUND_DARK}
+      />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardAvoidingView}
-      >
+        style={styles.keyboardAvoidingView}>
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
           <View style={styles.outerContainer}>
             <View style={styles.container}>
               <LinearGradient
-                colors={[Colors.GRADIENT_START_LOGIN, Colors.GRADIENT_END_LOGIN]} // Use color constants
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.leftContainer}
-              >
+                colors={[
+                  Colors.GRADIENT_START_LOGIN,
+                  Colors.GRADIENT_END_LOGIN,
+                ]} // Use color constants
+                start={{x: 0, y: 0}}
+                end={{x: 1, y: 1}}
+                style={styles.leftContainer}>
                 <Text style={styles.communifyText}>{Strings.BRAND_NAME}</Text>
-                <Text style={styles.sloganTextSimplified}>{Strings.BRAND_SLOGAN}</Text>
+                <Text style={styles.sloganTextSimplified}>
+                  {Strings.BRAND_SLOGAN}
+                </Text>
               </LinearGradient>
 
               <View style={styles.rightContainer}>
@@ -97,7 +119,12 @@ const LoginScreen: React.FC = () => {
                   <Text style={styles.subtitle}>{Strings.LOGIN_SUBTITLE}</Text>
 
                   <View style={styles.inputWrapper}>
-                    <FontAwesomeIcon icon={faEnvelope} size={Dimens.ICON_SIZE_MEDIUM} color={Colors.PLACEHOLDER_COLOR_LOGIN} style={styles.inputIcon} />
+                    <FontAwesomeIcon
+                      icon={faEnvelope}
+                      size={Dimens.ICON_SIZE_MEDIUM}
+                      color={Colors.PLACEHOLDER_COLOR_LOGIN}
+                      style={styles.inputIcon}
+                    />
                     <TextInput
                       style={styles.input}
                       placeholder={Strings.LOGIN_EMAIL_PLACEHOLDER}
@@ -116,7 +143,12 @@ const LoginScreen: React.FC = () => {
                   </View>
 
                   <View style={styles.inputWrapper}>
-                    <FontAwesomeIcon icon={faLock} size={Dimens.ICON_SIZE_MEDIUM} color={Colors.PLACEHOLDER_COLOR_LOGIN} style={styles.inputIcon} />
+                    <FontAwesomeIcon
+                      icon={faLock}
+                      size={Dimens.ICON_SIZE_MEDIUM}
+                      color={Colors.PLACEHOLDER_COLOR_LOGIN}
+                      style={styles.inputIcon}
+                    />
                     <TextInput
                       ref={passwordInputRef}
                       style={styles.input}
@@ -134,38 +166,55 @@ const LoginScreen: React.FC = () => {
 
                   {error && (
                     <View style={styles.errorContainer}>
-                      <Text style={styles.errorText} testID="error-message">{error}</Text>
+                      <Text style={styles.errorText} testID="error-message">
+                        {error}
+                      </Text>
                     </View>
                   )}
 
                   <TouchableOpacity
                     style={styles.forgotPasswordButton}
-                    onPress={() => console.log('[LoginScreen] Forgot Password action triggered.')}
-                    disabled={combinedIsLoading}
-                  >
-                    <Text style={styles.secondaryLinkText}>{Strings.LOGIN_FORGOT_PASSWORD_TEXT}</Text>
+                    onPress={() =>
+                      console.log(
+                        '[LoginScreen] Forgot Password action triggered.',
+                      )
+                    }
+                    disabled={combinedIsLoading}>
+                    <Text style={styles.secondaryLinkText}>
+                      {Strings.LOGIN_FORGOT_PASSWORD_TEXT}
+                    </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={[styles.loginButton, combinedIsLoading && styles.buttonDisabled]}
+                    style={[
+                      styles.loginButton,
+                      combinedIsLoading && styles.buttonDisabled,
+                    ]}
                     onPress={handleLogin}
                     disabled={combinedIsLoading}
-                    testID="login-button"
-                  >
+                    testID="login-button">
                     {combinedIsLoading ? (
-                      <ActivityIndicator size="small" color={Colors.LOADER_COLOR_ON_PRIMARY_BUTTON} />
+                      <ActivityIndicator
+                        size="small"
+                        color={Colors.LOADER_COLOR_ON_PRIMARY_BUTTON}
+                      />
                     ) : (
-                      <Text style={styles.loginButtonText}>{Strings.LOGIN_SIGN_IN_BUTTON}</Text>
+                      <Text style={styles.loginButtonText}>
+                        {Strings.LOGIN_SIGN_IN_BUTTON}
+                      </Text>
                     )}
                   </TouchableOpacity>
 
                   <View style={styles.footer}>
-                    <Text style={styles.footerText}>{Strings.LOGIN_NO_ACCOUNT_TEXT}</Text>
+                    <Text style={styles.footerText}>
+                      {Strings.LOGIN_NO_ACCOUNT_TEXT}
+                    </Text>
                     <TouchableOpacity
                       onPress={navigateToSignup}
-                      disabled={combinedIsLoading}
-                    >
-                      <Text style={styles.signupLinkText}>{Strings.LOGIN_CREATE_ACCOUNT_LINK}</Text>
+                      disabled={combinedIsLoading}>
+                      <Text style={styles.signupLinkText}>
+                        {Strings.LOGIN_CREATE_ACCOUNT_LINK}
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -178,12 +227,12 @@ const LoginScreen: React.FC = () => {
   );
 };
 
-const LOGIN_SCREEN_PADDING = 12; // Example: Dimens.SCREEN_PADDING_SMALL
-const LOGIN_CONTAINER_BORDER_RADIUS = 24; // Example: Dimens.BORDER_RADIUS_LARGE
-const LOGIN_ICON_SIZE = 20; // Example: Dimens.ICON_SIZE_MEDIUM
-const LOGIN_INPUT_HEIGHT = 64; // Example: Dimens.INPUT_HEIGHT_LARGE
-const LOGIN_BUTTON_HEIGHT = 56; // Example: Dimens.BUTTON_HEIGHT_LARGE
-const LOGIN_FONT_SIZE_TITLE = 32; // Example: Dimens.FONT_SIZE_XLARGE
+const LOGIN_SCREEN_PADDING = 12;
+const LOGIN_CONTAINER_BORDER_RADIUS = 24;
+const LOGIN_ICON_SIZE = 20;
+const LOGIN_INPUT_HEIGHT = 64;
+const LOGIN_BUTTON_HEIGHT = 56;
+const LOGIN_FONT_SIZE_TITLE = 32;
 const LOGIN_FONT_SIZE_SLOGAN = 18;
 const LOGIN_FONT_SIZE_SUBTITLE = 16;
 const LOGIN_FONT_SIZE_INPUT = 16;
@@ -195,11 +244,10 @@ const LOGIN_MARGIN_SMALL = 16;
 const LOGIN_MARGIN_XSMALL = 8;
 const LOGIN_MARGIN_XXSMALL = 4;
 
-
 // Styles
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: Colors.BACKGROUND_COLOR_LOGIN_SCREEN },
-  keyboardAvoidingView: { flex: 1 },
+  safeArea: {flex: 1, backgroundColor: Colors.BACKGROUND_COLOR_LOGIN_SCREEN},
+  keyboardAvoidingView: {flex: 1},
   outerContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -210,19 +258,19 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     width: '100%',
-    maxWidth: 960, // Could be a Dimens constant
-    height: '95%',  // Consider Dimens for percentages or fixed values
-    maxHeight: 680, // Could be a Dimens constant
+    maxWidth: 960,
+    height: '95%',
+    maxHeight: 680,
     backgroundColor: Colors.WHITE_COLOR,
     borderRadius: LOGIN_CONTAINER_BORDER_RADIUS,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: Colors.BORDER_COLOR_SUBTLE_LOGIN,
-    elevation: 10, // Could be Dimens.ELEVATION_MEDIUM
+    elevation: 10,
     shadowColor: Colors.SHADOW_COLOR_LOGIN,
-    shadowOffset: { width: 0, height: 5 }, // Could be Dimens.SHADOW_OFFSET_MEDIUM
-    shadowOpacity: 0.15, // Could be Dimens.SHADOW_OPACITY_MEDIUM
-    shadowRadius: 15,   // Could be Dimens.SHADOW_RADIUS_LARGE
+    shadowOffset: {width: 0, height: 5},
+    shadowOpacity: 0.15,
+    shadowRadius: 15,
   },
   leftContainer: {
     flex: 0.55,
@@ -231,7 +279,7 @@ const styles = StyleSheet.create({
     padding: LOGIN_MARGIN_LARGE,
   },
   communifyText: {
-    fontSize: Dimens.FONT_SIZE_XXLARGE, // Example Dimens constant
+    fontSize: Dimens.FONT_SIZE_XXLARGE,
     fontWeight: '700',
     color: Colors.WHITE_COLOR,
     textAlign: 'center',
@@ -247,10 +295,10 @@ const styles = StyleSheet.create({
     flex: 0.45,
     backgroundColor: Colors.WHITE_COLOR,
     justifyContent: 'center',
-    paddingHorizontal: Dimens.SCREEN_PADDING_HORIZONTAL, // Example usage
-    paddingVertical: Dimens.SCREEN_PADDING_VERTICAL,   // Example usage
+    paddingHorizontal: Dimens.SCREEN_PADDING_HORIZONTAL,
+    paddingVertical: Dimens.SCREEN_PADDING_VERTICAL,
   },
-  formContent: { width: '100%' },
+  formContent: {width: '100%'},
   title: {
     fontSize: LOGIN_FONT_SIZE_TITLE,
     fontWeight: '700',
@@ -259,10 +307,10 @@ const styles = StyleSheet.create({
     marginBottom: LOGIN_MARGIN_XSMALL,
   },
   spectrumLine: {
-    width: 60, // Could be Dimens.SPECTRUM_LINE_WIDTH
-    height: 4, // Could be Dimens.SPECTRUM_LINE_HEIGHT
+    width: 60,
+    height: 4,
     backgroundColor: Colors.SECONDARY_COLOR_LOGIN_ACCENT,
-    borderRadius: 2, // Could be Dimens.BORDER_RADIUS_SMALL
+    borderRadius: 2,
     alignSelf: 'center',
     marginBottom: LOGIN_MARGIN_XSMALL,
   },
@@ -271,13 +319,13 @@ const styles = StyleSheet.create({
     color: Colors.TEXT_COLOR_SUBTITLE_LOGIN,
     textAlign: 'center',
     marginBottom: LOGIN_MARGIN_LARGE,
-    opacity: 0.65, // Could be Dimens.OPACITY_MEDIUM
+    opacity: 0.65,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.INPUT_BACKGROUND_LOGIN,
-    borderRadius: Dimens.BORDER_RADIUS_INPUT_LOGIN, // Example
+    borderRadius: Dimens.BORDER_RADIUS_INPUT_LOGIN,
     marginBottom: LOGIN_MARGIN_MEDIUM,
     paddingHorizontal: LOGIN_MARGIN_SMALL,
     height: LOGIN_INPUT_HEIGHT,
@@ -285,7 +333,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.BORDER_COLOR_SUBTLE_LOGIN,
   },
   inputIcon: {
-    marginRight: Dimens.ICON_MARGIN_RIGHT_LOGIN, // Example
+    marginRight: Dimens.ICON_MARGIN_RIGHT_LOGIN,
   },
   input: {
     flex: 1,
@@ -294,9 +342,8 @@ const styles = StyleSheet.create({
   },
   errorContainer: {
     marginBottom: LOGIN_MARGIN_SMALL,
-    marginTop: -LOGIN_SCREEN_PADDING, // Adjust if LOGIN_SCREEN_PADDING is used for outer padding
+    marginTop: -LOGIN_SCREEN_PADDING,
     alignItems: 'center',
-    // Consider using constants from your Colors file for error background/text/border
     backgroundColor: Colors.ERROR_BACKGROUND_LOGIN,
     borderColor: Colors.ERROR_BORDER_LOGIN,
     borderWidth: Dimens.BORDER_WIDTH_ERROR,
@@ -311,7 +358,7 @@ const styles = StyleSheet.create({
   },
   forgotPasswordButton: {
     alignSelf: 'flex-end',
-    marginBottom: Dimens.MARGIN_MEDIUM, // Example
+    marginBottom: Dimens.MARGIN_MEDIUM,
     paddingVertical: LOGIN_MARGIN_XXSMALL,
   },
   secondaryLinkText: {
@@ -322,7 +369,7 @@ const styles = StyleSheet.create({
   loginButton: {
     backgroundColor: Colors.BUTTON_PRIMARY_BACKGROUND_LOGIN,
     paddingVertical: LOGIN_MARGIN_SMALL,
-    borderRadius: Dimens.BORDER_RADIUS_BUTTON_LOGIN, // Example
+    borderRadius: Dimens.BORDER_RADIUS_BUTTON_LOGIN,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: LOGIN_BUTTON_HEIGHT,
@@ -334,7 +381,7 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     backgroundColor: Colors.BUTTON_DISABLED_BACKGROUND_LOGIN,
-    opacity: 0.75, // Could be Dimens.OPACITY_MEDIUM
+    opacity: 0.75,
   },
   footer: {
     marginTop: LOGIN_MARGIN_LARGE,

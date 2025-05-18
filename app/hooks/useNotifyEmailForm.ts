@@ -1,7 +1,7 @@
 // src/hooks/useNotifyEmailForm.ts
-import { useState, useCallback } from 'react';
-import { Alert, Keyboard } from 'react-native';
-import { TFunction } from 'i18next';
+import {useState, useCallback} from 'react';
+import {Alert, Keyboard} from 'react-native';
+import {TFunction} from 'i18next';
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -11,14 +11,18 @@ interface UseNotifyEmailFormProps {
   t: TFunction;
 }
 
-export const useNotifyEmailForm = ({ getNotifyEmails, onEmailsChange, t }: UseNotifyEmailFormProps) => {
+export const useNotifyEmailForm = ({
+  getNotifyEmails,
+  onEmailsChange,
+  t,
+}: UseNotifyEmailFormProps) => {
   const [showAddEmailInput, setShowAddEmailInput] = useState(false);
   const [newNotifyEmail, setNewNotifyEmail] = useState('');
 
   const toggleAddEmailInput = useCallback(() => {
-    setShowAddEmailInput((prev) => {
-        if(prev) Keyboard.dismiss();
-        return !prev;
+    setShowAddEmailInput(prev => {
+      if (prev) Keyboard.dismiss();
+      return !prev;
     });
     setNewNotifyEmail(''); // Clear input when toggling
   }, []);
@@ -27,12 +31,14 @@ export const useNotifyEmailForm = ({ getNotifyEmails, onEmailsChange, t }: UseNo
     const trimmedEmail = newNotifyEmail.trim();
     if (!trimmedEmail) return;
     if (!emailRegex.test(trimmedEmail)) {
-      Alert.alert(t('parentalControls.errors.invalidEmail')); return;
+      Alert.alert(t('parentalControls.errors.invalidEmail'));
+      return;
     }
     const currentEmails = getNotifyEmails();
     const lowerCaseEmail = trimmedEmail.toLowerCase();
-    if (currentEmails.some((email) => email.toLowerCase() === lowerCaseEmail)) {
-      Alert.alert(t('parentalControls.errors.duplicateEmail')); return;
+    if (currentEmails.some(email => email.toLowerCase() === lowerCaseEmail)) {
+      Alert.alert(t('parentalControls.errors.duplicateEmail'));
+      return;
     }
     onEmailsChange([...currentEmails, trimmedEmail]);
     setNewNotifyEmail('');
@@ -40,10 +46,13 @@ export const useNotifyEmailForm = ({ getNotifyEmails, onEmailsChange, t }: UseNo
     Keyboard.dismiss();
   }, [newNotifyEmail, getNotifyEmails, onEmailsChange, t]);
 
-  const handleDeleteNotifyEmail = useCallback((emailToDelete: string) => {
-    const currentEmails = getNotifyEmails();
-    onEmailsChange(currentEmails.filter((email) => email !== emailToDelete));
-  }, [getNotifyEmails, onEmailsChange]);
+  const handleDeleteNotifyEmail = useCallback(
+    (emailToDelete: string) => {
+      const currentEmails = getNotifyEmails();
+      onEmailsChange(currentEmails.filter(email => email !== emailToDelete));
+    },
+    [getNotifyEmails, onEmailsChange],
+  );
 
   return {
     showAddEmailInput,

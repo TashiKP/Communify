@@ -1,7 +1,15 @@
 import React from 'react';
-import { View, Text, TextInput, StyleSheet, TextInputProps, ViewStyle, TextStyle } from 'react-native';
-import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
-import { IconDefinition } from '@fortawesome/fontawesome-svg-core';
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  TextInputProps,
+  ViewStyle,
+  TextStyle,
+} from 'react-native';
+import {FontAwesomeIcon} from '@fortawesome/react-native-fontawesome';
+import {IconDefinition} from '@fortawesome/fontawesome-svg-core';
 
 import * as Colors from '../../constants/colors'; // Adjust path as needed
 import * as Dimens from '../../constants/dimensions'; // Adjust path as needed
@@ -33,7 +41,12 @@ const AuthTextInput: React.FC<AuthTextInputProps> = ({
   return (
     <View style={[styles.inputGroup, containerStyle]}>
       <Text style={[styles.label, labelStyle]}>{label}</Text>
-      <View style={[styles.inputWrapper, inputWrapperStyle, error ? styles.inputWrapperError : null]}>
+      <View
+        style={[
+          styles.inputWrapper,
+          inputWrapperStyle,
+          error ? styles.inputWrapperError : null,
+        ]}>
         {icon && (
           <FontAwesomeIcon
             icon={icon}
@@ -88,7 +101,8 @@ const styles = StyleSheet.create({
     color: Colors.TEXT_COLOR_PRIMARY,
     paddingVertical: 0, // Ensure text is vertically centered
   },
-  inlineErrorText: { // For individual field errors, if desired
+  inlineErrorText: {
+    // For individual field errors, if desired
     fontSize: Dimens.FONT_SIZE_ERROR || 12,
     color: Colors.ERROR_COLOR_TEXT || 'red',
     marginTop: Dimens.MARGIN_XSMALL || 4,

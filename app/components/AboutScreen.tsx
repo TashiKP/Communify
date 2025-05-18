@@ -1,20 +1,37 @@
-import React, { useMemo, useCallback } from 'react';
+import React, {useMemo, useCallback} from 'react';
 import {
-    View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Platform,
-    ScrollView, Linking, Alert, ActivityIndicator
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  SafeAreaView,
+  Platform,
+  ScrollView,
+  Linking,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
+import {FontAwesomeIcon} from '@fortawesome/react-native-fontawesome';
 import {
-  faArrowLeft, faUsers, faEnvelope, faGlobe,
-  faBuilding, faCodeBranch, faChevronRight
+  faArrowLeft,
+  faUsers,
+  faEnvelope,
+  faGlobe,
+  faBuilding,
+  faCodeBranch,
+  faChevronRight,
 } from '@fortawesome/free-solid-svg-icons';
-import { useTranslation } from 'react-i18next';
-import { useSafeAreaInsets, EdgeInsets } from 'react-native-safe-area-context';
+import {useTranslation} from 'react-i18next';
+import {useSafeAreaInsets, EdgeInsets} from 'react-native-safe-area-context';
 
 // --- Import Appearance Context ---
-import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext';
+import {
+  useAppearance,
+  ThemeColors,
+  FontSizes,
+} from '../context/AppearanceContext';
 // --- Import Typography Utility ---
-import { getLanguageSpecificTextStyle } from '../styles/typography';
+import {getLanguageSpecificTextStyle} from '../styles/typography';
 
 // --- Props Interface ---
 interface AboutScreenProps {
@@ -27,7 +44,7 @@ interface AboutScreenProps {
 }
 
 // --- Shared Constants ---
-const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
+const hitSlop = {top: 10, bottom: 10, left: 10, right: 10};
 
 // --- Component ---
 const AboutScreen: React.FC<AboutScreenProps> = ({
@@ -38,15 +55,15 @@ const AboutScreen: React.FC<AboutScreenProps> = ({
   contactEmail: contactEmailProp,
   websiteUrl: websiteUrlProp,
 }) => {
-  const { theme, fonts } = useAppearance();
-  const { t, i18n } = useTranslation();
+  const {theme, fonts} = useAppearance();
+  const {t, i18n} = useTranslation();
   const currentLanguage = i18n.language;
   const insets = useSafeAreaInsets();
 
   // Styles now use the getLanguageSpecificTextStyle utility
   const styles = useMemo(
     () => createThemedStyles(theme, fonts, currentLanguage, insets),
-    [theme, fonts, currentLanguage, insets]
+    [theme, fonts, currentLanguage, insets],
   );
 
   const appName = appNameProp || t('appName');
@@ -62,7 +79,11 @@ const AboutScreen: React.FC<AboutScreenProps> = ({
         Alert.alert(t('common.error'), t('aboutScreen.errors.invalidEmail'));
         return;
       }
-      if (type === 'web' && !url.startsWith('http://') && !url.startsWith('https://')) {
+      if (
+        type === 'web' &&
+        !url.startsWith('http://') &&
+        !url.startsWith('https://')
+      ) {
         url = `https://${url}`;
       }
       const finalUrl = type === 'email' ? `mailto:${url}` : url;
@@ -73,7 +94,9 @@ const AboutScreen: React.FC<AboutScreenProps> = ({
         } else {
           Alert.alert(
             t('common.error'),
-            type === 'email' ? t('aboutScreen.errors.noEmailClient') : t('aboutScreen.errors.noBrowser')
+            type === 'email'
+              ? t('aboutScreen.errors.noEmailClient')
+              : t('aboutScreen.errors.noBrowser'),
           );
         }
       } catch (error) {
@@ -81,16 +104,20 @@ const AboutScreen: React.FC<AboutScreenProps> = ({
         console.error(`Failed to open ${type} link: ${finalUrl}`, error);
       }
     },
-    [t]
+    [t],
   );
 
   if (!i18n.isInitialized || typeof t !== 'function') {
     return (
       <SafeAreaView
-        style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0077b6' }}
-      >
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: '#0077b6',
+        }}>
         <ActivityIndicator size="large" color={'#FFFFFF'} />
-        <Text style={{ color: '#FFFFFF', marginTop: 15, fontSize: 16 }}>
+        <Text style={{color: '#FFFFFF', marginTop: 15, fontSize: 16}}>
           Loading Interface...
         </Text>
       </SafeAreaView>
@@ -105,12 +132,18 @@ const AboutScreen: React.FC<AboutScreenProps> = ({
           onPress={onClose}
           hitSlop={hitSlop}
           accessibilityLabel={t('common.goBack')}
-          accessibilityRole="button"
-        >
-          <FontAwesomeIcon icon={faArrowLeft} size={fonts.h2 * 0.7} color={theme.white} />
+          accessibilityRole="button">
+          <FontAwesomeIcon
+            icon={faArrowLeft}
+            size={fonts.h2 * 0.7}
+            color={theme.white}
+          />
         </TouchableOpacity>
         <View style={styles.titleContainer}>
-          <Text style={[styles.title, { color: theme.white }]} numberOfLines={2} ellipsizeMode="tail">
+          <Text
+            style={[styles.title, {color: theme.white}]}
+            numberOfLines={2}
+            ellipsizeMode="tail">
             {t('aboutScreen.title')}
           </Text>
         </View>
@@ -119,14 +152,12 @@ const AboutScreen: React.FC<AboutScreenProps> = ({
 
       <ScrollView
         contentContainerStyle={styles.scrollContentContainer}
-        showsVerticalScrollIndicator={false}
-      >
+        showsVerticalScrollIndicator={false}>
         <View style={styles.appInfoCard}>
           <Text
-            style={[styles.appName, { color: theme.text }]}
+            style={[styles.appName, {color: theme.text}]}
             accessibilityLabel={`${appName} application name`}
-            accessibilityRole="header"
-          >
+            accessibilityRole="header">
             {appName}
           </Text>
           <View style={styles.versionContainer}>
@@ -137,38 +168,64 @@ const AboutScreen: React.FC<AboutScreenProps> = ({
               style={styles.versionIcon}
             />
             <Text
-              style={[styles.appVersion, { color: theme.textSecondary }]}
-              accessibilityLabel={t('aboutScreen.versionLabel', { version: appVersion, build: buildNumber })}
-            >
-              {t('aboutScreen.versionLabel', { version: appVersion, build: buildNumber })}
+              style={[styles.appVersion, {color: theme.textSecondary}]}
+              accessibilityLabel={t('aboutScreen.versionLabel', {
+                version: appVersion,
+                build: buildNumber,
+              })}>
+              {t('aboutScreen.versionLabel', {
+                version: appVersion,
+                build: buildNumber,
+              })}
             </Text>
           </View>
         </View>
 
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <FontAwesomeIcon icon={faBuilding} size={fonts.body * 1.1} color={theme.primary} style={styles.cardIcon} />
-            <Text style={[styles.cardTitle, { color: theme.text }]}>{t('aboutScreen.missionTitle')}</Text>
+            <FontAwesomeIcon
+              icon={faBuilding}
+              size={fonts.body * 1.1}
+              color={theme.primary}
+              style={styles.cardIcon}
+            />
+            <Text style={[styles.cardTitle, {color: theme.text}]}>
+              {t('aboutScreen.missionTitle')}
+            </Text>
           </View>
-          <Text style={[styles.paragraph, { color: theme.textSecondary }]}>
+          <Text style={[styles.paragraph, {color: theme.textSecondary}]}>
             {t('aboutScreen.missionText')}
           </Text>
         </View>
 
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <FontAwesomeIcon icon={faUsers} size={fonts.body * 1.1} color={theme.primary} style={styles.cardIcon} />
-            <Text style={[styles.cardTitle, { color: theme.text }]}>{t('aboutScreen.teamTitle')}</Text>
+            <FontAwesomeIcon
+              icon={faUsers}
+              size={fonts.body * 1.1}
+              color={theme.primary}
+              style={styles.cardIcon}
+            />
+            <Text style={[styles.cardTitle, {color: theme.text}]}>
+              {t('aboutScreen.teamTitle')}
+            </Text>
           </View>
-          <Text style={[styles.paragraph, { color: theme.textSecondary }]}>
+          <Text style={[styles.paragraph, {color: theme.textSecondary}]}>
             {t('aboutScreen.teamText')}
           </Text>
         </View>
 
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <FontAwesomeIcon icon={faGlobe} size={fonts.body * 1.1} color={theme.primary} style={styles.cardIcon} />
-            <Text style={[styles.cardTitle, { color: theme.text }]}>{t('aboutScreen.connectTitle')}</Text>
+            <FontAwesomeIcon
+              icon={faGlobe}
+              size={fonts.body * 1.1}
+              color={theme.primary}
+              style={styles.cardIcon}
+            />
+            <Text style={[styles.cardTitle, {color: theme.text}]}>
+              {t('aboutScreen.connectTitle')}
+            </Text>
           </View>
 
           {websiteUrl && (
@@ -177,10 +234,16 @@ const AboutScreen: React.FC<AboutScreenProps> = ({
               onPress={() => handleOpenLink(websiteUrl, 'web')}
               activeOpacity={0.7}
               accessibilityRole="link"
-              accessibilityLabel={t('aboutScreen.websiteAccessibilityLabel')}
-            >
-              <FontAwesomeIcon icon={faGlobe} size={fonts.body * 1.1} color={theme.primary} style={styles.linkIcon} />
-              <Text style={[styles.linkText, { color: theme.primary }]}>{t('aboutScreen.websiteLinkText')}</Text>
+              accessibilityLabel={t('aboutScreen.websiteAccessibilityLabel')}>
+              <FontAwesomeIcon
+                icon={faGlobe}
+                size={fonts.body * 1.1}
+                color={theme.primary}
+                style={styles.linkIcon}
+              />
+              <Text style={[styles.linkText, {color: theme.primary}]}>
+                {t('aboutScreen.websiteLinkText')}
+              </Text>
               <FontAwesomeIcon
                 icon={faChevronRight}
                 size={fonts.body}
@@ -196,10 +259,16 @@ const AboutScreen: React.FC<AboutScreenProps> = ({
               onPress={() => handleOpenLink(contactEmail, 'email')}
               activeOpacity={0.7}
               accessibilityRole="link"
-              accessibilityLabel={t('aboutScreen.contactAccessibilityLabel')}
-            >
-              <FontAwesomeIcon icon={faEnvelope} size={fonts.body * 1.1} color={theme.primary} style={styles.linkIcon} />
-              <Text style={[styles.linkText, { color: theme.primary }]}>{t('aboutScreen.contactLinkText')}</Text>
+              accessibilityLabel={t('aboutScreen.contactAccessibilityLabel')}>
+              <FontAwesomeIcon
+                icon={faEnvelope}
+                size={fonts.body * 1.1}
+                color={theme.primary}
+                style={styles.linkIcon}
+              />
+              <Text style={[styles.linkText, {color: theme.primary}]}>
+                {t('aboutScreen.contactLinkText')}
+              </Text>
               <FontAwesomeIcon
                 icon={faChevronRight}
                 size={fonts.body}
@@ -211,10 +280,15 @@ const AboutScreen: React.FC<AboutScreenProps> = ({
         </View>
 
         <Text
-          style={[styles.footerText, { color: theme.textSecondary }]}
-          accessibilityLabel={t('aboutScreen.footerText', { year: new Date().getFullYear(), appName })}
-        >
-          {t('aboutScreen.footerText', { year: new Date().getFullYear(), appName })}
+          style={[styles.footerText, {color: theme.textSecondary}]}
+          accessibilityLabel={t('aboutScreen.footerText', {
+            year: new Date().getFullYear(),
+            appName,
+          })}>
+          {t('aboutScreen.footerText', {
+            year: new Date().getFullYear(),
+            appName,
+          })}
         </Text>
       </ScrollView>
     </SafeAreaView>
@@ -223,10 +297,10 @@ const AboutScreen: React.FC<AboutScreenProps> = ({
 
 // --- Styles ---
 const createThemedStyles = (
-    theme: ThemeColors,
-    fonts: FontSizes,
-    language: string,
-    insets: EdgeInsets
+  theme: ThemeColors,
+  fonts: FontSizes,
+  language: string,
+  insets: EdgeInsets,
 ) => {
   const h2Styles = getLanguageSpecificTextStyle('h2', fonts, language);
   const bodyStyles = getLanguageSpecificTextStyle('body', fonts, language);
@@ -245,7 +319,9 @@ const createThemedStyles = (
       alignItems: 'center',
       backgroundColor: theme.primary,
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+      borderBottomColor: theme.isDark
+        ? 'rgba(255,255,255,0.1)'
+        : 'rgba(0,0,0,0.1)',
     },
     titleContainer: {
       flex: 1,
@@ -359,7 +435,7 @@ const createThemedStyles = (
       ...bodyStyles,
       marginTop: 20,
       paddingBottom: 10,
-      textAlign: 'center',  
+      textAlign: 'center',
       opacity: 0.8,
     },
   });

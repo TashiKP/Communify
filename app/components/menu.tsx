@@ -15,9 +15,10 @@ import DisplayOptionsScreen from './DisplayOptionsScreen';
 import ChildInformationScreen from './ChildInformationScreen';
 import ParentalControls from './ParentalControls';
 import apiService, { ParentalSettingsData } from '../services/apiService';
-import SymbolVoiceOverScreen, { VoiceSettingData } from './SymbolVoiceOverScreen';
+import SymbolVoiceOverScreen from './SymbolVoiceOverScreen';
 import AboutScreen from './AboutScreen';
 import PasscodePromptModal from './PasscodePromptModal';
+import { VoiceSettingData } from './SymbolVoiceOver/types';
 
 const PARENTAL_SETTINGS_STORAGE_KEY = '@Communify:parentalSettings';
 const defaultParentalSettings: ParentalSettingsData = {

@@ -22,11 +22,11 @@ import apiService, { handleApiError } from '../services/apiService';
 import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext';
 import { getLanguageSpecificTextStyle } from '../styles/typography';
 import { ParentalSettingsData, AsdLevel, DayOfWeek } from '../services/apiService';
-import ContentFilteringSection from './parental/ContentFilteringSection';
-import ScreenTimeSection from './parental/ScreenTimeSection';
-import ChildProfileSection from './parental/ChildProfileSection';
-import SecuritySection from './parental/SecuritySection';
-import UsageReportingSection from './parental/UsageReportingSection';
+import ContentFilteringSection from './ParentalControls/ContentFilteringSection';
+import ScreenTimeSection from './ParentalControls/ScreenTimeSection';
+import ChildProfileSection from './ParentalControls/ChildProfileSection';
+import SecuritySection from './ParentalControls/SecuritySection';
+import UsageReportingSection from './ParentalControls/UsageReportingSection';
 
 interface ParentalControlsProps {
   onClose: () => void;

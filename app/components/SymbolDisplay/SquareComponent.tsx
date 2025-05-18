@@ -11,8 +11,8 @@ import {
 } from 'react-native';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
-import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext';
-import { getLanguageSpecificTextStyle } from '../styles/typography';
+import { useAppearance, ThemeColors, FontSizes } from '../../context/AppearanceContext';
+import { getLanguageSpecificTextStyle } from '../../styles/typography';
 
 interface SquareComponentProps {
   keyword: string; // Original English keyword (for Arasaac API, onPress payload)

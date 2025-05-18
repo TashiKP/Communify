@@ -11,8 +11,9 @@ import axios, { CancelTokenSource, AxiosError } from 'axios';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import { faChevronRight, faFolder } from '@fortawesome/free-solid-svg-icons';
 import { useTranslation } from 'react-i18next';
-import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext';
-import { getLanguageSpecificTextStyle } from '../styles/typography';
+import { FontSizes, ThemeColors, useAppearance } from '../../context/AppearanceContext';
+import { getLanguageSpecificTextStyle } from '../../styles/typography';
+
 
 interface CateComponentProps {
   keyword: string;

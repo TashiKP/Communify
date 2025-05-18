@@ -1,20 +1,19 @@
 // src/components/bottomnav.tsx
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
-    View, TouchableOpacity, StyleSheet, Modal, Animated, Text // Removed Easing, Platform for this simplified version
+    View, TouchableOpacity, StyleSheet, Modal, Animated, Text
 } from 'react-native';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import {
-    faSearch, faPlus, faHome, faKeyboard, faCog // faBoxes removed as it wasn't used
+    faSearch, faPlus, faHome, faKeyboard, faCog
 } from '@fortawesome/free-solid-svg-icons';
 import LinearGradient from 'react-native-linear-gradient';
 import { useTranslation } from 'react-i18next';
 
 import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext'; // Adjust path
 
-// Types (assuming they are correctly defined elsewhere or can be simplified for this example)
-import { VoiceSettingData } from './SymbolVoiceOverScreen'; // Adjust path
-// import { GridLayoutType } from '../context/GridContext'; // Not used if Menu in HomeScreen handles grid
+// Corrected import path for VoiceSettingData
+import { VoiceSettingData } from './SymbolVoiceOver/types'; // <--- MODIFIED LINE
 
 // --- Constants ---
 const BAR_HEIGHT = 65;
@@ -22,15 +21,12 @@ const BAR_HEIGHT = 65;
 // --- Props Interface ---
 type BottomBarProps = {
     handleHomePress: () => void;
-    onSymbolSelected: (symbol: { keyword: string; pictogramUrl: string }) => void; // Called when search in BottomBar selects
-    onTextInputSubmit: (text: string) => void; // Called when keyboard in BottomBar submits
+    onSymbolSelected: (symbol: { keyword: string; pictogramUrl: string }) => void;
+    onTextInputSubmit: (text: string) => void;
     currentLanguage?: string;
-    // onGridLayoutSave?: (layout: GridLayoutType) => void; // If Menu in BottomBar were to save layout
-    onCustomSymbolsUpdate?: (symbols: any[]) => void; // If CustomPage in BottomBar updates symbols
-    currentTtsSettings: VoiceSettingData;
-    onTtsSettingsSave: (settings: VoiceSettingData) => void; // For Menu in BottomBar
-
-    // Functions passed from HomeScreen to control modals rendered in HomeScreen
+    onCustomSymbolsUpdate?: (symbols: any[]) => void;
+    currentTtsSettings: VoiceSettingData; // This type will now be correctly resolved
+    onTtsSettingsSave: (settings: VoiceSettingData) => void;
     openMenu: () => void;
     openSearchScreen: () => void;
     openCustomPageModal: () => void;
@@ -40,14 +36,9 @@ type BottomBarProps = {
 // --- Component ---
 const BottomBar: React.FC<BottomBarProps> = React.memo(({
     handleHomePress,
-    // onSymbolSelected, // This would be used if SearchScreen was a child of BottomBar
-    // onTextInputSubmit, // This would be used if KeyboardInput was a child of BottomBar
-    currentLanguage = 'en',
-    // onCustomSymbolsUpdate, // This would be used if CustomPageComponent was a child of BottomBar
-    // currentTtsSettings, // Used if Menu was a child of BottomBar
-    // onTtsSettingsSave, // Used if Menu was a child of BottomBar
-
-    // Props from HomeScreen to trigger modal openings
+    currentLanguage = 'en', // currentLanguage prop is defined but not used in the provided snippet.
+    // onSymbolSelected, onTextInputSubmit, onCustomSymbolsUpdate, currentTtsSettings, onTtsSettingsSave are also defined but not directly used in the destructuring or body.
+    // This might be intentional if they are passed down or handled elsewhere not shown.
     openMenu,
     openSearchScreen,
     openCustomPageModal,

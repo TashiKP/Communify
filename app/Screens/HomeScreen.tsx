@@ -6,10 +6,10 @@ import {
   TouchableWithoutFeedback,
   Easing,
   Platform,
-  Text,
+  Text, // Text might still be needed for other parts or can be removed if not.
   Alert,
   ActivityIndicator,
-  Image,
+  // Image, // No longer directly used by HomeScreen for selected items
   Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,29 +20,34 @@ import RNFS from 'react-native-fs';
 
 // --- Service Imports ---
 import apiService, {
-  AACPhraseGenerationResponse,
-  AudioDataResponse,
+  AudioDataResponse, // AACPhraseGenerationResponse is not directly used by HomeScreen now
   handleApiError,
 } from '../services/apiService';
 
 // --- Component Imports ---
 import IconInputComponent from '../components/input';
 import Navbar from '../components/navbar';
-import SymbolGrid, { SymbolGridRef } from '../components/Symbols';
+import SymbolGrid from '../components/SymbolGrid';
 import BottomBar from '../components/bottomnav';
 import Menu, { menuWidth } from '../components/menu';
 import SearchScreen from '../components/SearchScreen';
 import CustomPageComponent from '../components/CustomPageComponent';
 import KeyboardInputComponent from '../components/KeyboardInputComponent';
+// --- New Child Component Imports ---
+import SelectedItemsDisplay from '../components/SelectedItemsDisplay';
+import CategoryTitle from '../components/CategoryTitle';
+
 
 // --- Context Imports ---
 import { GridLayoutType, useGrid } from '../context/GridContext';
-import { VoiceSettingData } from '../components/SymbolVoiceOverScreen';
+import { VoiceSettingData } from '../components/SymbolVoiceOver/types';
 import { useAppearance } from '../context/AppearanceContext';
+import { SymbolGridRef } from '../components/SymbolDisplay/types';
 
 // --- Type Definitions ---
 type SearchSymbolInfo = { keyword: string; pictogramUrl: string };
-type SelectedSymbol = { id: string; keyword: string; imageUri?: string };
+// Export SelectedSymbol for use in other components like SelectedItemsDisplay
+export type SelectedSymbol = { id: string; keyword: string; imageUri?: string };
 
 // --- Constants ---
 const defaultTtsSettings: VoiceSettingData = {
@@ -66,7 +71,7 @@ Sound.setCategory('Playback');
 
 const HomeScreen: React.FC = () => {
   const { t, i18n } = useTranslation();
-  const { theme, fonts } = useAppearance();
+  const { theme, fonts } = useAppearance(); // fonts might not be needed for styles here anymore
   const { setGridLayout } = useGrid();
 
   // --- State Declarations ---
@@ -453,19 +458,12 @@ const HomeScreen: React.FC = () => {
   const closeKeyboardInput = useCallback(() => { if(isMountedRef.current) setIsKeyboardInputVisible(false); showAndResetTimer(); }, [showAndResetTimer]);
 
   // --- Render Methods ---
-  const renderInputItems = () => {
-    if (selectedItems.length === 0) return null;
-    return selectedItems.map(item => (
-      <View key={item.id} style={styles.inputItemChip}>
-        {item.imageUri && <Image source={{uri: item.imageUri}} style={styles.chipImage} />}
-        <Text style={styles.inputItemText} numberOfLines={1} ellipsizeMode="tail">{item.keyword}</Text>
-      </View>
-    ));
-  };
+  // renderInputItems is removed as it's handled by SelectedItemsDisplay component
+
 
   // --- Styles ---
   const styles = useMemo(() => {
-    const categoryTitleFontSize = 18;
+    // const categoryTitleFontSize = 18; // Moved to CategoryTitle component
     return StyleSheet.create({
       safeArea: { 
         flex: 1, 
@@ -496,59 +494,10 @@ const HomeScreen: React.FC = () => {
         shadowRadius: 4,
         elevation: 5,
       },
-      inputItemChip: { 
-        flexDirection: 'row', 
-        alignItems: 'center', 
-        backgroundColor: theme.card || '#ffffff',
-        borderRadius: 20,
-        paddingVertical: Platform.OS === 'ios' ? 8 : 6,
-        paddingHorizontal: 12,
-        margin: 4,
-        borderWidth: 1,
-        borderColor: theme.border || '#d0d7de',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.15,
-        shadowRadius: 2,
-        elevation: 3,
-      },
-      chipImage: { 
-        width: 20, 
-        height: 20, 
-        marginRight: 8, 
-        resizeMode: 'contain',
-        borderRadius: 4,
-      },
-      inputItemText: { 
-        color: theme.text || '#1a3c34',
-        fontSize: fonts.body || 16,
-        fontWeight: '600',
-        maxWidth: 120,
-      },
-      categoryTitleContainer: { 
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        backgroundColor: theme.primary || '#007bff',
-        borderRadius: 12,
-        marginVertical: 8,
-        marginHorizontal: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 4,
-      },
-      categoryTitleText: { 
-        fontSize: categoryTitleFontSize,
-        fontWeight: '700',
-        color: theme.textLight || '#ffffff',
-        textAlign: 'center',
-        letterSpacing: 0.5,
-      },
+      // Styles for inputItemChip, chipImage, inputItemText are moved to SelectedItemsDisplay.tsx
+      // Styles for categoryTitleContainer, categoryTitleText are moved to CategoryTitle.tsx
     });
-  }, [theme, fonts]);
+  }, [theme]); // fonts removed from dependency if not used by remaining styles
 
   // --- Component Return ---
   return (
@@ -570,16 +519,18 @@ const HomeScreen: React.FC = () => {
             isBackspaceDisabled={selectedItems.length === 0 || isProcessingAudio || isTtsSpeaking || isAudioPlaying}
             isClearDisabled={selectedItems.length === 0 || isProcessingAudio || isTtsSpeaking || isAudioPlaying}
           >
-            {isProcessingAudio && <ActivityIndicator size="small" color={styles.inputItemText.color} style={{ marginHorizontal: 8 }} />}
-            {renderInputItems()}
+            {isProcessingAudio && (
+              <ActivityIndicator 
+                size="small" 
+                color={theme.text || '#1a3c34'} // Use theme color directly
+                style={{ marginHorizontal: 8 }} 
+              />
+            )}
+            <SelectedItemsDisplay items={selectedItems} />
           </IconInputComponent>
           
           <View style={styles.mainContent}>
-            <View style={styles.categoryTitleContainer}>
-              <Text style={styles.categoryTitleText} numberOfLines={1} ellipsizeMode="tail">
-                {t('home.symbolsTitlePrefix', 'Symbols')}: {currentCategoryName}
-              </Text>
-            </View>
+            <CategoryTitle text={`${t('home.symbolsTitlePrefix', 'Symbols')}: ${currentCategoryName}`} />
             <SymbolGrid
               ref={symbolGridRef}
               onSymbolPress={handleSymbolPress}

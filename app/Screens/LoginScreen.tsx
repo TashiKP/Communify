@@ -3,8 +3,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/AuthNavigator';
-
-// Import UserRead if getCurrentUser returns that type and it's compatible with AuthUser
 import apiService, { handleApiError, UserRead } from '../services/apiService';
 import { useAuth, AuthUser } from '../context/AuthContext'; // Assuming AuthUser is exported from context
 
@@ -24,14 +22,12 @@ import * as Strings from '../constants/strings';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
-// Keep TokenResponse if you prefer explicit typing for the login result
 interface TokenResponse {
   access_token: string;
   token_type: string;
 }
 
 const LoginScreen: React.FC = () => {
-  // ... (other state and refs remain the same) ...
   const { signIn, isLoading: isAuthLoading } = useAuth();
   const navigation = useNavigation<LoginScreenNavigationProp>();
 
@@ -45,40 +41,22 @@ const LoginScreen: React.FC = () => {
   const handleLogin = async () => {
     Keyboard.dismiss();
     setError(null);
-
     if (!email.trim() || !password.trim()) {
       setError(Strings.LOGIN_ERROR_MISSING_FIELDS);
       return;
     }
-
     setLocalIsLoading(true);
 
     try {
-      // Step 1: Get the token
       const tokenData: TokenResponse = await apiService.login(email, password);
-
       if (tokenData.access_token) {
-        // Token received, now get user data BEFORE calling context's signIn
-
-        // Step 2: Fetch current user data using the token
-        // The token should be automatically included by the axios interceptor now
         const currentUserData: UserRead = await apiService.getCurrentUser(); // Assuming returns UserRead or compatible type
-
-        // Step 3: Call context's signIn with BOTH token and user data
-        // Ensure currentUserData matches the structure needed by signIn (Omit<AuthUser, "localAvatarPath">)
-        // If UserRead is directly compatible or IS AuthUser, this should work.
-        // If not, you might need to map fields slightly.
         await signIn(tokenData.access_token, currentUserData);
-
-        // If signIn is successful, navigation will likely happen within the AuthContext listener
-
       } else {
-        // This case might be less likely if login throws error on failure, but good to keep
         setError(Strings.LOGIN_ERROR_INVALID_CREDENTIALS_FALLBACK);
         console.error('[LoginScreen] Login Error: No access_token in response despite no error throw.');
       }
     } catch (apiError: any) {
-       // This will catch errors from BOTH apiService.login AND apiService.getCurrentUser
       const errorInfo = handleApiError(apiError);
       setError(errorInfo.message);
       console.error(`[LoginScreen] Login/Fetch User Error: ${errorInfo.message}`, apiError);
@@ -86,18 +64,12 @@ const LoginScreen: React.FC = () => {
       setLocalIsLoading(false);
     }
   };
-
-  // ... (navigateToSignup, combinedIsLoading, and JSX remain the same) ...
     const navigateToSignup = () => {
     if (!combinedIsLoading) {
-      // console.log(`[${instanceId}] Navigating to Signup.`);
       navigation.navigate('Signup');
     }
   };
-
   const combinedIsLoading = localIsLoading || isAuthLoading;
-
-
   return (
         <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.STATUS_BAR_BACKGROUND_DARK} />
@@ -206,7 +178,6 @@ const LoginScreen: React.FC = () => {
   );
 };
 
-// ... (styles remain the same) ...
 const LOGIN_SCREEN_PADDING = 12; // Example: Dimens.SCREEN_PADDING_SMALL
 const LOGIN_CONTAINER_BORDER_RADIUS = 24; // Example: Dimens.BORDER_RADIUS_LARGE
 const LOGIN_ICON_SIZE = 20; // Example: Dimens.ICON_SIZE_MEDIUM

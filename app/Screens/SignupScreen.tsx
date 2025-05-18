@@ -1,58 +1,48 @@
-// src/Screens/SignupScreen.tsx
 import React, { useState, useCallback, useRef } from 'react';
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView,
     KeyboardAvoidingView, Platform, StatusBar, TouchableWithoutFeedback, Keyboard,
-    ActivityIndicator, Alert, ScrollView // Remove Image
+    ActivityIndicator, Alert, ScrollView
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-// Remove Image Picker, RNFS, UUID imports from here
-// import { launchImageLibrary, ImageLibraryOptions, ImagePickerResponse } from 'react-native-image-picker';
-// import RNFS from 'react-native-fs';
-// import { v4 as uuidv4 } from 'uuid';
-
-// --- Import the new component ---
 import AvatarPicker from '../components/AvatarPicker';
-// -----------------------------
 
 import { AuthStackParamList, UserSignupData } from '../navigation/AuthNavigator';
 
-import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
+import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome'; 
 import {
     faUser, faCakeCandles, faEnvelope, faLock,
-    // Remove faUserCircle, faCamera from here if only used by AvatarPicker
 } from '@fortawesome/free-solid-svg-icons';
 
 import * as Colors from '../constants/colors';
 import * as Dimens from '../constants/dimensions';
 import * as Strings from '../constants/strings';
+import GenderSelector, { GenderOption } from '../components/Auth/GenderSelector';
+import AuthTextInput from '../components/Auth/AuthTextInput';
 
 type SignupScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Signup'>;
-type GenderOption = typeof Strings.GENDER_MALE | typeof Strings.GENDER_FEMALE | typeof Strings.GENDER_OTHER;
+// GenderOption is now imported from GenderSelector
 
 const SignupScreen: React.FC = () => {
-    // Keep state for form fields and the *permanent* avatar URI
     const [fullName, setFullName] = useState('');
     const [age, setAge] = useState('');
     const [gender, setGender] = useState<GenderOption | ''>('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [avatarUri, setAvatarUri] = useState<string | undefined>(undefined); // Stores the permanent URI
-    const [isLoading, setIsLoading] = useState(false); // Loading state for form submission
-    const [error, setError] = useState<string | null>(null); // Error state for form validation/submission
+    const [avatarUri, setAvatarUri] = useState<string | undefined>(undefined);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const navigation = useNavigation<SignupScreenNavigationProp>();
 
+    // Refs for focusing next input
     const ageInputRef = useRef<TextInput>(null);
     const emailInputRef = useRef<TextInput>(null);
     const passwordInputRef = useRef<TextInput>(null);
 
-    // --- Remove pickImage and deletePreviousAvatar logic ---
-
-    // --- Validation (remains the same) ---
     const validateInput = useCallback(() => {
-       setError(null); // Clear previous form errors
+       setError(null);
         if (!fullName.trim()) return Strings.VALIDATION_FULL_NAME_REQUIRED;
         if (!age.trim()) return Strings.VALIDATION_AGE_REQUIRED;
         const numericAge = Number(age);
@@ -64,7 +54,6 @@ const SignupScreen: React.FC = () => {
         return null;
     }, [fullName, age, gender, email, password]);
 
-    // --- Proceed to Next Step (Simpler) ---
     const handleProceedToNextStep = useCallback(async () => {
         Keyboard.dismiss();
         const validationError = validateInput();
@@ -75,23 +64,21 @@ const SignupScreen: React.FC = () => {
         setIsLoading(true);
         setError(null);
 
-        // Data includes the permanent avatar URI from state
         const collectedSignupData: UserSignupData = {
             fullName: fullName.trim(),
             age: age.trim(),
-            gender: gender,
+            gender: gender as GenderOption, // Assert gender is selected
             email: email.trim(),
             password: password,
-            avatarUri: avatarUri, // Pass the permanent URI from state
+            avatarUri: avatarUri,
         };
 
         console.log('Proceeding to SigninTwo with data:', collectedSignupData);
         navigation.navigate('SigninTwo', { signupData: collectedSignupData });
         setIsLoading(false);
 
-    }, [validateInput, navigation, fullName, age, gender, email, password, avatarUri]); // Include avatarUri dependency
+    }, [validateInput, navigation, fullName, age, gender, email, password, avatarUri]);
 
-    // --- Navigate to Login (remains the same) ---
     const navigateToLogin = useCallback(() => {
          if (navigation.canGoBack()) {
              navigation.goBack();
@@ -116,146 +103,96 @@ const SignupScreen: React.FC = () => {
                 >
                     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
                         <View style={styles.innerContainer}>
-                             {/* ... Header ... */}
                              <View style={styles.headerContainer}>
                                 <Text style={styles.title}>{Strings.SIGNUP_TITLE}</Text>
                                 <Text style={styles.subtitle}>{Strings.SIGNUP_SUBTITLE}</Text>
                             </View>
 
                             <View style={styles.form}>
-                                {/* --- Use the AvatarPicker Component --- */}
                                 <AvatarPicker
                                     initialUri={avatarUri}
-                                    onAvatarChange={setAvatarUri} // Directly pass the state setter
-                                    size={Dimens.AVATAR_SIZE_SIGNUP || 100} // Use defined dimension or default
-                                    disabled={isLoading} // Disable while form is submitting
-                                    style={styles.avatarPickerStyle} // Add specific margin if needed
+                                    onAvatarChange={setAvatarUri}
+                                    size={Dimens.AVATAR_SIZE_SIGNUP || 100}
+                                    disabled={isLoading}
+                                    style={styles.avatarPickerStyle}
                                 />
                                 <Text style={styles.avatarHelperText}>Tap to add a profile picture (Optional)</Text>
-                                {/* ------------------------------------ */}
+                                
+                                <AuthTextInput
+                                    label={Strings.SIGNUP_FULL_NAME_LABEL}
+                                    icon={faUser}
+                                    value={fullName}
+                                    onChangeText={setFullName}
+                                    placeholder={Strings.SIGNUP_FULL_NAME_PLACEHOLDER}
+                                    autoCapitalize="words"
+                                    autoCorrect={false}
+                                    returnKeyType="next"
+                                    onSubmitEditing={() => ageInputRef.current?.focus()}
+                                    blurOnSubmit={false}
+                                    editable={!isLoading}
+                                />
 
-                                {/* ... Rest of the form inputs (Full Name, Age, Gender, Email, Password) ... */}
-                                {/* Full Name */}
-                                <View style={styles.inputGroup}>
-                                    <Text style={styles.label}>{Strings.SIGNUP_FULL_NAME_LABEL}</Text>
-                                    <View style={styles.inputWrapper}>
-                                        <FontAwesomeIcon icon={faUser} size={Dimens.ICON_SIZE_SMALL} color={Colors.PLACEHOLDER_COLOR} style={styles.inputIcon} />
-                                        <TextInput
-                                             style={styles.input}
-                                            placeholder={Strings.SIGNUP_FULL_NAME_PLACEHOLDER}
-                                            placeholderTextColor={Colors.PLACEHOLDER_COLOR}
-                                            value={fullName}
-                                            onChangeText={setFullName}
-                                            autoCapitalize="words"
-                                            autoCorrect={false}
-                                            returnKeyType="next"
-                                            onSubmitEditing={() => ageInputRef.current?.focus()}
-                                            blurOnSubmit={false}
-                                            editable={!isLoading}
-                                        />
-                                    </View>
-                                </View>
-                                {/* Age */}
-                                 <View style={styles.inputGroup}>
-                                     <Text style={styles.label}>{Strings.SIGNUP_AGE_LABEL}</Text>
-                                    <View style={styles.inputWrapper}>
-                                        <FontAwesomeIcon icon={faCakeCandles} size={Dimens.ICON_SIZE_SMALL} color={Colors.PLACEHOLDER_COLOR} style={styles.inputIcon} />
-                                        <TextInput
-                                            ref={ageInputRef}
-                                            style={styles.input}
-                                            placeholder={Strings.SIGNUP_AGE_PLACEHOLDER}
-                                            placeholderTextColor={Colors.PLACEHOLDER_COLOR}
-                                            value={age}
-                                            onChangeText={(text) => setAge(text.replace(/[^0-9]/g, ''))}
-                                            keyboardType="number-pad"
-                                            maxLength={3}
-                                            returnKeyType="next"
-                                            onSubmitEditing={() => Keyboard.dismiss()}
-                                            blurOnSubmit={false}
-                                            editable={!isLoading}
-                                        />
-                                    </View>
-                                </View>
-                                 {/* Gender */}
-                                 <View style={styles.inputGroup}>
-                                     <Text style={styles.label}>{Strings.SIGNUP_GENDER_LABEL}</Text>
-                                    <View style={styles.genderSegmentContainer}>
-                                        {GENDER_OPTIONS.map((option, index) => (
-                                            <TouchableOpacity
-                                                key={option}
-                                                style={[
-                                                    styles.genderSegment,
-                                                    gender === option && styles.genderSegmentSelected,
-                                                    index === GENDER_OPTIONS.length - 1 && { borderRightWidth: 0 }
-                                                ]}
-                                                onPress={() => {
-                                                    setGender(option);
-                                                    Keyboard.dismiss();
-                                                    setTimeout(() => emailInputRef.current?.focus(), 100);
-                                                }}
-                                                activeOpacity={0.8}
-                                                disabled={isLoading}
-                                            >
-                                                <Text style={[
-                                                    styles.genderSegmentText,
-                                                    gender === option && styles.genderSegmentTextSelected
-                                                ]}>{option}</Text>
-                                            </TouchableOpacity>
-                                        ))}
-                                    </View>
-                                </View>
-                                 {/* Email */}
-                                <View style={styles.inputGroup}>
-                                    <Text style={styles.label}>{Strings.SIGNUP_EMAIL_LABEL}</Text>
-                                    <View style={styles.inputWrapper}>
-                                        <FontAwesomeIcon icon={faEnvelope} size={Dimens.ICON_SIZE_SMALL} color={Colors.PLACEHOLDER_COLOR} style={styles.inputIcon} />
-                                        <TextInput
-                                            ref={emailInputRef}
-                                            style={styles.input}
-                                            placeholder={Strings.SIGNUP_EMAIL_PLACEHOLDER}
-                                            placeholderTextColor={Colors.PLACEHOLDER_COLOR}
-                                            value={email}
-                                            onChangeText={setEmail}
-                                            keyboardType="email-address"
-                                            autoCapitalize="none"
-                                            autoComplete="email"
-                                            returnKeyType="next"
-                                            onSubmitEditing={() => passwordInputRef.current?.focus()}
-                                            blurOnSubmit={false}
-                                            editable={!isLoading}
-                                        />
-                                    </View>
-                                </View>
-                                {/* Password */}
-                                 <View style={styles.inputGroup}>
-                                      <Text style={styles.label}>{Strings.SIGNUP_PASSWORD_LABEL}</Text>
-                                    <View style={styles.inputWrapper}>
-                                        <FontAwesomeIcon icon={faLock} size={Dimens.ICON_SIZE_SMALL} color={Colors.PLACEHOLDER_COLOR} style={styles.inputIcon} />
-                                        <TextInput
-                                            ref={passwordInputRef}
-                                            style={styles.input}
-                                            placeholder={Strings.SIGNUP_PASSWORD_PLACEHOLDER}
-                                            placeholderTextColor={Colors.PLACEHOLDER_COLOR}
-                                            value={password}
-                                            onChangeText={setPassword}
-                                            secureTextEntry
-                                            returnKeyType="go"
-                                            onSubmitEditing={handleProceedToNextStep}
-                                            editable={!isLoading}
-                                        />
-                                    </View>
-                                </View>
+                                <AuthTextInput
+                                    label={Strings.SIGNUP_AGE_LABEL}
+                                    icon={faCakeCandles}
+                                    inputRef={ageInputRef}
+                                    value={age}
+                                    onChangeText={(text) => setAge(text.replace(/[^0-9]/g, ''))}
+                                    placeholder={Strings.SIGNUP_AGE_PLACEHOLDER}
+                                    keyboardType="number-pad"
+                                    maxLength={3}
+                                    returnKeyType="next"
+                                    // For age, we might want to dismiss keyboard or focus gender if it were an input
+                                    onSubmitEditing={() => Keyboard.dismiss()} // Or focus gender if applicable
+                                    blurOnSubmit={false}
+                                    editable={!isLoading}
+                                />
 
+                                <GenderSelector
+                                    label={Strings.SIGNUP_GENDER_LABEL}
+                                    options={GENDER_OPTIONS}
+                                    selectedValue={gender}
+                                    onSelect={setGender}
+                                    disabled={isLoading}
+                                    onSelectionComplete={() => emailInputRef.current?.focus()}
+                                />
+                                
+                                <AuthTextInput
+                                    label={Strings.SIGNUP_EMAIL_LABEL}
+                                    icon={faEnvelope}
+                                    inputRef={emailInputRef}
+                                    value={email}
+                                    onChangeText={setEmail}
+                                    placeholder={Strings.SIGNUP_EMAIL_PLACEHOLDER}
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                    autoComplete="email"
+                                    returnKeyType="next"
+                                    onSubmitEditing={() => passwordInputRef.current?.focus()}
+                                    blurOnSubmit={false}
+                                    editable={!isLoading}
+                                />
+
+                                <AuthTextInput
+                                    label={Strings.SIGNUP_PASSWORD_LABEL}
+                                    icon={faLock}
+                                    inputRef={passwordInputRef}
+                                    value={password}
+                                    onChangeText={setPassword}
+                                    placeholder={Strings.SIGNUP_PASSWORD_PLACEHOLDER}
+                                    secureTextEntry
+                                    returnKeyType="go"
+                                    onSubmitEditing={handleProceedToNextStep}
+                                    editable={!isLoading}
+                                />
                             </View>
 
-                             {/* Display form validation errors */}
                             {error && (
                                 <View style={styles.errorContainer}>
                                     <Text style={styles.errorText}>{error}</Text>
                                 </View>
                             )}
 
-                             {/* ... Actions (Submit Button, Login Link) ... */}
                               <View style={styles.actionsContainer}>
                                 <TouchableOpacity
                                     style={[styles.createButton, isLoading && styles.buttonDisabled]}
@@ -284,9 +221,7 @@ const SignupScreen: React.FC = () => {
     );
 };
 
-// --- Styles ---
 const styles = StyleSheet.create({
-     // ... Keep existing styles ...
     safeArea: { flex: 1, backgroundColor: Colors.BACKGROUND_COLOR, },
     keyboardAvoidingView: { flex: 1, },
     scrollContainer: { flexGrow: 1, justifyContent: 'center', },
@@ -295,34 +230,16 @@ const styles = StyleSheet.create({
     title: { fontSize: Dimens.FONT_SIZE_TITLE, fontWeight: 'bold', color: Colors.TEXT_COLOR_PRIMARY, textAlign: 'center', marginBottom: Dimens.LABEL_MARGIN_BOTTOM, },
     subtitle: { fontSize: Dimens.FONT_SIZE_SUBTITLE, color: Colors.TEXT_COLOR_SECONDARY, textAlign: 'center', lineHeight: 22, },
     form: { },
-
-    // --- Remove specific avatar styles from here ---
-    // avatarOuterContainer, avatarTouchable, avatarImage, avatarPlaceholder, cameraIconOverlay, avatarLoadingOverlay are now handled within AvatarPicker
-
-    // --- Add style for positioning the AvatarPicker ---
     avatarPickerStyle: {
-        marginBottom: Dimens.MARGIN_MEDIUM, // Add margin below the picker
-        // Add other positioning styles if needed
+        marginBottom: Dimens.MARGIN_MEDIUM,
     },
-    // Style for the helper text below AvatarPicker
      avatarHelperText: {
-        fontSize: Dimens.FONT_SIZE_HELPER, // e.g., 12
+        fontSize: Dimens.FONT_SIZE_HELPER,
         color: Colors.TEXT_COLOR_SECONDARY,
-        marginTop: -Dimens.MARGIN_SMALL, // Pull up slightly if spacing is too much
-        marginBottom: Dimens.INPUT_GROUP_MARGIN_BOTTOM, // Add margin below text
+        marginTop: -(Dimens.MARGIN_SMALL || 5), // Adjust to pull up slightly
+        marginBottom: Dimens.INPUT_GROUP_MARGIN_BOTTOM,
         textAlign: 'center',
     },
-    // --- Keep input group styles ---
-     inputGroup: { marginBottom: Dimens.INPUT_GROUP_MARGIN_BOTTOM, },
-    label: { fontSize: Dimens.FONT_SIZE_LABEL, fontWeight: '500', color: Colors.TEXT_COLOR_SECONDARY, marginBottom: Dimens.LABEL_MARGIN_BOTTOM, marginLeft: 2, },
-    inputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.INPUT_BACKGROUND_COLOR, borderWidth: Dimens.BORDER_WIDTH_INPUT, borderColor: Colors.BORDER_COLOR_MEDIUM, borderRadius: Dimens.BORDER_RADIUS_INPUT, height: Dimens.INPUT_HEIGHT, paddingHorizontal: 12, },
-    inputIcon: { marginRight: Dimens.ICON_MARGIN_RIGHT, },
-    input: { flex: 1, height: '100%', fontSize: Dimens.FONT_SIZE_INPUT, color: Colors.TEXT_COLOR_PRIMARY, paddingVertical: 0, },
-    genderSegmentContainer: { flexDirection: 'row', borderRadius: Dimens.BORDER_RADIUS_GENDER_SEGMENT, borderWidth: Dimens.BORDER_WIDTH_GENDER_SEGMENT, borderColor: Colors.PRIMARY_COLOR, overflow: 'hidden', height: Dimens.GENDER_SEGMENT_HEIGHT, },
-    genderSegment: { flex: 1, justifyContent: 'center', alignItems: 'center', borderRightWidth: Dimens.BORDER_WIDTH_GENDER_SEGMENT, borderRightColor: Colors.PRIMARY_COLOR, backgroundColor: Colors.WHITE_COLOR, },
-    genderSegmentSelected: { backgroundColor: Colors.PRIMARY_COLOR, },
-    genderSegmentText: { fontSize: Dimens.FONT_SIZE_GENDER_SEGMENT, fontWeight: '500', color: Colors.PRIMARY_COLOR, },
-    genderSegmentTextSelected: { color: Colors.WHITE_COLOR, fontWeight: 'bold', },
     errorContainer: { marginVertical: Dimens.ERROR_CONTAINER_MARGIN_VERTICAL, paddingHorizontal: Dimens.ERROR_CONTAINER_PADDING_HORIZONTAL, paddingVertical: Dimens.ERROR_CONTAINER_PADDING_VERTICAL, backgroundColor: Colors.ERROR_COLOR_BACKGROUND, borderColor: Colors.ERROR_COLOR_BORDER, borderWidth: Dimens.BORDER_WIDTH_ERROR, borderRadius: Dimens.BORDER_RADIUS_ERROR, alignItems: 'center', },
     errorText: { color: Colors.ERROR_COLOR_TEXT, fontSize: Dimens.FONT_SIZE_ERROR, fontWeight: '500', textAlign: 'center', },
     actionsContainer: { marginTop: Dimens.ACTIONS_CONTAINER_MARGIN_TOP, },

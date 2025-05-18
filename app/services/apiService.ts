@@ -407,6 +407,32 @@ const apiService = {
         await apiClient.post('/api/v1/users/me/deactivate');
     },
 
+    sendParentalControlReportEmail: async (
+        subject: string,
+        body: string,
+        recipients: string[],
+        eventType: string // Or use ReportEventType if defined and shared
+    ): Promise<{ success: boolean; message?: string }> => {
+        try {
+            // The endpoint path '/api/v1/parental-controls/report-email' is an example.
+            // Replace it with your actual backend endpoint for sending these emails.
+            const response = await apiClient.post<{ success: boolean; message?: string }>(
+                '/api/v1/parental-controls/report-email', // YOUR BACKEND ENDPOINT
+                {
+                    subject,
+                    body,
+                    recipients,
+                    event_type: eventType, // Match backend expected field name (e.g., event_type)
+                }
+            );
+            return { success: response.data.success, message: response.data.message };
+        } catch (error) {
+            // console.error('[ApiService] Failed to send parental control report email:', error); // Dev only
+            const apiError = handleApiError(error);
+            return { success: false, message: apiError.message || 'Failed to send report email via server.' };
+        }
+    },
+
     verifyParentalPasscode: async (passcode: string): Promise<{ isCorrect: boolean; message?: string }> => {
         try {
             const response = await apiClient.post<{ success: boolean; message?: string }>('/api/v1/auth/verify-parental-passcode', { passcode });
@@ -515,6 +541,7 @@ const apiService = {
     },
     adminDeleteUserById: async (userId: string): Promise<void> => { if (!userId) throw new Error("User ID required"); await apiClient.delete(`/api/v1/admin/users/${userId}`); },
 
+    
     getApiRoot: async (): Promise<any> => apiClient.get('/').then(res => res.data),
     getHealthCheck: async (): Promise<any> => apiClient.get('/health').then(res => res.data),
 };

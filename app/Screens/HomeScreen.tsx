@@ -1,5 +1,3 @@
-// src/screens/HomeScreen.tsx
-
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import {
   View,
@@ -25,7 +23,7 @@ import apiService, {
   AACPhraseGenerationResponse,
   AudioDataResponse,
   handleApiError,
-} from '../services/apiService'; // Ensure path is correct
+} from '../services/apiService';
 
 // --- Component Imports ---
 import IconInputComponent from '../components/input';
@@ -62,31 +60,28 @@ const defaultTtsSettings: VoiceSettingData = {
 const HIDE_DELAY = 4000;
 const ANIMATION_DURATION_IN = 250;
 const ANIMATION_DURATION_OUT = 350;
-const BOTTOM_BAR_HEIGHT = 65;
+const BOTTOM_BAR_HEIGHT = 70;
 
-Sound.setCategory('Playback'); // Initialize react-native-sound category
+Sound.setCategory('Playback');
 
 const HomeScreen: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { theme, fonts } = useAppearance();
-  const { setGridLayout } = useGrid(); // Removed unused gridLayout
+  const { setGridLayout } = useGrid();
 
   // --- State Declarations ---
   const [isBarVisible, setIsBarVisible] = useState(true);
   const [currentUiLang, setCurrentUiLang] = useState(i18n.language);
   const [selectedItems, setSelectedItems] = useState<SelectedSymbol[]>([]);
   const [ttsSettings, setTtsSettings] = useState<VoiceSettingData>(defaultTtsSettings);
-  
-  const [isTtsSpeaking, setIsTtsSpeaking] = useState(false); // For react-native-tts
-  const [isAudioPlaying, setIsAudioPlaying] = useState(false); // For react-native-sound
+  const [isTtsSpeaking, setIsTtsSpeaking] = useState(false);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [isTtsInitialized, setIsTtsInitialized] = useState(false);
-  const [isProcessingAudio, setIsProcessingAudio] = useState(false); // Combined loading state
-
+  const [isProcessingAudio, setIsProcessingAudio] = useState(false);
   const [isMenuVisible, setMenuVisible] = useState(false);
   const [isSearchScreenVisible, setIsSearchScreenVisible] = useState(false);
   const [isCustomPageModalVisible, setIsCustomPageModalVisible] = useState(false);
   const [isKeyboardInputVisible, setIsKeyboardInputVisible] = useState(false);
-
   const [currentCategoryName, setCurrentCategoryName] = useState<string>(
     t('categories.default', 'Contextual')
   );
@@ -101,23 +96,19 @@ const HomeScreen: React.FC = () => {
   const currentSoundInstanceRef = useRef<Sound | null>(null);
 
   // --- Effects ---
-
-  // Mounted Ref
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
     };
   }, []);
-  
-  // Update category name on mount and language change
+
   useEffect(() => {
     if (isMountedRef.current) {
-        setCurrentCategoryName(t('categories.default', 'Contextual'));
+      setCurrentCategoryName(t('categories.default', 'Contextual'));
     }
-  }, [t, currentUiLang]); // Added currentUiLang as it might influence 't' output
+  }, [t, currentUiLang]);
 
-  // Bottom bar visibility and animation
   const slideUp = useCallback(() => Animated.timing(bottomBarPosition, { toValue: 0, duration: ANIMATION_DURATION_IN, easing: Easing.out(Easing.ease), useNativeDriver: true }).start(), [bottomBarPosition]);
   const slideDown = useCallback(() => Animated.timing(bottomBarPosition, { toValue: BOTTOM_BAR_HEIGHT + (Platform.OS === 'ios' ? 30 : 10), duration: ANIMATION_DURATION_OUT, easing: Easing.in(Easing.ease), useNativeDriver: true }).start(), [bottomBarPosition]);
 
@@ -139,9 +130,6 @@ const HomeScreen: React.FC = () => {
     return () => { if (hideTimerRef.current) clearTimeout(hideTimerRef.current); };
   }, [showAndResetTimer]);
 
-
-  // TTS Initialization and Language Change Handling for react-native-tts
-  // TTS Initialization and Language Change Handling for react-native-tts
   useEffect(() => {
     let isEffectMounted = true;
     let ttsStartListener: any, ttsFinishListener: any, ttsCancelListener: any;
@@ -161,20 +149,14 @@ const HomeScreen: React.FC = () => {
         const voices = await Tts.voices();
         const usableVoices = voices.filter(v => !(Platform.OS === 'android' && v.networkConnectionRequired && v.notInstalled));
         
-        let voiceToUse: Voice | undefined = undefined; // Voice type from react-native-tts if available, else any
+        let voiceToUse: Voice | undefined = undefined;
         
         if (usableVoices.length > 0) {
-          // 1. Try to find an exact match for the current UI language (e.g., "en-US")
           voiceToUse = usableVoices.find(v => v.language === currentUiLang);
-
-          // 2. If not found, try to find a match for the base language (e.g., "en" from "en-US")
           if (!voiceToUse) {
             const baseLang = currentUiLang.split('-')[0];
             voiceToUse = usableVoices.find(v => v.language.startsWith(baseLang));
           }
-
-          // 3. As a last resort, if still no voice is found, pick the first available usable voice.
-          // This is less ideal as it might not match the language.
           if (!voiceToUse) {
             voiceToUse = usableVoices[0];
             console.warn(`[TTS Effect] No specific voice for ${currentUiLang} or base language. Falling back to ${voiceToUse.language} (${voiceToUse.name}).`);
@@ -183,9 +165,6 @@ const HomeScreen: React.FC = () => {
 
         if (voiceToUse) {
           console.log(`[TTS Effect] Selected voice for ${currentUiLang}: ${voiceToUse.id} (${voiceToUse.name}, Lang: ${voiceToUse.language})`);
-          // Ensure the selected voice's language is re-affirmed if it's different from currentUiLang
-          // Though Tts.setDefaultLanguage(currentUiLang) should guide it.
-          // await Tts.setDefaultLanguage(voiceToUse.language); // Could be an option if issues persist
           setTtsSettings(prev => ({ ...prev, selectedVoiceId: voiceToUse!.id }));
         } else {
           console.warn(`[TTS Effect] No usable voices found at all. TTS might not work for ${currentUiLang}.`);
@@ -210,7 +189,6 @@ const HomeScreen: React.FC = () => {
     };
   }, [currentUiLang]);
 
-  // Apply TTS settings when they change
   useEffect(() => {
     const applySettings = async () => {
       if (!isTtsInitialized) return;
@@ -218,7 +196,6 @@ const HomeScreen: React.FC = () => {
         if (ttsSettings.selectedVoiceId) await Tts.setDefaultVoice(ttsSettings.selectedVoiceId);
         await Tts.setDefaultPitch(ttsSettings.pitch);
         await Tts.setDefaultRate(ttsSettings.speed);
-        // Volume for Tts.speak() is often controlled by device volume or not available via react-native-tts API
       } catch (error) {
         console.error('Failed to apply TTS settings:', error);
       }
@@ -226,7 +203,6 @@ const HomeScreen: React.FC = () => {
     applySettings();
   }, [ttsSettings, isTtsInitialized]);
 
-  // i18n Language Change Listener
   useEffect(() => {
     const handleLanguageChanged = (lng: string) => {
       if (isMountedRef.current) {
@@ -235,14 +211,12 @@ const HomeScreen: React.FC = () => {
       }
     };
     i18n.on('languageChanged', handleLanguageChanged);
-    // Sync initial language if different
     if (isMountedRef.current && i18n.language !== currentUiLang) {
       setCurrentUiLang(i18n.language);
     }
     return () => { i18n.off('languageChanged', handleLanguageChanged); };
-  }, [i18n, currentUiLang]); // currentUiLang dependency ensures re-sync if needed
+  }, [i18n, currentUiLang]);
 
-  // Cleanup sound instance on unmount
   useEffect(() => {
     return () => {
       if (currentSoundInstanceRef.current) {
@@ -251,7 +225,6 @@ const HomeScreen: React.FC = () => {
       }
     };
   }, []);
-
 
   // --- Event Handlers ---
   const handleSymbolPress = useCallback((keyword: string, imageUri?: string) => {
@@ -271,7 +244,7 @@ const HomeScreen: React.FC = () => {
     showAndResetTimer();
   }, [isTtsSpeaking, showAndResetTimer]);
 
-  const playAudioBlob = useCallback(async (audioBlob: Blob, filename: string = 'translated_audio.wav') => { // Ensure filename has an extension
+  const playAudioBlob = useCallback(async (audioBlob: Blob, filename: string = 'translated_audio.wav') => {
     return new Promise<void>((resolve, reject) => {
         if (currentSoundInstanceRef.current) {
             currentSoundInstanceRef.current.release();
@@ -288,14 +261,14 @@ const HomeScreen: React.FC = () => {
             } else {
                 console.warn('[AudioPlayer] Could not find comma in Data URI for file saving.');
             }
-            const tempFilePath = `${RNFS.TemporaryDirectoryPath}/${Date.now()}_${filename}`; // Unique temp file name
+            const tempFilePath = `${RNFS.TemporaryDirectoryPath}/${Date.now()}_${filename}`;
             console.log(`[AudioPlayer] Attempting to save audio to temporary file: ${tempFilePath}`);
 
             try {
                 await RNFS.writeFile(tempFilePath, pureBase64Data, 'base64');
                 console.log(`[AudioPlayer] Audio saved to: ${tempFilePath}`);
 
-                const sound = new Sound(tempFilePath, '', async (error) => { // Load from file path
+                const sound = new Sound(tempFilePath, '', async (error) => {
                     if (error) {
                         console.error('Failed to load the sound from file. Error:', JSON.stringify(error));
                         try { await RNFS.unlink(tempFilePath); } catch (e) { console.warn("Failed to delete temp audio file after load error", e); }
@@ -333,21 +306,19 @@ const HomeScreen: React.FC = () => {
             reject(new Error(t('home.errors.audioProcessFail', 'Failed to process audio data.')));
         };
     });
-  }, [t]); // t dependency for error messages
+  }, [t]);
 
   const handleSpeakPress = useCallback(async () => {
     showAndResetTimer();
 
-    // Stop any ongoing speech/audio if button is pressed again
     if (isTtsSpeaking) Tts.stop();
     if (isAudioPlaying && currentSoundInstanceRef.current) {
       currentSoundInstanceRef.current.stop(() => {
         if (isMountedRef.current) setIsAudioPlaying(false);
       });
-      // Don't return, let it proceed to speak new selection if any
     }
     
-    if (isProcessingAudio) return; // Already processing a request
+    if (isProcessingAudio) return;
     if (selectedItems.length === 0) return;
 
     if(isMountedRef.current) setIsProcessingAudio(true);
@@ -355,7 +326,6 @@ const HomeScreen: React.FC = () => {
     let englishPhrase = selectedItems.map(item => item.keyword).join(' ');
 
     try {
-      // Step 1: Generate AAC Phrase (if more than one keyword)
       if (selectedItems.length > 1) {
         const response = await apiService.generateAACPhrase(selectedItems.map(item => item.keyword));
         if (response?.phrase) {
@@ -371,33 +341,28 @@ const HomeScreen: React.FC = () => {
 
       const targetLangCode = currentUiLang.split('-')[0];
 
-      // Step 2: Speak or Translate & Speak
       if (targetLangCode !== 'en') {
-        // Non-English: Use /translate-tts and play audio directly
         console.log(`[SpeakPress] Requesting translate-tts for: "${englishPhrase}" to ${targetLangCode}`);
         const audioResponse: AudioDataResponse = await apiService.translateAndTextToSpeech(englishPhrase);
         console.log(`[SpeakPress] Received audio. Filename: ${audioResponse.filename}, Translated (header): ${audioResponse.translatedText}`);
         await playAudioBlob(audioResponse.audioBlob, audioResponse.filename);
 
       } else {
-        // English: Use react-native-tts
         if (!isTtsInitialized) {
           Alert.alert(t('common.error', 'Error'), t('home.errors.ttsNotReady', 'TTS is not ready for English.'));
           if(isMountedRef.current) setIsProcessingAudio(false);
           return;
         }
         console.log(`[SpeakPress] Speaking (EN) via react-native-tts: "${englishPhrase}"`);
-        // Ensure TTS settings are applied (redundant if useEffect for ttsSettings works reliably, but safe)
         await Tts.setDefaultLanguage(currentUiLang);
         if (ttsSettings.selectedVoiceId) await Tts.setDefaultVoice(ttsSettings.selectedVoiceId);
         
-        Tts.speak(englishPhrase); // react-native-tts listeners will set isTtsSpeaking
+        Tts.speak(englishPhrase);
       }
     } catch (error) {
-      const processedError = handleApiError(error); // Handles Axios and other errors
+      const processedError = handleApiError(error);
       console.error('[SpeakPress] Error during speak process:', processedError.message, processedError.details);
       Alert.alert(t('common.error', 'Error'), processedError.message || t('home.errors.speakFailGeneral', 'Could not complete speech request.'));
-      // Ensure loading states are reset
       if(isMountedRef.current) {
         setIsTtsSpeaking(false);
         setIsAudioPlaying(false);
@@ -415,9 +380,8 @@ const HomeScreen: React.FC = () => {
     t,
     currentUiLang,
     ttsSettings.selectedVoiceId,
-    playAudioBlob // Added dependency
+    playAudioBlob
   ]);
-  
 
   const handleTtsSettingsSave = useCallback((newSettings: VoiceSettingData) => {
     setTtsSettings(newSettings);
@@ -462,7 +426,7 @@ const HomeScreen: React.FC = () => {
   // --- UI Toggling Functions ---
   const toggleMenu = useCallback((visible: boolean) => {
     if (visible) {
-        if(isMountedRef.current) setMenuVisible(true); // Show modal first
+        if(isMountedRef.current) setMenuVisible(true);
         Animated.parallel([
             Animated.spring(menuSlideAnim, { toValue: 0, useNativeDriver: true, bounciness: 4, speed: 10 }),
             Animated.timing(menuOverlayAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
@@ -471,7 +435,7 @@ const HomeScreen: React.FC = () => {
         Animated.parallel([
             Animated.spring(menuSlideAnim, { toValue: -menuWidth, useNativeDriver: true, bounciness: 4, speed: 10 }),
             Animated.timing(menuOverlayAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
-        ]).start(() => { if(isMountedRef.current) setMenuVisible(false); }); // Hide modal after animation
+        ]).start(() => { if(isMountedRef.current) setMenuVisible(false); });
     }
     showAndResetTimer();
   }, [menuSlideAnim, menuOverlayAnim, showAndResetTimer]);
@@ -501,17 +465,88 @@ const HomeScreen: React.FC = () => {
 
   // --- Styles ---
   const styles = useMemo(() => {
-    const categoryTitleFontSize = 16;
+    const categoryTitleFontSize = 18;
     return StyleSheet.create({
-      safeArea: { flex: 1, backgroundColor: theme.primaryDark || '#004d7a' },
-      container: { flex: 1, backgroundColor: theme.background || '#e0f7fa' },
-      mainContent: { flex: 1 },
-      bottomBarContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, height: BOTTOM_BAR_HEIGHT, zIndex: 50 },
-      inputItemChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.card || '#ffffff', borderRadius: 15, paddingVertical: Platform.OS === 'ios' ? 6 : 4, paddingHorizontal: 10, marginHorizontal: 3, marginVertical: 3, borderWidth: 1, borderColor: theme.border || '#b0bec5', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 1, },
-      chipImage: { width: 16, height: 16, marginRight: 5, resizeMode: 'contain' },
-      inputItemText: { color: theme.primary || '#00796b', fontSize: fonts.body || 14, fontWeight: '500' },
-      categoryTitleContainer: { paddingHorizontal: 16, paddingVertical: Platform.OS === 'ios' ? 8 : 6, backgroundColor: theme.primary, width: '100%', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: theme.border || '#B3E5FC', },
-      categoryTitleText: { fontSize: categoryTitleFontSize, fontWeight: '600', color: theme.text, textAlign: 'center' },
+      safeArea: { 
+        flex: 1, 
+        backgroundColor: theme.primaryDark || '#003d5c',
+      },
+      container: { 
+        flex: 1, 
+        backgroundColor: theme.background || '#f5faff',
+      },
+      mainContent: { 
+        flex: 1,
+        paddingHorizontal: 12,
+        paddingBottom: BOTTOM_BAR_HEIGHT + 10,
+      },
+      bottomBarContainer: { 
+        position: 'absolute', 
+        bottom: 0, 
+        left: 0, 
+        right: 0, 
+        height: BOTTOM_BAR_HEIGHT, 
+        zIndex: 100,
+        backgroundColor: theme.card || '#ffffff',
+        borderTopWidth: 1,
+        borderTopColor: theme.border || '#e0e6ed',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 5,
+      },
+      inputItemChip: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        backgroundColor: theme.card || '#ffffff',
+        borderRadius: 20,
+        paddingVertical: Platform.OS === 'ios' ? 8 : 6,
+        paddingHorizontal: 12,
+        margin: 4,
+        borderWidth: 1,
+        borderColor: theme.border || '#d0d7de',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.15,
+        shadowRadius: 2,
+        elevation: 3,
+      },
+      chipImage: { 
+        width: 20, 
+        height: 20, 
+        marginRight: 8, 
+        resizeMode: 'contain',
+        borderRadius: 4,
+      },
+      inputItemText: { 
+        color: theme.text || '#1a3c34',
+        fontSize: fonts.body || 16,
+        fontWeight: '600',
+        maxWidth: 120,
+      },
+      categoryTitleContainer: { 
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        backgroundColor: theme.primary || '#007bff',
+        borderRadius: 12,
+        marginVertical: 8,
+        marginHorizontal: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 4,
+      },
+      categoryTitleText: { 
+        fontSize: categoryTitleFontSize,
+        fontWeight: '700',
+        color: theme.textLight || '#ffffff',
+        textAlign: 'center',
+        letterSpacing: 0.5,
+      },
     });
   }, [theme, fonts]);
 
@@ -527,15 +562,15 @@ const HomeScreen: React.FC = () => {
             onClearPress={handleClearPress}
             isSpeakDisabled={
               selectedItems.length === 0 ||
-              isTtsSpeaking || // Speaking with react-native-tts
-              isAudioPlaying || // Playing with react-native-sound
-              isProcessingAudio || // General processing lock
-              (currentUiLang.split('-')[0] === 'en' && !isTtsInitialized) // TTS init only for English path
+              isTtsSpeaking ||
+              isAudioPlaying ||
+              isProcessingAudio ||
+              (currentUiLang.split('-')[0] === 'en' && !isTtsInitialized)
             }
             isBackspaceDisabled={selectedItems.length === 0 || isProcessingAudio || isTtsSpeaking || isAudioPlaying}
             isClearDisabled={selectedItems.length === 0 || isProcessingAudio || isTtsSpeaking || isAudioPlaying}
           >
-            {isProcessingAudio && <ActivityIndicator size="small" color={styles.inputItemText.color} style={{ marginHorizontal: 5 }} />}
+            {isProcessingAudio && <ActivityIndicator size="small" color={styles.inputItemText.color} style={{ marginHorizontal: 8 }} />}
             {renderInputItems()}
           </IconInputComponent>
           
@@ -572,37 +607,37 @@ const HomeScreen: React.FC = () => {
 
       <Modal visible={isMenuVisible} transparent={true} animationType="none" onRequestClose={closeMenu}>
         <Menu
-            slideAnim={menuSlideAnim}
-            overlayAnim={menuOverlayAnim}
-            closeMenu={closeMenu}
-            currentTtsSettings={ttsSettings}
-            onTtsSettingsSave={handleTtsSettingsSave}
+          slideAnim={menuSlideAnim}
+          overlayAnim={menuOverlayAnim}
+          closeMenu={closeMenu}
+          currentTtsSettings={ttsSettings}
+          onTtsSettingsSave={handleTtsSettingsSave}
         />
       </Modal>
 
       {isSearchScreenVisible && (
         <SearchScreen
-            onCloseSearch={closeSearchScreen}
-            language={currentUiLang.split('-')[0]}
-            onSelectSymbol={handleSearchSymbolSelect}
+          onCloseSearch={closeSearchScreen}
+          language={currentUiLang.split('-')[0]}
+          onSelectSymbol={handleSearchSymbolSelect}
         />
       )}
 
       {isCustomPageModalVisible && (
         <Modal visible={isCustomPageModalVisible} animationType="slide" onRequestClose={closeCustomPageModal}>
-            <CustomPageComponent
-                onBackPress={closeCustomPageModal}
-                onSymbolsUpdate={handleCustomSymbolsUpdate}
-            />
+          <CustomPageComponent
+            onBackPress={closeCustomPageModal}
+            onSymbolsUpdate={handleCustomSymbolsUpdate}
+          />
         </Modal>
       )}
 
       {isKeyboardInputVisible && (
         <KeyboardInputComponent
-            visible={isKeyboardInputVisible}
-            onClose={closeKeyboardInput}
-            onSubmit={handleTextInputSubmit}
-            placeholder={t('keyboardInput.defaultPlaceholder', 'Type here...')}
+          visible={isKeyboardInputVisible}
+          onClose={closeKeyboardInput}
+          onSubmit={handleTextInputSubmit}
+          placeholder={t('keyboardInput.defaultPlaceholder', 'Type here...')}
         />
       )}
     </SafeAreaView>

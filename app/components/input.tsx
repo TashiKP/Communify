@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, ScrollView, Animated, Easing } from 'react-native';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import { faVolumeUp, faBackspace, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { useTranslation } from 'react-i18next';
@@ -17,7 +17,7 @@ interface IconInputComponentProps {
 }
 
 // --- Shared Constants ---
-const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
+const hitSlop = { top: 12, bottom: 12, left: 12, right: 12 };
 
 // --- Component ---
 const IconInputComponent: React.FC<IconInputComponentProps> = ({
@@ -33,6 +33,11 @@ const IconInputComponent: React.FC<IconInputComponentProps> = ({
   const { theme, fonts } = useAppearance();
   const { t } = useTranslation();
 
+  // --- Animation States ---
+  const speakScale = React.useRef(new Animated.Value(1)).current;
+  const backspaceScale = React.useRef(new Animated.Value(1)).current;
+  const clearScale = React.useRef(new Animated.Value(1)).current;
+
   // --- Dynamic Styles ---
   const styles = useMemo(() => createThemedStyles(theme, fonts), [theme, fonts]);
 
@@ -44,19 +49,35 @@ const IconInputComponent: React.FC<IconInputComponentProps> = ({
   const backspaceIconColor = isBackspaceDisabled ? iconColorInactive : iconColorActive;
   const clearIconColor = isClearDisabled ? iconColorInactive : iconColorActive;
 
-  const iconSize = fonts.h2 * 1.1;
-  const smallIconSize = fonts.h2;
+  const iconSize = fonts.h2 * 1.2;
+  const smallIconSize = fonts.h2 * 0.9;
+
+  // --- Animation Handler ---
+  const animatePress = (scale: Animated.Value, callback?: () => void) => {
+    Animated.sequence([
+      Animated.timing(scale, {
+        toValue: 0.85,
+        duration: 100,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
+      Animated.timing(scale, {
+        toValue: 1,
+        duration: 100,
+        easing: Easing.in(Easing.ease),
+        useNativeDriver: true,
+      }),
+    ]).start(() => callback && callback());
+  };
 
   // --- Render Children Safely ---
   const renderInputContent = () => {
     if (!children) {
       return <Text style={styles.placeholderText}>{t('iconInput.placeholder')}</Text>;
     }
-    // If children is a string, wrap it in a Text component
     if (typeof children === 'string') {
       return <Text style={styles.inputText}>{children}</Text>;
     }
-    // Otherwise, render children as is (e.g., custom components)
     return children;
   };
 
@@ -66,13 +87,17 @@ const IconInputComponent: React.FC<IconInputComponentProps> = ({
       <View style={styles.actionSection}>
         <TouchableOpacity
           style={styles.iconButton}
-          onPress={onSpeakPress}
+          onPress={() => animatePress(speakScale, onSpeakPress)}
           disabled={isSpeakDisabled}
           accessibilityLabel={t('iconInput.speakAccessibilityLabel')}
+          accessibilityHint={t('iconInput.speakAccessibilityHint')}
           accessibilityState={{ disabled: isSpeakDisabled }}
           hitSlop={hitSlop}
+          activeOpacity={0.7}
         >
-          <FontAwesomeIcon icon={faVolumeUp} size={iconSize} color={speakIconColor} />
+          <Animated.View style={{ transform: [{ scale: speakScale }] }}>
+            <FontAwesomeIcon icon={faVolumeUp} size={iconSize} color={speakIconColor} />
+          </Animated.View>
         </TouchableOpacity>
       </View>
 
@@ -92,24 +117,32 @@ const IconInputComponent: React.FC<IconInputComponentProps> = ({
       <View style={[styles.actionSection, styles.actionSectionRight]}>
         <TouchableOpacity
           style={styles.iconButton}
-          onPress={onBackspacePress}
+          onPress={() => animatePress(backspaceScale, onBackspacePress)}
           disabled={isBackspaceDisabled}
           accessibilityLabel={t('iconInput.backspaceAccessibilityLabel')}
+          accessibilityHint={t('iconInput.backspaceAccessibilityHint')}
           accessibilityState={{ disabled: isBackspaceDisabled }}
           hitSlop={hitSlop}
+          activeOpacity={0.7}
         >
-          <FontAwesomeIcon icon={faBackspace} size={iconSize} color={backspaceIconColor} />
+          <Animated.View style={{ transform: [{ scale: backspaceScale }] }}>
+            <FontAwesomeIcon icon={faBackspace} size={iconSize} color={backspaceIconColor} />
+          </Animated.View>
         </TouchableOpacity>
         <View style={styles.buttonSpacer} />
         <TouchableOpacity
           style={styles.iconButton}
-          onPress={onClearPress}
+          onPress={() => animatePress(clearScale, onClearPress)}
           disabled={isClearDisabled}
           accessibilityLabel={t('iconInput.clearAccessibilityLabel')}
+          accessibilityHint={t('iconInput.clearAccessibilityHint')}
           accessibilityState={{ disabled: isClearDisabled }}
           hitSlop={hitSlop}
+          activeOpacity={0.7}
         >
-          <FontAwesomeIcon icon={faTrash} size={smallIconSize} color={clearIconColor} />
+          <Animated.View style={{ transform: [{ scale: clearScale }] }}>
+            <FontAwesomeIcon icon={faTrash} size={smallIconSize} color={clearIconColor} />
+          </Animated.View>
         </TouchableOpacity>
       </View>
     </View>
@@ -121,54 +154,64 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes) =>
   StyleSheet.create({
     container: {
       flexDirection: 'row',
-      alignItems: 'stretch',
+      alignItems: 'center',
       width: '100%',
       backgroundColor: theme.primary,
-      minHeight: Platform.select({ ios: 70, default: 65 }),
+      minHeight: Platform.select({ ios: 72, default: 68 }),
       borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+      borderTopColor: theme.isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.15)',
+      paddingVertical: 8,
     },
     actionSection: {
-      paddingHorizontal: 18,
+      paddingHorizontal: 16,
       justifyContent: 'center',
       alignItems: 'center',
     },
     actionSectionRight: {
       flexDirection: 'row',
-      paddingRight: 20,
+      paddingRight: 18,
     },
     inputArea: {
       flex: 1,
       backgroundColor: theme.card,
-      marginVertical: 6,
-      marginHorizontal: 0,
-      borderRadius: 8,
+      marginVertical: 8,
+      marginHorizontal: 8,
+      borderRadius: 10,
       overflow: 'hidden',
       justifyContent: 'center',
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.border,
+      elevation: 3,
+      shadowColor: theme.isDark ? '#000' : '#333',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
     },
     inputContentContainer: {
       flexGrow: 1,
       alignItems: 'center',
-      paddingHorizontal: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
     },
     iconButton: {
-      padding: 8,
+      padding: 10,
       justifyContent: 'center',
       alignItems: 'center',
+      borderRadius: 8,
     },
     buttonSpacer: {
-      width: 15,
+      width: 12,
     },
     placeholderText: {
       color: theme.disabled,
       fontSize: fonts.body,
       fontStyle: 'italic',
+      lineHeight: fonts.body * 1.4,
     },
     inputText: {
       color: theme.text,
       fontSize: fonts.body,
+      lineHeight: fonts.body * 1.4,
     },
   });
 

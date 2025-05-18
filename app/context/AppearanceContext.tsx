@@ -181,7 +181,7 @@ const getTheme = (isDarkSystem: boolean, contrast: ContrastModeType): ThemeColor
             card: base.darkNavy,        // Slightly lighter card
             text: base.grey6,           // Light text
             textSecondary: base.grey3,
-            primary: base.lightBlue,
+            primary: base.blue,
             primaryMuted: '#003f5c', // Muted version of lightBlue for dark theme
             primaryDark: '#002c40',  // Darker version
             secondary: base.blue,

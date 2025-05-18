@@ -1,4 +1,3 @@
-// src/components/SearchScreen.tsx
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
     View,
@@ -20,24 +19,19 @@ import { faSearch, faTimesCircle, faImage } from '@fortawesome/free-solid-svg-ic
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 
-// --- Import Context Hooks ---
 import { useGrid, GridLayoutType } from '../context/GridContext';
 import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext';
-
-// --- Import Language Specific Text Style Helper & Constants ---
 import {
     getLanguageSpecificTextStyle,
     DZONGKHA_FONT_FAMILY,
     DZONGKHA_TYPOGRAPHY_ADJUSTMENTS
-} from '../styles/typography'; // Adjust path if needed
+} from '../styles/typography';
 
-// --- Configuration ---
 const DEBOUNCE_DELAY = 400;
 const MAX_RESULTS = 40;
 const screenWidth = Dimensions.get('window').width;
-const errorColor = '#dc3545'; // Consider adding to theme
+const errorColor = '#f56565'; // Updated to align with theme.error
 
-// --- Grid Calculation Logic ---
 const getNumColumns = (layout: GridLayoutType): number => {
     switch (layout) {
         case 'simple': return 6;
@@ -47,16 +41,14 @@ const getNumColumns = (layout: GridLayoutType): number => {
     }
 };
 const calculateItemWidth = (layout: GridLayoutType, numCols: number): number => {
-    const gridPadding = 10;
-    const itemMargin = 4;
+    const gridPadding = 16;
+    const itemMargin = 6;
     const totalMargins = itemMargin * 2 * numCols;
     const totalPadding = gridPadding * 2;
     const availableWidth = screenWidth - totalPadding - totalMargins;
     return Math.max(70, Math.floor(availableWidth / numCols));
 };
-// --- End Grid Calculation ---
 
-// --- Result Interfaces ---
 interface ArasaacSearchResult {
     _id: number;
     keywords: { keyword: string }[];
@@ -67,30 +59,25 @@ interface SymbolResult {
     pictogramUrl: string;
 }
 
-// --- Component Props ---
 interface SearchScreenProps {
     onCloseSearch: () => void;
-    language: string; // Language for Arasaac API (e.g., 'en')
+    language: string;
     onSelectSymbol: (symbol: { keyword: string; pictogramUrl: string }) => void;
 }
 
-// --- Component ---
 const SearchScreen: React.FC<SearchScreenProps> = ({
     onCloseSearch,
-    language, // This is the language passed to Arasaac API
+    language,
     onSelectSymbol,
 }) => {
-    // --- Hooks ---
     const { gridLayout, isLoadingLayout: isLoadingGridLayout } = useGrid();
     const { theme, fonts, isLoadingAppearance } = useAppearance();
-    const { t, i18n } = useTranslation(); // <-- Use the translation hook, get i18n instance
-    const currentLanguage = i18n.language; // Get current language
+    const { t, i18n } = useTranslation();
+    const currentLanguage = i18n.language;
 
-    // --- Calculate dynamic values based on context ---
     const numGridColumns = useMemo(() => getNumColumns(gridLayout), [gridLayout]);
     const itemWidth = useMemo(() => calculateItemWidth(gridLayout, numGridColumns), [gridLayout, numGridColumns]);
 
-    // --- State & Refs ---
     const [searchText, setSearchText] = useState('');
     const [debouncedSearchText, setDebouncedSearchText] = useState('');
     const [results, setResults] = useState<SymbolResult[]>([]);
@@ -100,19 +87,15 @@ const SearchScreen: React.FC<SearchScreenProps> = ({
     const textInputRef = useRef<TextInput>(null);
     const isMountedRef = useRef(true);
 
-    // --- Combined Loading State ---
     const isLoadingInitialContext = isLoadingGridLayout || isLoadingAppearance;
 
-    // --- Dynamic Styles ---
     const styles = useMemo(() => createThemedStyles(theme, fonts, currentLanguage), [theme, fonts, currentLanguage]);
 
-    // --- Mount/Unmount Effect ---
     useEffect(() => {
         isMountedRef.current = true;
         return () => { isMountedRef.current = false; };
     }, []);
 
-    // --- Debounce Effect ---
     useEffect(() => {
         if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
         debounceTimerRef.current = setTimeout(() => {
@@ -129,7 +112,6 @@ const SearchScreen: React.FC<SearchScreenProps> = ({
         return () => { if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current); };
     }, [searchText]);
 
-    // --- API Fetch Effect ---
     useEffect(() => {
         if (!debouncedSearchText) {
             if(isMountedRef.current) {
@@ -168,12 +150,10 @@ const SearchScreen: React.FC<SearchScreenProps> = ({
         fetchSymbols();
     }, [debouncedSearchText, language, t]);
 
-    // --- Handlers ---
     const handleTextChange = (text: string) => setSearchText(text);
     const handleSelectResult = (symbol: SymbolResult) => { Keyboard.dismiss(); onSelectSymbol({ keyword: symbol.keyword, pictogramUrl: symbol.pictogramUrl }); onCloseSearch(); };
     const handleCancel = () => { Keyboard.dismiss(); onCloseSearch(); };
 
-    // --- Auto-focus Effect ---
     useEffect(() => {
         let focusTimer: NodeJS.Timeout | null = null;
         if (!isLoadingInitialContext) {
@@ -184,16 +164,15 @@ const SearchScreen: React.FC<SearchScreenProps> = ({
         return () => { if (focusTimer) clearTimeout(focusTimer); };
     }, [isLoadingInitialContext]);
 
-    // --- Render Grid Item ---
     const renderGridItem = useCallback(({ item }: { item: SymbolResult }) => {
         const dynamicFontSize = Math.max(fonts.caption * 0.9, Math.min(fonts.body, Math.floor(itemWidth * 0.11)));
         
         let dynamicLineHeight: number;
         if (currentLanguage === 'dzo') {
-            const adjustment = DZONGKHA_TYPOGRAPHY_ADJUSTMENTS.caption; // Assuming 'caption' is base type for grid item
+            const adjustment = DZONGKHA_TYPOGRAPHY_ADJUSTMENTS.caption;
             dynamicLineHeight = dynamicFontSize * adjustment.lineHeightMultiplier;
         } else {
-            dynamicLineHeight = dynamicFontSize * 1.4; // Default multiplier for English
+            dynamicLineHeight = dynamicFontSize * 1.4;
         }
 
         return (
@@ -201,7 +180,7 @@ const SearchScreen: React.FC<SearchScreenProps> = ({
                 <TouchableOpacity
                     style={[styles.gridItemCard, { width: itemWidth }]}
                     onPress={() => handleSelectResult(item)}
-                    activeOpacity={0.7}
+                    activeOpacity={0.6}
                     accessibilityLabel={t('searchScreen.symbolAccessibilityLabel', { keyword: item.keyword })}
                     accessibilityRole="button"
                 >
@@ -216,10 +195,10 @@ const SearchScreen: React.FC<SearchScreenProps> = ({
                     <View style={styles.gridItemTextWrapper}>
                         <Text
                             style={[
-                                styles.gridItemText, // Base styles (fontFamily, fontWeight, color, textAlign)
-                                { fontSize: dynamicFontSize, lineHeight: dynamicLineHeight } // Dynamic size and line height
+                                styles.gridItemText,
+                                { fontSize: dynamicFontSize, lineHeight: dynamicLineHeight }
                             ]}
-                            numberOfLines={1}
+                            numberOfLines={2}
                             ellipsizeMode="tail"
                         >
                             {item.keyword}
@@ -228,9 +207,8 @@ const SearchScreen: React.FC<SearchScreenProps> = ({
                 </TouchableOpacity>
             </View>
         );
-    }, [itemWidth, fonts, handleSelectResult, styles, t, currentLanguage]); // Added currentLanguage
+    }, [itemWidth, fonts, handleSelectResult, styles, t, currentLanguage]);
 
-    // --- Render Content Based on State ---
     const renderContent = () => {
         if (isLoadingInitialContext) {
              return <ActivityIndicator style={styles.statusIndicator} size="large" color={theme.primary} />;
@@ -258,7 +236,7 @@ const SearchScreen: React.FC<SearchScreenProps> = ({
                 maxToRenderPerBatch={numGridColumns * 3}
                 windowSize={10}
                 removeClippedSubviews={true}
-                extraData={`${itemWidth}-${numGridColumns}-${results.length}-${currentLanguage}`} // Added currentLanguage for gridItemText re-render
+                extraData={`${itemWidth}-${numGridColumns}-${results.length}-${currentLanguage}`}
             />
         );
     };
@@ -273,12 +251,12 @@ const SearchScreen: React.FC<SearchScreenProps> = ({
                 <View style={styles.container}>
                     <View style={styles.header}>
                         <View style={styles.inputContainer}>
-                            <FontAwesomeIcon icon={faSearch} size={fonts.body} color={theme.disabled} style={styles.inputIcon} />
+                            <FontAwesomeIcon icon={faSearch} size={fonts.body * 1.2} color={theme.textSecondary} style={styles.inputIcon} />
                             <TextInput
                                 ref={textInputRef}
                                 style={styles.input}
                                 placeholder={t('searchScreen.placeholder')}
-                                placeholderTextColor={theme.disabled}
+                                placeholderTextColor={theme.textSecondary}
                                 value={searchText}
                                 onChangeText={handleTextChange}
                                 returnKeyType="search"
@@ -291,7 +269,7 @@ const SearchScreen: React.FC<SearchScreenProps> = ({
                             />
                              {searchText.length > 0 && (
                                  <TouchableOpacity onPress={() => setSearchText('')} style={styles.clearButton} accessibilityLabel={t('searchScreen.clearSearchAccessibilityLabel')}>
-                                     <FontAwesomeIcon icon={faTimesCircle} size={fonts.body} color={theme.disabled} />
+                                     <FontAwesomeIcon icon={faTimesCircle} size={fonts.body * 1.2} color={theme.textSecondary} />
                                  </TouchableOpacity>
                              )}
                         </View>
@@ -309,70 +287,168 @@ const SearchScreen: React.FC<SearchScreenProps> = ({
     );
 };
 
-// --- Styles ---
 const createThemedStyles = (
     theme: ThemeColors,
     fonts: FontSizes,
-    currentLanguage: string // <-- Added currentLanguage
+    currentLanguage: string
 ) => {
     const bodyTextStyles = getLanguageSpecificTextStyle('body', fonts, currentLanguage);
     const buttonTextStyles = getLanguageSpecificTextStyle('button', fonts, currentLanguage);
-    // For gridItemText, fontFamily is handled directly, lineHeight is calculated with dynamic font size in renderGridItem
 
     return StyleSheet.create({
-        safeArea: { flex: 1, backgroundColor: theme.background, },
-        container: { flex: 1, },
-        header: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.card, paddingHorizontal: 10, paddingVertical: 8, paddingTop: Platform.OS === 'ios' ? 12 : 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border, },
-        inputContainer: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: theme.background, borderRadius: 10, paddingHorizontal: 10, height: 40, borderWidth: StyleSheet.hairlineWidth, borderColor: theme.border, },
-        inputIcon: { marginRight: 8, },
+        safeArea: {
+            flex: 1,
+            backgroundColor: theme.primary,
+        },
+        container: {
+            flex: 1,
+            backgroundColor: theme.background,
+        },
+        header: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: theme.card,
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            paddingTop: Platform.OS === 'ios' ? 16 : 12,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.border,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+            elevation: 4,
+        },
+        inputContainer: {
+            flex: 1,
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: theme.background,
+            borderRadius: 12,
+            paddingHorizontal: 12,
+            minHeight: 48,
+            borderWidth: 1,
+            borderColor: theme.border,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.1,
+            shadowRadius: 2,
+            elevation: 2,
+        },
+        inputIcon: {
+            marginRight: 12,
+        },
         input: {
             flex: 1,
-            ...bodyTextStyles, // Applied language specific styles
-            // fontSize: fonts.body, // Overridden by bodyTextStyles
+            ...bodyTextStyles,
             color: theme.text,
-            paddingVertical: 0, // Keep specific padding
+            paddingVertical: 0,
+            fontWeight: '500',
+            letterSpacing: 0.3,
         },
-        clearButton: { padding: 4, marginLeft: 4, },
-        cancelButton: { paddingLeft: 12, paddingVertical: 8, },
+        clearButton: {
+            padding: 8,
+            borderRadius: 12,
+            backgroundColor: theme.card,
+            marginLeft: 8,
+        },
+        cancelButton: {
+            paddingHorizontal: 16,
+            paddingVertical: 8,
+            borderRadius: 12,
+            backgroundColor: theme.primaryMuted,
+            marginLeft: 12,
+            minHeight: 48,
+            justifyContent: 'center',
+        },
         cancelButtonText: {
-            ...buttonTextStyles, // Applied language specific styles
-            // fontSize: fonts.button, // Overridden by buttonTextStyles
+            ...buttonTextStyles,
             color: theme.primary,
-            fontWeight: '500', // Keep specific font weight
+            fontWeight: '700',
+            letterSpacing: 0.5,
         },
-        contentArea: { flex: 1, backgroundColor: theme.background, },
-        statusIndicator: { marginTop: 40, },
+        contentArea: {
+            flex: 1,
+            backgroundColor: theme.background,
+            paddingHorizontal: 16,
+        },
+        statusIndicator: {
+            marginTop: 48,
+        },
         statusText: {
-            marginTop: 40,
+            marginTop: 48,
             textAlign: 'center',
-            paddingHorizontal: 20,
-            ...bodyTextStyles, // Applied language specific styles
-            // fontSize: fonts.body, // Overridden by bodyTextStyles
+            paddingHorizontal: 24,
+            ...bodyTextStyles,
             color: theme.textSecondary,
-            // lineHeight: fonts.body * 1.5, // Overridden by bodyTextStyles
+            fontWeight: '500',
+            letterSpacing: 0.3,
+            opacity: 0.7,
         },
         statusTextError: {
-            marginTop: 40,
+            marginTop: 48,
             textAlign: 'center',
-            paddingHorizontal: 20,
-            ...bodyTextStyles, // Applied language specific styles
-            // fontSize: fonts.body, // Overridden by bodyTextStyles
-            color: errorColor, // Specific error color
-            // lineHeight is from bodyTextStyles
+            paddingHorizontal: 24,
+            ...bodyTextStyles,
+            color: errorColor,
+            fontWeight: '600',
+            letterSpacing: 0.3,
         },
-        resultsList: { flex: 1, },
-        resultsListContent: { paddingHorizontal: 10, paddingTop: 10, paddingBottom: 20, alignItems: 'flex-start', },
-        gridItemContainer: { margin: 4, },
-        gridItemCard: { aspectRatio: 1, backgroundColor: theme.card, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: theme.border, overflow: 'hidden', alignItems: 'center', justifyContent: 'space-between', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: theme.isDark ? 0.2 : 0.08, shadowRadius: 2, elevation: 2, },
-        gridItemImageWrapper: { flex: 1, width: '100%', padding: '10%', justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background, },
-        gridItemImage: { width: '100%', height: '100%', },
-        gridItemTextWrapper: { height: 28, width: '100%', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.border, backgroundColor: theme.card, },
-        gridItemText: { // Base style for grid item text
+        resultsList: {
+            flex: 1,
+        },
+        resultsListContent: {
+            paddingHorizontal: 0,
+            paddingTop: 16,
+            paddingBottom: 48,
+            alignItems: 'flex-start',
+        },
+        gridItemContainer: {
+            margin: 6,
+        },
+        gridItemCard: {
+            aspectRatio: 1,
+            backgroundColor: theme.card,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: theme.border,
+            overflow: 'hidden',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: theme.isDark ? 0.2 : 0.1,
+            shadowRadius: 4,
+            elevation: 3,
+        },
+        gridItemImageWrapper: {
+            flex: 1,
+            width: '100%',
+            padding: '8%',
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: theme.background,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.border,
+        },
+        gridItemImage: {
+            width: '100%',
+            height: '100%',
+            borderRadius: 8,
+        },
+        gridItemTextWrapper: {
+            height: 36,
+            width: '100%',
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingHorizontal: 8,
+            backgroundColor: theme.card,
+        },
+        gridItemText: {
             fontFamily: currentLanguage === 'dzo' ? DZONGKHA_FONT_FAMILY : undefined,
-            fontWeight: '500',
+            fontWeight: '600',
             color: theme.text,
             textAlign: 'center',
-            // fontSize and lineHeight are applied dynamically in renderGridItem
         },
     });
 };

@@ -19,45 +19,37 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Picker } from '@react-native-picker/picker';
 import { useTranslation } from 'react-i18next';
 
-// --- Import Context Hooks & Types ---
 import { useGrid, GridLayoutType } from '../context/GridContext';
 import { useAppearance, ThemeColors, FontSizes } from '../context/AppearanceContext';
 import { getLanguageSpecificTextStyle } from '../styles/typography';
 
-// --- Storage Keys ---
 const SYMBOLS_STORAGE_KEY = '@Communify:customSymbols';
 const CATEGORY_STORAGE_KEY = '@Communify:customCategories';
 
-// --- Constants & Calculations ---
 const screenWidth = Dimensions.get('window').width;
 const getNumColumns = (layout: GridLayoutType): number => { switch (layout) { case 'simple': return 4; case 'standard': return 5; case 'dense': return 7; default: return 5; } };
 const calculateItemWidth = (layout: GridLayoutType, numCols: number): number => {
-    const gridPadding = 15;
-    const itemMargin = 4;
+    const gridPadding = 16;
+    const itemMargin = 6;
     return Math.max(80, Math.floor((screenWidth - (gridPadding * 2) - (itemMargin * 2 * numCols)) / numCols));
 };
 
-// --- Component Props Interface ---
 interface CustomPageComponentProps {
     onBackPress: () => void;
     onSymbolsUpdate?: (symbols: SymbolItem[]) => void;
 }
-// --- Data Structures ---
+
 interface SymbolItem { id: string; name: string; imageUri?: string; categoryId?: string | null; }
 interface CategoryItem { id: string; name: string; }
 interface GridSection { id: string | null; name: string; symbols: SymbolItem[]; }
 
-// --- Shared Constants ---
-const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
+const hitSlop = { top: 12, bottom: 12, left: 12, right: 12 };
 
-// --- Main Component ---
 const CustomPageComponent: React.FC<CustomPageComponentProps> = ({ onBackPress, onSymbolsUpdate }) => {
-    // --- Hooks ---
     const { gridLayout, isLoadingLayout: isLoadingGridLayout } = useGrid();
     const { theme, fonts, isLoadingAppearance } = useAppearance();
     const { t, i18n } = useTranslation();
 
-    // --- State ---
     const [symbols, setSymbols] = useState<SymbolItem[]>([]);
     const [categories, setCategories] = useState<CategoryItem[]>([]);
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -76,18 +68,15 @@ const CustomPageComponent: React.FC<CustomPageComponentProps> = ({ onBackPress, 
     const initialLoadComplete = useRef({ symbols: false, categories: false }).current;
     const isMountedRef = useRef(true);
 
-    // --- Calculate dynamic values ---
     const numInternalColumns = useMemo(() => getNumColumns(gridLayout), [gridLayout]);
     const itemWidth = useMemo(() => calculateItemWidth(gridLayout, numInternalColumns), [gridLayout, numInternalColumns]);
 
-    // --- Mount/Unmount Effect & i18n ready log ---
     useEffect(() => {
         isMountedRef.current = true;
         console.log('CustomPageComponent: Mounted. typeof t =', typeof t, 'i18n initialized:', i18n.isInitialized);
         return () => { isMountedRef.current = false; };
     }, [t, i18n.isInitialized]);
 
-    // --- Load Symbols ---
     useEffect(() => {
         let isMounted = true;
         const loadSymbols = async () => {
@@ -104,7 +93,6 @@ const CustomPageComponent: React.FC<CustomPageComponentProps> = ({ onBackPress, 
         loadSymbols(); return () => { isMounted = false; }
      }, []);
 
-    // --- Load Categories ---
     useEffect(() => {
         let isMounted = true;
         const loadCategories = async () => {
@@ -130,7 +118,6 @@ const CustomPageComponent: React.FC<CustomPageComponentProps> = ({ onBackPress, 
         loadCategories(); return () => { isMounted = false; }
      }, []);
 
-    // --- Save Symbols ---
     useEffect(() => {
         if (!initialLoadComplete.symbols || isLoadingSymbols) return;
         const saveSymbols = async () => {
@@ -141,7 +128,6 @@ const CustomPageComponent: React.FC<CustomPageComponentProps> = ({ onBackPress, 
         return () => clearTimeout(timerId);
      }, [symbols, onSymbolsUpdate, isLoadingSymbols, t]);
 
-    // --- Save Categories ---
     useEffect(() => {
         if (!initialLoadComplete.categories || isLoadingCategories) return;
         const saveCategories = async () => {
@@ -152,7 +138,6 @@ const CustomPageComponent: React.FC<CustomPageComponentProps> = ({ onBackPress, 
         return () => clearTimeout(timerId);
      }, [categories, isLoadingCategories, t]);
 
-    // --- Data Transformation for Sections ---
     const sectionedListData = useMemo(() => {
         const groupedSymbols = new Map<string | null, SymbolItem[]>();
         symbols.forEach(symbol => { const key = symbol.categoryId ?? null; if (!groupedSymbols.has(key)) groupedSymbols.set(key, []); groupedSymbols.get(key)?.push(symbol); });
@@ -185,13 +170,11 @@ const CustomPageComponent: React.FC<CustomPageComponentProps> = ({ onBackPress, 
         return sections;
     }, [symbols, categories, t]);
 
-    // --- Toggle Folder Expansion ---
     const toggleCategoryExpansion = useCallback((categoryId: string | null) => {
         const key = String(categoryId);
         setExpandedCategories(prev => ({ ...prev, [key]: !prev[key] }));
     }, []);
 
-    // --- Modal, Image Picker, CRUD, Category Handlers ---
     const openModal = (mode: 'add' | 'edit', symbol?: SymbolItem) => {
         setModalMode(mode); setShowAddCategoryInput(false); setNewCategoryName('');
         if (mode === 'edit' && symbol) {
@@ -273,7 +256,6 @@ const CustomPageComponent: React.FC<CustomPageComponentProps> = ({ onBackPress, 
         }, 300);
     };
 
-    // --- RENDER ITEM FOR FLATLIST (Sections/Folders) ---
     const renderSection = ({ item: section }: { item: GridSection }) => {
         const sectionKey = String(section.id);
         const isExpanded = expandedCategories[sectionKey] ?? false;
@@ -282,9 +264,9 @@ const CustomPageComponent: React.FC<CustomPageComponentProps> = ({ onBackPress, 
 
         return (
             <View style={styles.sectionContainer}>
-                <TouchableOpacity style={styles.folderHeader} onPress={() => toggleCategoryExpansion(section.id)} activeOpacity={0.7} accessibilityLabel={accessibilityLabel} accessibilityRole="button" accessibilityState={{ expanded: isExpanded }}>
+                <TouchableOpacity style={styles.folderHeader} onPress={() => toggleCategoryExpansion(section.id)} activeOpacity={0.6} accessibilityLabel={accessibilityLabel} accessibilityRole="button" accessibilityState={{ expanded: isExpanded }}>
                     <FontAwesomeIcon icon={isExpanded ? faChevronDown : faChevronRight} size={fonts.caption} color={theme.textSecondary} style={styles.chevronIcon} />
-                    <FontAwesomeIcon icon={faFolder} size={fonts.body * 1.1} color={theme.textSecondary} style={styles.folderIcon} />
+                    <FontAwesomeIcon icon={faFolder} size={fonts.body * 1.2} color={theme.primary} style={styles.folderIcon} />
                     <Text style={[styles.folderName, { color: theme.text }]}>{sectionName}</Text>
                     <Text style={[styles.folderCount, { color: theme.textSecondary }]}>({section.symbols.length})</Text>
                 </TouchableOpacity>
@@ -295,17 +277,17 @@ const CustomPageComponent: React.FC<CustomPageComponentProps> = ({ onBackPress, 
                                 <View style={[styles.symbolCard, { width: itemWidth }]}>
                                     <View style={styles.symbolImageWrapper}>
                                         {symbol.imageUri ? ( <Image source={{ uri: symbol.imageUri }} style={styles.symbolImage} resizeMode="contain" accessibilityLabel="" onError={(e) => console.warn(`Img Load Error: ${symbol.name}`, e.nativeEvent.error)} /> ) : (
-                                            <View style={styles.symbolPlaceholder}> <FontAwesomeIcon icon={faImage} size={itemWidth * 0.4} color={theme.disabled} /> </View>
+                                            <View style={styles.symbolPlaceholder}> <FontAwesomeIcon icon={faImage} size={itemWidth * 0.35} color={theme.disabled} /> </View>
                                         )}
                                     </View>
                                     <View style={styles.symbolInfo}>
-                                        <Text style={[styles.symbolName, { color: theme.text }]} numberOfLines={1}>{symbol.name}</Text>
+                                        <Text style={[styles.symbolName, { color: theme.text }]} numberOfLines={2} ellipsizeMode="tail">{symbol.name}</Text>
                                         <View style={styles.symbolActions}>
-                                            <TouchableOpacity style={styles.actionButton} onPress={() => openModal('edit', symbol)} disabled={!!isDeleting} activeOpacity={0.7} accessibilityLabel={t('customPage.editSymbolAccessibilityLabel', { name: symbol.name })} accessibilityRole="button">
-                                                <FontAwesomeIcon icon={faPen} size={fonts.caption * 1.1} color={theme.primary} />
+                                            <TouchableOpacity style={styles.actionButton} onPress={() => openModal('edit', symbol)} disabled={!!isDeleting} activeOpacity={0.6} accessibilityLabel={t('customPage.editSymbolAccessibilityLabel', { name: symbol.name })} accessibilityRole="button">
+                                                <FontAwesomeIcon icon={faPen} size={fonts.caption * 1.2} color={theme.primary} />
                                             </TouchableOpacity>
-                                            <TouchableOpacity style={styles.actionButton} onPress={() => handleDeletePress(symbol)} disabled={!!isDeleting} activeOpacity={0.7} accessibilityLabel={t('customPage.deleteSymbolAccessibilityLabel', { name: symbol.name })} accessibilityRole="button">
-                                                {isDeleting === symbol.id ? ( <ActivityIndicator size="small" color={theme.primary} /> ) : ( <FontAwesomeIcon icon={faTrash} size={fonts.caption * 1.1} color="#dc3545" /> )}
+                                            <TouchableOpacity style={styles.actionButton} onPress={() => handleDeletePress(symbol)} disabled={!!isDeleting} activeOpacity={0.6} accessibilityLabel={t('customPage.deleteSymbolAccessibilityLabel', { name: symbol.name })} accessibilityRole="button">
+                                                {isDeleting === symbol.id ? ( <ActivityIndicator size="small" color={theme.primary} /> ) : ( <FontAwesomeIcon icon={faTrash} size={fonts.caption * 1.2} color={theme.error} /> )}
                                             </TouchableOpacity>
                                         </View>
                                     </View>
@@ -319,20 +301,17 @@ const CustomPageComponent: React.FC<CustomPageComponentProps> = ({ onBackPress, 
         );
     };
 
-    // --- Combined Loading State for overall screen ---
     const isLoading = isLoadingSymbols || isLoadingCategories || isLoadingGridLayout || isLoadingAppearance;
 
-    // --- Dynamic Styles ---
     const styles = useMemo(() => createThemedStyles(theme, fonts, i18n.language), [theme, fonts, i18n.language]);
 
-    // --- Render Guard for i18n ---
     if (!i18n.isInitialized || typeof t !== 'function') {
         console.log("CustomPageComponent: Rendering loading state because 't' function is not ready.");
         return (
             <SafeAreaView style={styles.safeArea}>
                 <View style={[styles.container, {justifyContent: 'center', alignItems: 'center'}]}>
-                    <ActivityIndicator size="large" color={theme.primary || '#0077b6'} />
-                    <Text style={[{color: theme.text || '#000000'}, styles.loadingText]}>Loading Interface...</Text>
+                    <ActivityIndicator size="large" color={theme.primary || '#007bff'} />
+                    <Text style={[{color: theme.text || '#1a1d21'}, styles.loadingText]}>Loading Interface...</Text>
                 </View>
             </SafeAreaView>
         );
@@ -341,18 +320,16 @@ const CustomPageComponent: React.FC<CustomPageComponentProps> = ({ onBackPress, 
     return (
         <SafeAreaView style={styles.safeArea}>
             <View style={styles.container}>
-                {/* Header Bar */}
                 <View style={styles.headerBar}>
-                    <TouchableOpacity onPress={onBackPress} style={styles.headerButton} hitSlop={hitSlop} activeOpacity={0.7} accessibilityLabel={t('common.goBack')} accessibilityRole="button">
-                        <FontAwesomeIcon icon={faArrowLeft} size={fonts.body * 1.1} color={theme.white} />
+                    <TouchableOpacity onPress={onBackPress} hitSlop={hitSlop} activeOpacity={0.6} accessibilityLabel={t('common.goBack')} accessibilityRole="button">
+                        <FontAwesomeIcon icon={faArrowLeft} size={fonts.body * 1.2} color={theme.white} />
                     </TouchableOpacity>
                     <Text style={[styles.headerTitle, { color: theme.white }]}>{t('customPage.title')}</Text>
-                    <TouchableOpacity onPress={() => openModal('add')} style={styles.headerButton} hitSlop={hitSlop} disabled={isLoading} activeOpacity={0.7} accessibilityLabel={t('customPage.addSymbolAccessibilityLabel')} accessibilityRole="button">
-                        <FontAwesomeIcon icon={faPlus} size={fonts.body * 1.1} color={isLoading ? theme.disabled : theme.white} />
+                    <TouchableOpacity onPress={() => openModal('add')} hitSlop={hitSlop} disabled={isLoading} activeOpacity={0.6} accessibilityLabel={t('customPage.addSymbolAccessibilityLabel')} accessibilityRole="button">
+                        <FontAwesomeIcon icon={faPlus} size={fonts.body * 1.2} color={isLoading ? theme.disabled : theme.white} />
                     </TouchableOpacity>
                 </View>
 
-                {/* Content Area */}
                 {isLoading ? (
                     <View style={styles.loadingOverlay}>
                         <ActivityIndicator size="large" color={theme.primary} />
@@ -366,16 +343,15 @@ const CustomPageComponent: React.FC<CustomPageComponentProps> = ({ onBackPress, 
                         contentContainerStyle={styles.listContainer}
                         ListEmptyComponent={
                             <View style={styles.emptyContainer}>
-                                <FontAwesomeIcon icon={faThLarge} size={50} color={theme.disabled} />
-                                <Text style={[styles.emptyText, { color: theme.textSecondary }]}>{t('customPage.noSymbolsTitle')}</Text>
-                                <Text style={[styles.emptySubText, { color: theme.disabled }]}>{t('customPage.noSymbolsSubtitle')}</Text>
+                                <FontAwesomeIcon icon={faThLarge} size={48} color={theme.disabled} />
+                                <Text style={[styles.emptyText, { color: theme.text }]}>{t('customPage.noSymbolsTitle')}</Text>
+                                <Text style={[styles.emptySubText, { color: theme.textSecondary }]}>{t('customPage.noSymbolsSubtitle')}</Text>
                             </View>
                         }
                         extraData={`${gridLayout}-${categories.length}-${symbols.length}-${JSON.stringify(expandedCategories)}-${i18n.language}`}
                     />
                 )}
 
-                {/* Add/Edit Symbol Modal */}
                 <Modal visible={isModalVisible} transparent animationType="fade" onRequestClose={closeModal}>
                    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
                          <View style={styles.modalOverlay}>
@@ -383,36 +359,36 @@ const CustomPageComponent: React.FC<CustomPageComponentProps> = ({ onBackPress, 
                                  <View style={styles.modalContent}>
                                      <View style={styles.modalHeader}>
                                          <Text style={[styles.modalTitleText, { color: theme.text }]}>{modalMode === 'add' ? t('customPage.modal.addTitle') : t('customPage.modal.editTitle')}</Text>
-                                         <TouchableOpacity onPress={closeModal} style={styles.modalCloseButton} activeOpacity={0.7} accessibilityLabel={t('customPage.modal.closeAccessibilityLabel')} accessibilityRole="button">
-                                             <FontAwesomeIcon icon={faTimes} size={fonts.body} color={theme.textSecondary} />
+                                         <TouchableOpacity onPress={closeModal} style={styles.modalCloseButton} activeOpacity={0.6} accessibilityLabel={t('customPage.modal.closeAccessibilityLabel')} accessibilityRole="button">
+                                             <FontAwesomeIcon icon={faTimes} size={fonts.body * 1.2} color={theme.textSecondary} />
                                          </TouchableOpacity>
                                      </View>
                                      <ScrollView contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
-                                        <Text style={[styles.modalLabel, { color: theme.textSecondary }]}>{t('customPage.modal.imageLabel')}</Text>
-                                        <TouchableOpacity style={styles.modalImagePicker} onPress={pickImage} activeOpacity={0.7} accessibilityLabel={t('customPage.modal.chooseImageButton')} accessibilityRole="button">
+                                        <Text style={[styles.modalLabel, { color: theme.text }]}>{t('customPage.modal.imageLabel')}</Text>
+                                        <TouchableOpacity style={styles.modalImagePicker} onPress={pickImage} activeOpacity={0.6} accessibilityLabel={t('customPage.modal.chooseImageButton')} accessibilityRole="button">
                                             {modalImageUri ? ( <Image source={{ uri: modalImageUri }} style={styles.modalPickedImage} accessibilityLabel=""/> ) : (
                                                 <View style={styles.modalImagePlaceholder}>
-                                                    <FontAwesomeIcon icon={faImage} size={fonts.h1 * 1.5} color={theme.disabled}/>
+                                                    <FontAwesomeIcon icon={faImage} size={fonts.h1 * 1.3} color={theme.disabled}/>
                                                     <Text style={[styles.modalImagePickerText, { color: theme.textSecondary }]}>{t('customPage.modal.chooseImageButton')}</Text>
                                                 </View>
                                             )}
                                         </TouchableOpacity>
                                         {modalImageUri && Platform.OS !== 'web' && !modalImageUri.startsWith('file://') && (
                                             <View style={styles.warningBox}>
-                                                <FontAwesomeIcon icon={faExclamationTriangle} size={fonts.caption} color={theme.text} style={styles.warningIcon}/>
+                                                <FontAwesomeIcon icon={faExclamationTriangle} size={fonts.caption} color={theme.error} style={styles.warningIcon}/>
                                                 <Text style={[styles.warningText, { color: theme.text }]}>{t('customPage.modal.imageWarning')}</Text>
                                             </View>
                                         )}
 
-                                        <Text style={[styles.modalLabel, { color: theme.textSecondary }]}>{t('customPage.modal.nameLabel')}</Text>
+                                        <Text style={[styles.modalLabel, { color: theme.text }]}>{t('customPage.modal.nameLabel')}</Text>
                                         <TextInput
                                             placeholder={t('customPage.modal.namePlaceholder')}
-                                            placeholderTextColor={theme.disabled} value={modalSymbolName}
-                                            onChangeText={setModalSymbolName} style={[styles.modalInput, { color: theme.text, borderColor: theme.border }]} autoCapitalize="words"
+                                            placeholderTextColor={theme.textSecondary} value={modalSymbolName}
+                                            onChangeText={setModalSymbolName} style={[styles.modalInput, { color: theme.text, borderColor: theme.border, backgroundColor: theme.background }]} autoCapitalize="words"
                                             accessibilityLabel={t('customPage.modal.nameInputAccessibilityLabel')}
                                         />
 
-                                         <Text style={[styles.modalLabel, { color: theme.textSecondary }]}>{t('customPage.modal.categoryLabel')}</Text>
+                                         <Text style={[styles.modalLabel, { color: theme.text }]}>{t('customPage.modal.categoryLabel')}</Text>
                                          <View style={styles.categorySelectionContainer}>
                                              <View style={[styles.pickerWrapper, { borderColor: theme.border, backgroundColor: theme.background }]}>
                                                 <Picker
@@ -428,11 +404,11 @@ const CustomPageComponent: React.FC<CustomPageComponentProps> = ({ onBackPress, 
                                              <TouchableOpacity
                                                  style={[styles.addCategoryButton, showAddCategoryInput && styles.addCategoryButtonActive, { borderColor: theme.border, backgroundColor: showAddCategoryInput ? theme.primaryMuted : theme.card }]}
                                                  onPress={() => setShowAddCategoryInput(prev => !prev)}
-                                                 activeOpacity={0.7}
+                                                 activeOpacity={0.6}
                                                  accessibilityLabel={showAddCategoryInput ? t('customPage.modal.cancelAddCategory') : t('customPage.modal.addNewCategory')}
                                                  accessibilityRole="button"
                                             >
-                                                  <FontAwesomeIcon icon={showAddCategoryInput ? faTimes : faFolderPlus} size={fonts.body * 1.1} color={theme.primary} />
+                                                  <FontAwesomeIcon icon={showAddCategoryInput ? faTimes : faFolderPlus} size={fonts.body * 1.2} color={theme.primary} />
                                              </TouchableOpacity>
                                          </View>
 
@@ -441,13 +417,13 @@ const CustomPageComponent: React.FC<CustomPageComponentProps> = ({ onBackPress, 
                                                  <TextInput
                                                      style={[styles.addCategoryInput, { color: theme.text, borderColor: theme.border, backgroundColor: theme.background }]}
                                                      placeholder={t('customPage.modal.newCategoryPlaceholder')}
-                                                     placeholderTextColor={theme.disabled} value={newCategoryName}
+                                                     placeholderTextColor={theme.textSecondary} value={newCategoryName}
                                                      onChangeText={setNewCategoryName} maxLength={30} returnKeyType="done"
                                                      onSubmitEditing={handleAddNewCategory} autoFocus={true}
                                                      accessibilityLabel={t('customPage.modal.newCategoryInputAccessibilityLabel')}
                                                 />
-                                                 <TouchableOpacity style={[styles.addCategoryConfirmButton, !newCategoryName.trim() && styles.modalButtonDisabled, { backgroundColor: newCategoryName.trim() ? theme.primary : theme.disabled }]} onPress={handleAddNewCategory} disabled={!newCategoryName.trim()} activeOpacity={0.7} accessibilityLabel={t('customPage.modal.confirmAddCategory')} accessibilityRole="button">
-                                                    <FontAwesomeIcon icon={faCheck} size={fonts.body} color={theme.white} />
+                                                 <TouchableOpacity style={[styles.addCategoryConfirmButton, !newCategoryName.trim() && styles.modalButtonDisabled, { backgroundColor: newCategoryName.trim() ? theme.primary : theme.disabled }]} onPress={handleAddNewCategory} disabled={!newCategoryName.trim()} activeOpacity={0.6} accessibilityLabel={t('customPage.modal.confirmAddCategory')} accessibilityRole="button">
+                                                    <FontAwesomeIcon icon={faCheck} size={fonts.body * 1.2} color={theme.white} />
                                                 </TouchableOpacity>
                                              </View>
                                          )}
@@ -455,18 +431,18 @@ const CustomPageComponent: React.FC<CustomPageComponentProps> = ({ onBackPress, 
                                          <TouchableOpacity
                                              style={[styles.modalSaveButton, (!modalSymbolName.trim() || isSavingModal) && styles.modalButtonDisabled, { backgroundColor: (modalSymbolName.trim() && !isSavingModal) ? theme.primary : theme.disabled }]}
                                              onPress={handleSaveSymbol} disabled={!modalSymbolName.trim() || isSavingModal}
-                                             activeOpacity={0.7}
+                                             activeOpacity={0.6}
                                              accessibilityLabel={modalMode === 'add' ? t('customPage.modal.addSymbolButton') : t('customPage.modal.saveChangesButton')}
                                              accessibilityRole="button"
                                             >
-                                                {isSavingModal ? ( <ActivityIndicator size="small" color={theme.white} style={styles.buttonIcon} /> ) : ( <FontAwesomeIcon icon={faCheck} size={fonts.body} color={theme.white} style={styles.buttonIcon}/> )}
+                                                {isSavingModal ? ( <ActivityIndicator size="small" color={theme.white} style={styles.buttonIcon} /> ) : ( <FontAwesomeIcon icon={faCheck} size={fonts.body * 1.2} color={theme.white} style={styles.buttonIcon}/> )}
                                                 <Text style={[styles.modalButtonText, { color: theme.white }]}>{modalMode === 'add' ? t('customPage.modal.addSymbolButton') : t('customPage.modal.saveChangesButton')}</Text>
                                         </TouchableOpacity>
 
                                          {modalImageUri && modalMode === 'edit' && (
-                                            <TouchableOpacity style={[styles.modalRemoveImageButton, { borderColor: theme.border }]} onPress={() => setModalImageUri(undefined)} disabled={isSavingModal} activeOpacity={0.7} accessibilityLabel={t('customPage.modal.removeImageButton')} accessibilityRole="button">
-                                                <FontAwesomeIcon icon={faTrash} size={fonts.caption} color="#dc3545" style={styles.buttonIcon}/>
-                                                <Text style={[styles.modalRemoveImageButtonText, { color: "#dc3545" }]}>{t('customPage.modal.removeImageButton')}</Text>
+                                            <TouchableOpacity style={[styles.modalRemoveImageButton, { borderColor: theme.border, backgroundColor: theme.card }]} onPress={() => setModalImageUri(undefined)} disabled={isSavingModal} activeOpacity={0.6} accessibilityLabel={t('customPage.modal.removeImageButton')} accessibilityRole="button">
+                                                <FontAwesomeIcon icon={faTrash} size={fonts.caption * 1.2} color={theme.error} style={styles.buttonIcon}/>
+                                                <Text style={[styles.modalRemoveImageButtonText, { color: theme.error }]}>{t('customPage.modal.removeImageButton')}</Text>
                                             </TouchableOpacity>
                                          )}
                                      </ScrollView>
@@ -480,7 +456,6 @@ const CustomPageComponent: React.FC<CustomPageComponentProps> = ({ onBackPress, 
     );
 };
 
-// --- Helper Function for Themed Styles ---
 const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguage: string) => {
     const h2Styles = getLanguageSpecificTextStyle('h2', fonts, currentLanguage);
     const bodyStyles = getLanguageSpecificTextStyle('body', fonts, currentLanguage);
@@ -493,7 +468,7 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
         container: {
             flex: 1,
             backgroundColor: theme.background,
-            padding: 18,
+            padding: 16,
         },
         loadingOverlay: {
             flex: 1,
@@ -503,103 +478,110 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
         },
         loadingText: {
             ...bodyStyles,
-            fontWeight: '400',
-            marginTop: 15,
+            fontWeight: '500',
+            marginTop: 12,
             textAlign: 'center',
+            color: theme.textSecondary,
         },
         headerBar: {
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
             backgroundColor: theme.primary,
-            height: 35,
-            paddingHorizontal: 15,
-            borderBottomWidth: StyleSheet.hairlineWidth,
-            borderBottomColor: theme.isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-        },
-        headerButton: {
-            padding: 5,
-            minWidth: 44,
-            minHeight: 44,
-            alignItems: 'center',
-            justifyContent: 'center',
+            paddingVertical: 12,
+            paddingHorizontal: 16,
+            width: '100%',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+            elevation: 4,
         },
         headerTitle: {
             ...h2Styles,
-            fontWeight: '600',
+            fontWeight: '700',
             textAlign: 'center',
+            letterSpacing: 0.5,
         },
-
-        // --- List & Section Styles ---
         listContainer: {
-            paddingVertical: 10,
-            paddingBottom: 40,
+            paddingVertical: 12,
+            paddingBottom: 48,
         },
         sectionContainer: {
-            marginBottom: 20,
+            marginBottom: 16,
             backgroundColor: theme.card,
             borderRadius: 12,
-            borderWidth: StyleSheet.hairlineWidth,
+            borderWidth: 1,
             borderColor: theme.border,
-            padding: 8,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+            elevation: 3,
         },
         folderHeader: {
             flexDirection: 'row',
             alignItems: 'center',
-            paddingVertical: 12,
-            paddingHorizontal: 15,
-            borderBottomWidth: StyleSheet.hairlineWidth,
+            paddingVertical: 14,
+            paddingHorizontal: 16,
+            borderBottomWidth: 1,
             borderBottomColor: theme.border,
-            backgroundColor: theme.isDark ? theme.card : theme.background,
+            backgroundColor: theme.card,
+            borderRadius: 12,
         },
         chevronIcon: {
-            marginRight: 10,
+            marginRight: 12,
             width: fonts.caption,
         },
         folderIcon: {
-            marginRight: 10,
+            marginRight: 12,
         },
         folderName: {
             ...h2Styles,
-            fontWeight: '600',
+            fontWeight: '700',
             flex: 1,
+            letterSpacing: 0.3,
         },
         folderCount: {
             ...bodyStyles,
-            fontWeight: '400',
+            fontWeight: '500',
             marginLeft: 8,
+            opacity: 0.7,
         },
         symbolsGridContainer: {
             flexDirection: 'row',
             flexWrap: 'wrap',
-            paddingTop: 10,
-            paddingBottom: 5,
-            paddingHorizontal: 10,
+            paddingVertical: 12,
+            paddingHorizontal: 12,
             justifyContent: 'flex-start',
         },
         emptyFolderText: {
             ...bodyStyles,
-            fontWeight: '400',
+            fontWeight: '500',
             fontStyle: 'italic',
-            paddingVertical: 20,
+            paddingVertical: 16,
             textAlign: 'center',
             width: '100%',
+            color: theme.textSecondary,
         },
-
-        // --- Symbol Item Styles (Inside Folder) ---
         symbolItemContainer_InSection: {
-            margin: 4,
+            margin: 6,
         },
         symbolCard: {
             aspectRatio: 1,
             backgroundColor: theme.card,
             borderRadius: 12,
-            borderWidth: StyleSheet.hairlineWidth,
+            borderWidth: 1,
             borderColor: theme.border,
             overflow: 'hidden',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'space-between',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.1,
+            shadowRadius: 2,
+            elevation: 2,
         },
         symbolImageWrapper: {
             width: '100%',
@@ -607,119 +589,133 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
             backgroundColor: theme.background,
             justifyContent: 'center',
             alignItems: 'center',
-            padding: 8,
+            padding: 10,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.border,
         },
         symbolImage: {
             width: '100%',
             height: '100%',
+            borderRadius: 8,
         },
         symbolPlaceholder: {
             justifyContent: 'center',
             alignItems: 'center',
             width: '100%',
             height: '100%',
+            backgroundColor: theme.background,
+            borderRadius: 8,
         },
         symbolInfo: {
             width: '100%',
-            paddingHorizontal: 6,
-            paddingVertical: 5,
-            borderTopWidth: StyleSheet.hairlineWidth,
-            borderTopColor: theme.border,
-            minHeight: 40,
+            paddingHorizontal: 8,
+            paddingVertical: 8,
+            minHeight: 48,
             backgroundColor: theme.card,
         },
         symbolName: {
             ...bodyStyles,
-            fontWeight: '500',
+            fontWeight: '600',
             textAlign: 'center',
-            marginBottom: 4,
+            marginBottom: 6,
+            paddingHorizontal: 4,
         },
         symbolActions: {
             flexDirection: 'row',
-            justifyContent: 'space-around',
+            justifyContent: 'center',
             alignItems: 'center',
+            gap: 16,
         },
         actionButton: {
-            padding: 5,
-            minWidth: 44,
-            minHeight: 44,
+            padding: 8,
+            borderRadius: 8,
+            backgroundColor: theme.background,
+            minWidth: 40,
+            minHeight: 40,
             alignItems: 'center',
             justifyContent: 'center',
         },
-
-        // --- Empty State for the whole list ---
         emptyContainer: {
             flex: 1,
             minHeight: Dimensions.get('window').height * 0.6,
             alignItems: 'center',
             justifyContent: 'center',
-            paddingHorizontal: 30,
+            paddingHorizontal: 32,
         },
         emptyText: {
             ...h2Styles,
-            fontWeight: '600',
-            marginTop: 15,
-            textAlign: 'center'
+            fontWeight: '700',
+            marginTop: 12,
+            textAlign: 'center',
+            letterSpacing: 0.3,
         },
         emptySubText: {
             ...bodyStyles,
-            fontWeight: '400',
+            fontWeight: '500',
             marginTop: 8,
-            textAlign: 'center'
+            textAlign: 'center',
+            opacity: 0.7,
         },
-
-        // --- Modal Styles ---
         modalOverlay: {
             flex: 1,
-            backgroundColor: theme.isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.6)',
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
             justifyContent: 'center',
             alignItems: 'center',
-            padding: 18
+            padding: 16,
         },
         modalContent: {
             width: '100%',
             maxWidth: 400,
             maxHeight: '90%',
             backgroundColor: theme.card,
-            borderRadius: 12,
-            borderWidth: StyleSheet.hairlineWidth,
+            borderRadius: 16,
+            borderWidth: 1,
             borderColor: theme.border,
-            padding: 18,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.2,
+            shadowRadius: 6,
+            elevation: 8,
         },
         modalHeader: {
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',
-            paddingVertical: 14,
-            paddingHorizontal: 15,
-            borderBottomWidth: StyleSheet.hairlineWidth,
+            paddingVertical: 16,
+            paddingHorizontal: 16,
+            borderBottomWidth: 1,
             borderBottomColor: theme.border,
-            position: 'relative',
-            backgroundColor: theme.background,
+            backgroundColor: theme.card,
+            borderTopLeftRadius: 16,
+            borderTopRightRadius: 16,
         },
         modalTitleText: {
             ...h2Styles,
-            fontWeight: '600',
+            fontWeight: '700',
+            letterSpacing: 0.5,
         },
         modalCloseButton: {
             position: 'absolute',
-            right: 10,
-            top: 10,
+            right: 12,
+            top: 12,
             padding: 8,
-            minWidth: 44,
-            minHeight: 44,
+            borderRadius: 12,
+            backgroundColor: theme.background,
+            minWidth: 48,
+            minHeight: 48,
             alignItems: 'center',
             justifyContent: 'center',
         },
         modalBody: {
-            padding: 18,
-            paddingBottom: 30
+            padding: 20,
+            paddingBottom: 32,
         },
         modalLabel: {
             ...bodyStyles,
             fontWeight: '600',
-            marginBottom: 6,
-            marginTop: 15
+            marginBottom: 8,
+            marginTop: 16,
+            color: theme.text,
         },
         modalImagePicker: {
             width: '100%',
@@ -728,141 +724,165 @@ const createThemedStyles = (theme: ThemeColors, fonts: FontSizes, currentLanguag
             borderRadius: 12,
             justifyContent: 'center',
             alignItems: 'center',
-            marginBottom: 5,
-            borderWidth: StyleSheet.hairlineWidth,
+            marginBottom: 8,
+            borderWidth: 1,
             borderColor: theme.border,
             borderStyle: 'dashed',
-            overflow: 'hidden'
+            overflow: 'hidden',
         },
         modalPickedImage: {
             width: '100%',
-            height: '100%'
+            height: '100%',
+            borderRadius: 12,
         },
         modalImagePlaceholder: {
-            alignItems: 'center'
+            alignItems: 'center',
+            justifyContent: 'center',
         },
         modalImagePickerText: {
             ...bodyStyles,
             fontWeight: '500',
             marginTop: 8,
+            color: theme.textSecondary,
         },
         warningBox: {
             flexDirection: 'row',
             alignItems: 'center',
-            backgroundColor: theme.isDark ? '#5e5300' : '#fff3cd',
-            paddingVertical: 8,
+            backgroundColor: theme.isDark ? '#4a3c00' : '#fef3c7',
+            paddingVertical: 10,
             paddingHorizontal: 12,
             borderRadius: 12,
-            marginBottom: 15,
-            borderWidth: StyleSheet.hairlineWidth,
-            borderColor: theme.isDark ? '#b38f00' : '#ffeeba',
+            marginBottom: 12,
+            borderWidth: 1,
+            borderColor: theme.isDark ? '#a68b00' : '#fed7aa',
         },
         warningIcon: {
             marginRight: 8,
         },
         warningText: {
             ...bodyStyles,
-            fontWeight: '400',
+            fontWeight: '500',
             flex: 1,
-            color: theme.isDark ? '#f0e68c' : '#856404',
+            color: theme.isDark ? '#facc15' : '#92400e',
         },
         modalInput: {
             ...bodyStyles,
-            fontWeight: '400',
-            minHeight: 44,
-            borderWidth: StyleSheet.hairlineWidth,
+            fontWeight: '500',
+            minHeight: 48,
+            borderWidth: 1,
             borderRadius: 12,
             paddingHorizontal: 12,
-            marginBottom: 15,
+            marginBottom: 12,
+            backgroundColor: theme.background,
         },
         modalSaveButton: {
             borderRadius: 12,
-            paddingVertical: 14,
-            minHeight: 44,
+            paddingVertical: 12,
+            minHeight: 48,
             alignItems: 'center',
             flexDirection: 'row',
             justifyContent: 'center',
-            marginTop: 25,
+            marginTop: 20,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.1,
+            shadowRadius: 2,
+            elevation: 2,
         },
         modalButtonText: {
             ...bodyStyles,
-            fontWeight: '600',
+            fontWeight: '700',
+            letterSpacing: 0.3,
         },
         modalRemoveImageButton: {
-            backgroundColor: theme.card,
             borderRadius: 12,
             paddingVertical: 10,
-            minHeight: 44,
+            minHeight: 48,
             alignItems: 'center',
             flexDirection: 'row',
             justifyContent: 'center',
-            marginTop: 15,
-            borderWidth: StyleSheet.hairlineWidth,
+            marginTop: 12,
+            borderWidth: 1,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.1,
+            shadowRadius: 2,
+            elevation: 2,
         },
         modalRemoveImageButtonText: {
             ...bodyStyles,
             fontWeight: '600',
         },
         modalButtonDisabled: {
-            opacity: 0.6
+            opacity: 0.5,
         },
         buttonIcon: {
-            marginRight: 8
+            marginRight: 8,
         },
-        // --- Category Picker Styles ---
         categorySelectionContainer: {
             flexDirection: 'row',
             alignItems: 'center',
-            marginBottom: 10,
+            marginBottom: 12,
+            gap: 8,
         },
         pickerWrapper: {
             flex: 1,
-            minHeight: 44,
-            borderWidth: StyleSheet.hairlineWidth,
+            minHeight: 48,
+            borderWidth: 1,
             borderRadius: 12,
             justifyContent: 'center',
+            backgroundColor: theme.background,
         },
         picker: {
-            height: Platform.OS === 'ios' ? undefined : 44,
+            height: Platform.OS === 'ios' ? undefined : 48,
         },
         pickerItem: {
             ...bodyStyles,
-            fontWeight: '400',
+            fontWeight: '500',
+            color: theme.text,
         },
         addCategoryButton: {
             padding: 10,
-            minHeight: 44,
-            minWidth: 44,
+            minHeight: 48,
+            minWidth: 48,
             justifyContent: 'center',
             alignItems: 'center',
-            borderWidth: StyleSheet.hairlineWidth,
+            borderWidth: 1,
             borderRadius: 12,
+            backgroundColor: theme.card,
         },
         addCategoryButtonActive: {
+            backgroundColor: theme.primaryMuted,
         },
         addCategoryInputContainer: {
             flexDirection: 'row',
             alignItems: 'center',
-            marginTop: 5,
-            marginBottom: 15,
+            marginTop: 8,
+            marginBottom: 12,
+            gap: 8,
         },
         addCategoryInput: {
             ...bodyStyles,
-            fontWeight: '400',
+            fontWeight: '500',
             flex: 1,
-            minHeight: 44,
-            borderWidth: StyleSheet.hairlineWidth,
+            minHeight: 48,
+            borderWidth: 1,
             borderRadius: 12,
             paddingHorizontal: 12,
-            marginRight: 10,
+            backgroundColor: theme.background,
         },
         addCategoryConfirmButton: {
             borderRadius: 12,
             padding: 10,
-            minHeight: 44,
-            minWidth: 44,
+            minHeight: 48,
+            minWidth: 48,
             justifyContent: 'center',
             alignItems: 'center',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.1,
+            shadowRadius: 2,
+            elevation: 2,
         },
     });
 };
